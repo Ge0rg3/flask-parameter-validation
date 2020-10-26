@@ -1,6 +1,13 @@
 # Flask Parameter Validation
 ### Get and validate all Flask input parameters with ease.
 
+## Install
+* Pip: Install with `pip install flask_parameter_validation`.
+* Manually:
+  - `git clone https://github.com/Ge0rg3/Flask-Parameter-Validation.git`
+  - `python setup.py install`
+
+
 ## Simple Usage
 ```py
 from flask import Flask
