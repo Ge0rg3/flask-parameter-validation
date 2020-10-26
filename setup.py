@@ -11,15 +11,15 @@ with open("README.md", "r") as f:
 
 setup(
     name='Flask-Parameter-Validation',
-    version='1.0',
-    url='https://github.com/Ge0rg3/',
+    version='1.0.12',
+    url='https://github.com/Ge0rg3/Flask-Parameter-Validation',
     license='MIT',
     author='George Omnet',
     author_email='georgeomnet+flask-parameter-validation@gmail.com',
     description='Get and validate all Flask input parameters with ease.',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    py_modules=['flask-parameter-validation'],
+    packages=['flask_parameter_validation', 'flask_parameter_validation.parameter_types'],
     zip_safe=False,
     include_package_data=True,
     platforms='any',

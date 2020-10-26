@@ -2,7 +2,7 @@
 
 import typing
 from inspect import signature
-from parameter_types import Route, Json, Query, Form, File
+from .parameter_types import Route, Json, Query, Form, File
 from flask import request
 
 
