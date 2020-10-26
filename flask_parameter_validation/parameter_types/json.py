@@ -1,7 +1,7 @@
 """
     JSON data values
 """
-from .Parameter import Parameter
+from .parameter import Parameter
 
 
 class Json(Parameter):

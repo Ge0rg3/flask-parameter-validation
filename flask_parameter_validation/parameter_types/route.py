@@ -2,7 +2,7 @@
     Route Parameters
     - Sent as part of a path, i.e. /user/<int:id>
 """
-from .Parameter import Parameter
+from .parameter import Parameter
 
 
 class Route(Parameter):

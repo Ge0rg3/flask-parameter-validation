@@ -1,8 +1,8 @@
-from .File import File
-from .Form import Form
-from .Json import Json
-from .Query import Query
-from .Route import Route
+from .file import File
+from .form import Form
+from .json import Json
+from .query import Query
+from .route import Route
 
 __all__ = [
     "File", "Form", "Json", "Query", "Route"

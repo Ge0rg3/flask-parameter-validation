@@ -2,7 +2,7 @@
     Values sent in a POST Form request
     - Typical data from an HTML form (non-json)
 """
-from .Parameter import Parameter
+from .parameter import Parameter
 
 
 class Form(Parameter):

@@ -2,7 +2,7 @@
     Query Parameters
     - i.e. sent in GET requests, /?username=myname
 """
-from .Parameter import Parameter
+from .parameter import Parameter
 
 
 class Query(Parameter):

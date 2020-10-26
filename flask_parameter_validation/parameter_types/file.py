@@ -3,7 +3,7 @@
     - Would originally be in Flask's request.file
     - Value will be a FileStorage object
 """
-from .Parameter import Parameter, ValidationError
+from .parameter import Parameter, ValidationError
 
 
 class File(Parameter):
