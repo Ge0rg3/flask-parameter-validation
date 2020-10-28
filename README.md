@@ -11,10 +11,11 @@
 ## Simple Usage
 ```py
 from flask import Flask
-from typing import List
+from typing import List, Optional
 from flask_parameter_validation import ValidateParameters, Route, Json
 
 app = Flask(__name__)
+
 
 @app.route("/update/<int:id>", methods=["POST"])
 @ValidateParameters()
@@ -23,8 +24,8 @@ def hello(
         username: str = Json(min_length=5, blacklist="<>"),
         age: int = Json(min_int=18, max_int=99),
         nicknames: List[str] = Json(),
-        password_expiry: int = Json(5)
-    ):
+        password_expiry: Optional[int] = Json(5)
+     ):
     return "Hello World!"
 
 if __name__ == "__main__":

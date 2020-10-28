@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import typing
 from inspect import signature
@@ -39,6 +39,7 @@ class ValidateParameters:
                 param_type = arg.default  # ie. Route(), Json()
                 param_name = arg.name  # ie. id, username
                 param_annotation = arg.annotation or typing.Any  # ie. str, int
+                is_list_or_union = hasattr(param_annotation, "__args__")
                 # Ensure param type is valid
                 if param_type.__class__ not in request_inputs.keys():
                     return self.error_function("Invalid parameter type.")
@@ -55,9 +56,15 @@ class ValidateParameters:
                 # If no default and no input, error
                 elif user_input is None:
                     ptype = param_type.name
-                    return self.error_function(
+                    error_response = self.error_function(
                         f"Required {ptype} parameter '{param_name}' not given."
                     )
+                    # If "None" is allowed in Union, then continue
+                    if is_list_or_union:
+                        if type(None) not in param_annotation.__args__:
+                            return error_response
+                    else:
+                        return error_response
 
                 # If typing's Any, ClassVar or Optional, don't validate type
                 if isinstance(param_annotation, typing._SpecialForm):
@@ -68,7 +75,7 @@ class ValidateParameters:
                 else:
                     allowed_types = []
                     # If List or Union, get all "inner" types
-                    if hasattr(param_annotation, "__args__"):
+                    if is_list_or_union:
                         allowed_types = param_annotation.__args__
                     else:
                         allowed_types = (param_annotation,)
@@ -82,6 +89,9 @@ class ValidateParameters:
                         valid = all(
                             isinstance(i, allowed_types) for i in user_input
                         )
+                    elif type(user_input) != list and annotation_is_list:
+                        allowed_types = [list]
+                        valid = False
                     else:
                         # If not list, just validate singular data type
                         valid = isinstance(user_input, allowed_types)
@@ -96,9 +106,17 @@ class ValidateParameters:
                             f"Parameter '{param_name}' {e}"
                         )
                 else:
+                    if type(None) in allowed_types:
+                        allowed_types = list(allowed_types)
+                        allowed_types.remove(type(None))
+                        startphrase = "Optional parameter"
+                    else:
+                        startphrase = "Parameter"
                     types = "/".join(t.__name__ for t in allowed_types)
+                    if annotation_is_list:
+                        types = "List[" + types + "]"
                     return decorator_self.error_function(
-                        f"Parameter '{param_name}' should be type {types}."
+                        f"{startphrase} '{param_name}' should be type {types}."
                     )
 
             return f(**parsed_inputs)
