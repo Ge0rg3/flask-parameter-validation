@@ -81,21 +81,21 @@ class ValidateParameters:
                         allowed_types = (param_annotation,)
 
                     # If query parameter, try converting to match
-                    if param_type.__class__ == Query:
+                    if param_type.__class__ == Query and type(user_input) == str:  # noqa: E501
                         # int conversion
-                        if param_annotation == int:
+                        if int in allowed_types:
                             try:
                                 user_input = int(user_input)
                             except ValueError:
                                 pass
                         # float conversion
-                        if param_annotation == float:
+                        if float in allowed_types:
                             try:
                                 user_input = float(user_input)
                             except ValueError:
                                 pass
                         # bool conversion
-                        elif param_annotation == bool:
+                        elif bool in allowed_types:
                             if user_input.lower() == "true":
                                 user_input = True
                             elif user_input.lower() == "false":
