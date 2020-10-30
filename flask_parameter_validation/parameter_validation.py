@@ -66,7 +66,7 @@ class ValidateParameters:
                     else:
                         return error_response
 
-                # If typing's Any, ClassVar or Optional, don't validate type
+                # If typing's Any or ClassVar, don't validate type
                 if isinstance(param_annotation, typing._SpecialForm):
                     valid = True
                     allowed_types = ["all"]
@@ -79,6 +79,27 @@ class ValidateParameters:
                         allowed_types = param_annotation.__args__
                     else:
                         allowed_types = (param_annotation,)
+
+                    # If query parameter, try converting to match
+                    if param_type.__class__ == Query:
+                        # int conversion
+                        if param_annotation == int:
+                            try:
+                                user_input = int(user_input)
+                            except ValueError:
+                                pass
+                        # float conversion
+                        if param_annotation == float:
+                            try:
+                                user_input = float(user_input)
+                            except ValueError:
+                                pass
+                        # bool conversion
+                        elif param_annotation == bool:
+                            if user_input.lower() == "true":
+                                user_input = True
+                            elif user_input.lower() == "false":
+                                user_input = False
 
                     # Check if type matches annotation
                     annotation_is_list = False
