@@ -11,7 +11,7 @@ with open("README.md", "r") as f:
 
 setup(
     name='Flask-Parameter-Validation',
-    version='1.0.22',
+    version='1.0.23',
     url='https://github.com/Ge0rg3/Flask-Parameter-Validation',
     license='MIT',
     author='George Omnet',

@@ -58,6 +58,8 @@ All parameters can have default values, and automatic validation.
 * default: any, Specifies the default value for the field.
 * min_length: int, Specifies the minimum character length for a string input
 * max_length: int, Specifies the maximum character length for a string input
+* min_list_length: int, Specifies the minimum number of elements in a list
+* max_list_length: int, Specifies the maximum number of elements in a list
 * min_int: int, Specifies the minimum number for an int input
 * max_int: int, Specifies the maximum number for an int input
 * whitelist: str, A string containing allowed characters for the value
