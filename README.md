@@ -63,7 +63,8 @@ All parameters can have default values, and automatic validation.
 * min_int: int, Specifies the minimum number for an int input
 * max_int: int, Specifies the maximum number for an int input
 * whitelist: str, A string containing allowed characters for the value
-* blacklist: str, A string containing forbidden characters for the value  
+* blacklist: str, A string containing forbidden characters for the value
+* pattern: str, A regex pattern to test for string matches
 
 `File` has the following options:
 * content_types: array of strings, an array of allowed content types.
