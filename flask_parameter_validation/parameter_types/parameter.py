@@ -2,6 +2,7 @@
     Base Parameter class.
     Should only be used as child class for othe params.
 """
+import re
 
 
 class ValidationError(Exception):
@@ -21,7 +22,8 @@ class Parameter:
         min_int=None,  # int: min number (if val is int)
         max_int=None,  # int: max number (if val is int)
         whitelist=None,  # str: character whitelist
-        blacklist=None  # str: character blacklist
+        blacklist=None,  # str: character blacklist
+        pattern=None, # str: regexp pattern
     ):
         self.default = default
         self.min_length = min_length
@@ -30,6 +32,7 @@ class Parameter:
         self.max_int = max_int
         self.whitelist = whitelist
         self.blacklist = blacklist
+        self.pattern = pattern
 
     # Validator
     def validate(self, values):
@@ -77,4 +80,12 @@ class Parameter:
                     raise ValidationError(
                         f"must be smaller than {self.max_int}."
                     )
+
+            # Regexp 
+            if self.pattern is not None:
+                if not re.match(self.pattern, value):
+                    raise ValidationError(
+                        f"pattern does not match: {self.pattern}."
+                    )
+
             return True
