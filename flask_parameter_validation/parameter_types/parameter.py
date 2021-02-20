@@ -23,7 +23,7 @@ class Parameter:
         max_int=None,  # int: max number (if val is int)
         whitelist=None,  # str: character whitelist
         blacklist=None,  # str: character blacklist
-        pattern=None, # str: regexp pattern
+        pattern=None,  # str: regexp pattern
     ):
         self.default = default
         self.min_length = min_length
@@ -81,7 +81,7 @@ class Parameter:
                         f"must be smaller than {self.max_int}."
                     )
 
-            # Regexp 
+            # Regexp
             if self.pattern is not None:
                 if not re.match(self.pattern, value):
                     raise ValidationError(
