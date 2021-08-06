@@ -34,51 +34,70 @@ class Parameter:
 
     # Validator
     def validate(self, value):
-        # Min length
-        if self.min_str_length is not None:
-            if len(value) < self.min_str_length:
-                raise ValueError(
-                    f"must have at least {self.min_str_length} characters."
-                )
-        # Max length
-        if self.max_str_length is not None:
-            if len(value) > self.max_str_length:
-                raise ValueError(
-                    f"must have a maximum of {self.max_str_length} characters."
-                )
-        # Whitelist
-        if self.whitelist is not None:
-            for char in str(value):
-                if char not in self.whitelist:
+        if type(value) is list:
+            values = value
+            # Min list len
+            if self.min_list_length is not None:
+                if len(value) < self.min_list_length:
                     raise ValueError(
-                        f"must contain only characters: {self.whitelist}"
+                        f"must have at least {self.min_list_length} items."
                     )
-        # Blacklist
-        if self.blacklist is not None:
-            for bad in self.blacklist:
-                if bad in str(value):
+            # Max list len
+            if self.max_list_length is not None:
+                if len(value) > self.max_list_length:
                     raise ValueError(
-                        f"must not contain: {bad}"
+                        f"must have have a maximum of {self.max_list_length} items."
                     )
-        # Min int
-        if self.min_int is not None:
-            if int(value) < self.min_int:
-                raise ValueError(
-                    f"must be larger than {self.min_int}."
-                )
-        # Max int
-        if self.max_int is not None:
-            if int(value) > self.max_int:
-                raise ValueError(
-                    f"must be smaller than {self.max_int}."
-                )
+        else:
+            values = [value]
 
-        # Regexp
-        if self.pattern is not None:
-            if not re.match(self.pattern, value):
-                raise ValueError(
-                    f"pattern does not match: {self.pattern}."
-                )
+        # Iterate through values given (or just one, if not list)
+        for value in values:
+            # Min length
+            if self.min_str_length is not None:
+                if len(value) < self.min_str_length:
+                    raise ValueError(
+                        f"must have at least {self.min_str_length} characters."
+                    )
+            # Max length
+            if self.max_str_length is not None:
+                if len(value) > self.max_str_length:
+                    raise ValueError(
+                        f"must have a maximum of {self.max_str_length} characters."
+                    )
+            # Whitelist
+            if self.whitelist is not None:
+                for char in str(value):
+                    if char not in self.whitelist:
+                        raise ValueError(
+                            f"must contain only characters: {self.whitelist}"
+                        )
+            # Blacklist
+            if self.blacklist is not None:
+                for bad in self.blacklist:
+                    if bad in str(value):
+                        raise ValueError(
+                            f"must not contain: {bad}"
+                        )
+            # Min int
+            if self.min_int is not None:
+                if int(value) < self.min_int:
+                    raise ValueError(
+                        f"must be larger than {self.min_int}."
+                    )
+            # Max int
+            if self.max_int is not None:
+                if int(value) > self.max_int:
+                    raise ValueError(
+                        f"must be smaller than {self.max_int}."
+                    )
+
+            # Regexp
+            if self.pattern is not None:
+                if not re.match(self.pattern, value):
+                    raise ValueError(
+                        f"pattern does not match: {self.pattern}."
+                    )
 
         return True
 
