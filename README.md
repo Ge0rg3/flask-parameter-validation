@@ -4,7 +4,7 @@
 ## Install
 * Pip: Install with `pip install flask_parameter_validation`.
 * Manually:
-  - `git clone https://github.com/Ge0rg3/Flask-Parameter-Validation.git`
+  - `git clone https://github.com/Ge0rg3/flask-parameter-validation.git`
   - `python setup.py install`
 
 
@@ -56,8 +56,8 @@ The validation on files are different to the others, but file input can still be
 All parameters can have default values, and automatic validation.  
 `Route`, `Form`, `Json` and `Query` have the following options:
 * default: any, Specifies the default value for the field.
-* min_length: int, Specifies the minimum character length for a string input
-* max_length: int, Specifies the maximum character length for a string input
+* min_str_length: int, Specifies the minimum character length for a string input
+* max_str_length: int, Specifies the maximum character length for a string input
 * min_list_length: int, Specifies the minimum number of elements in a list
 * max_list_length: int, Specifies the maximum number of elements in a list
 * min_int: int, Specifies the minimum number for an int input

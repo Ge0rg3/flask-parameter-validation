@@ -3,7 +3,7 @@
     - Would originally be in Flask's request.file
     - Value will be a FileStorage object
 """
-from .parameter import Parameter, ValidationError
+from .parameter import Parameter
 
 
 class File(Parameter):
@@ -25,21 +25,19 @@ class File(Parameter):
             # We check mimetype, as it strips charset etc.
             if value.mimetype not in self.content_types:
                 valid_types = "'" + "'/'".join(self.content_types) + "'"
-                raise ValidationError(f"must have content-type {valid_types}.")
+                raise ValueError(f"must have content-type {valid_types}.")
 
         # Min content length validation
         if self.min_length is not None:
             if value.content_length < self.min_length:
-                minlen = self.min_length
-                raise ValidationError(
-                    f"must have a content-length larger than {minlen}."
+                raise ValueError(
+                    f"must have a content-length larger than {self.min_length}."
                 )
 
         # Max content length validation
         if self.max_length is not None:
             if value.content_length > self.max_length:
-                maxlen = self.max_length
-                raise ValidationError(
-                    f"must have a content-length smaller than {maxlen}."
+                raise ValueError(
+                    f"must have a content-length smaller than {self.max_length}."
                 )
         return True
