@@ -115,7 +115,9 @@ class ValidateParameters:
             expected_input_types = [expected_input_type]
         
         # Perform automatic type conversion for parameter types (i.e. "true" -> True)
-        user_input = expected_delivery_type.convert(user_input, expected_input_types)
+        for count, value in enumerate(user_inputs):
+            user_inputs[count] = expected_delivery_type.convert(value, expected_input_types)
+
 
         # Validate that user type(s) match expected type(s)
         validation_success = all(type(inp) in expected_input_types for inp in user_inputs)
