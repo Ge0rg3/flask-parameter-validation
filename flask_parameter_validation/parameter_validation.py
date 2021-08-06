@@ -1,5 +1,5 @@
-from parameter_types import Route, Json, Query, Form, File
-from exceptions import MissingInputError, InvalidParameterTypeError, ValidationError
+from .parameter_types import Route, Json, Query, Form, File
+from .exceptions import MissingInputError, InvalidParameterTypeError, ValidationError
 from flask import request
 from inspect import signature
 
