@@ -85,6 +85,13 @@ class ValidateParameters:
         if expected_input_type_str.startswith("typing.Any"):
             return user_input
 
+        # In python3.7+, typing.Optional is used instead of typing.Union[..., None]
+        if expected_input_type_str.startswith("typing.Optional"):
+            new_type = expected_input_type.__args__[0]
+            expected_input_type = new_type
+            expected_input_type_str_str = str(new_type)
+
+
         # Prepare expected type checks for unions, lists and plain types
         if expected_input_type_str.startswith("typing.Union"):
             expected_input_types = expected_input_type.__args__
