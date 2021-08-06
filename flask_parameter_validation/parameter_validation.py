@@ -1,7 +1,3 @@
-"""
-Class
-"""
-import typing
 from parameter_types import Route, Json, Query, Form, File
 from exceptions import MissingInputError, InvalidParameterTypeError, ValidationError
 from flask import request
@@ -138,35 +134,3 @@ class ValidateParameters:
         
         # Return input back to parent function
         return user_input
-
-"""
-Test
-"""
-from flask import Flask
-from typing import List, Union, Optional
-app = Flask(__name__)
-
-def handler(err):
-    error_name = type(err)
-    error_parameters = err.args
-    error_message = str(err)
-    return {
-        "error_name": type(err).__name__,
-        "error_parameters": err.args,
-        "error_message": str(err)
-    }, 400
-
-@app.route("/update/<int:id>", methods=["POST"])
-@ValidateParameters(handler)
-def hello(
-        id: int = Route(),
-        username: str = Json(min_str_length=5, blacklist="<>"),
-        age: int = Json(min_int=18, max_int=99),
-        nicknames: List[str] = Json(),
-        password_expiry: Union[int, float] = Json(),
-        is_admin: bool = Query(False)
-     ):
-    return "Hello World!"
-
-if __name__ == "__main__":
-    app.run()

@@ -21,7 +21,7 @@ app = Flask(__name__)
 @ValidateParameters()
 def hello(
         id: int = Route(),
-        username: str = Json(min_length=5, blacklist="<>"),
+        username: str = Json(min_str_length=5, blacklist="<>"),
         age: int = Json(min_int=18, max_int=99),
         nicknames: List[str] = Json(),
         password_expiry: Optional[int] = Json(5),
@@ -79,10 +79,16 @@ These validators are passed into the classes in the route function, such as:
 ### Overwriting default errors
 By default, the error messages are returned as a JSON response, with the detailed error in the "error" field. However, this can be edited by passing a custom error function into the ValidateParameters decorator. For example:
 ```py
-def my_error_func(error_message):
-    return f"This is the error! Please sort it out! {error_message}", 400
+def error_handler(err):
+    error_name = type(err)
+    error_parameters = err.args
+    error_message = str(err)
+    return {
+        "error_name": type(err).__name__,
+        "error_parameters": err.args,
+        "error_message": str(err)
+    }, 400
 
-
-@ValidateParameters(my_error_func)
+@ValidateParameters(error_handler)
 def api(...)
 ```
