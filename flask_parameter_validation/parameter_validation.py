@@ -41,7 +41,7 @@ class ValidateParameters:
                     except Exception as e:
                         return self.custom_error_handler(e)
                 validated_inputs[expected.name] = new_input
-            return f(**kwargs)
+            return f(**validated_inputs)
 
         nested_func.__name__ = f.__name__
         return nested_func
