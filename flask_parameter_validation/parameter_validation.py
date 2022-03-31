@@ -17,7 +17,7 @@ class ValidateParameters:
             # Step 1 - Combine all flask input types to one dict
             request_inputs = {
                 Route: kwargs.copy(),
-                Json: request.json or {},
+                Json: request.get_json(silent=True) or {},
                 Query: request.args.to_dict(),
                 Form: request.form.to_dict(),
                 File: request.files.to_dict()
