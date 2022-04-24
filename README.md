@@ -65,6 +65,7 @@ All parameters can have default values, and automatic validation.
 * whitelist: str, A string containing allowed characters for the value
 * blacklist: str, A string containing forbidden characters for the value
 * pattern: str, A regex pattern to test for string matches
+* func: Callable, A function containing a fully customized logic to validate the value
 
 `File` has the following options:
 * content_types: array of strings, an array of allowed content types.
