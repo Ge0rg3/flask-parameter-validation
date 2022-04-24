@@ -1,6 +1,6 @@
 """
     Base Parameter class.
-    Should only be used as child class for othe params.
+    Should only be used as child class for other params.
 """
 import re
 
@@ -20,6 +20,7 @@ class Parameter:
         whitelist=None,  # str: character whitelist
         blacklist=None,  # str: character blacklist
         pattern=None,  # str: regexp pattern
+        func=None,  # Callable: function performing a fully customized validation
     ):
         self.default = default
         self.min_list_length = min_list_length
@@ -31,6 +32,7 @@ class Parameter:
         self.whitelist = whitelist
         self.blacklist = blacklist
         self.pattern = pattern
+        self.func = func
 
     # Validator
     def validate(self, value):
@@ -97,6 +99,13 @@ class Parameter:
                 if not re.match(self.pattern, value):
                     raise ValueError(
                         f"pattern does not match: {self.pattern}."
+                    )
+
+            # Callable
+            if self.func is not None:
+                if not self.func(value):
+                    raise ValueError(
+                        f"value does not match the validator function."
                     )
 
         return True
