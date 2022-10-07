@@ -2,6 +2,7 @@ from .parameter_types import Route, Json, Query, Form, File
 from .exceptions import MissingInputError, InvalidParameterTypeError, ValidationError
 from flask import request
 from inspect import signature
+from werkzeug.exceptions import BadRequest
 
 class ValidateParameters:
 
@@ -15,9 +16,14 @@ class ValidateParameters:
         """
         def nested_func(**kwargs):
             # Step 1 - Combine all flask input types to one dict
+            if request.headers.get("content-type") == "application/json":
+                try:
+                    json_input = request.json
+                except BadRequest:
+                    return {"error": "Could not parse JSON."}, 400
             request_inputs = {
                 Route: kwargs.copy(),
-                Json: request.json or {},
+                Json: json_input,
                 Query: request.args.to_dict(),
                 Form: request.form.to_dict(),
                 File: request.files.to_dict()
