@@ -3,6 +3,8 @@
     Should only be used as child class for other params.
 """
 import re
+from datetime import datetime
+import dateutil.parser as parser
 
 
 class Parameter:
@@ -112,5 +114,10 @@ class Parameter:
 
     def convert(self, value, allowed_types):
         """Some parameter types require manual type conversion (see Query)"""
+        # Datetime conversion
+        if datetime in allowed_types:
+            try:
+                return parser.parse(str(value))
+            except parser._parser.ParserError:
+                pass
         return value
-        
