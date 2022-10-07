@@ -115,7 +115,10 @@ class ValidateParameters:
         # If list, expand inner typing items. Otherwise, convert to list to match anyway.
         elif expected_input_type_str.startswith("typing.List"):
             expected_input_types = expected_input_type.__args__
-            user_inputs = user_input
+            if type(user_input) is list:
+                user_inputs = user_input
+            else:
+                user_inputs = [user_input]
         else:
             user_inputs = [user_input]
             expected_input_types = [expected_input_type]
@@ -123,7 +126,6 @@ class ValidateParameters:
         # Perform automatic type conversion for parameter types (i.e. "true" -> True)
         for count, value in enumerate(user_inputs):
             user_inputs[count] = expected_delivery_type.convert(value, expected_input_types)
-
 
         # Validate that user type(s) match expected type(s)
         validation_success = all(type(inp) in expected_input_types for inp in user_inputs)
