@@ -13,6 +13,7 @@
 from flask import Flask
 from typing import List, Optional
 from flask_parameter_validation import ValidateParameters, Route, Json, Query
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -24,6 +25,7 @@ def hello(
         username: str = Json(min_str_length=5, blacklist="<>"),
         age: int = Json(min_int=18, max_int=99),
         nicknames: List[str] = Json(),
+        date_of_birth: datetime = Json(),
         password_expiry: Optional[int] = Json(5),
         is_admin: bool = Query(False)
      ):
@@ -51,6 +53,16 @@ This is any JSON body sent -- request must have application/json content type fo
 This covers query parameters (aka GET parameters), such as `/news/article?id=55`
 5. File()  
 The validation on files are different to the others, but file input can still be obtained here as their Flask FileStorage objects.
+
+### Input types
+* str
+* int
+* bool
+* float
+* typing.List
+* typing.Union
+* typing.Optional
+* datetime.datetime
 
 ### Validation
 All parameters can have default values, and automatic validation.  
