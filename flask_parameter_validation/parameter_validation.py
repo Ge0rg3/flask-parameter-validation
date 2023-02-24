@@ -128,8 +128,11 @@ class ValidateParameters:
 
         # Perform automatic type conversion for parameter types (i.e. "true" -> True)
         for count, value in enumerate(user_inputs):
-            user_inputs[count] = expected_delivery_type.convert(
-                value, expected_input_types)
+            try:
+                user_inputs[count] = expected_delivery_type.convert(
+                    value, expected_input_types)
+            except ValueError as e:
+                raise ValidationError(str(e), expected_name, expected_input_type)
 
         # Validate that user type(s) match expected type(s)
         validation_success = all(
@@ -156,4 +159,6 @@ class ValidateParameters:
             raise ValidationError(str(e), expected_name, expected_input_type)
 
         # Return input back to parent function
-        return user_input
+        if len(user_inputs) == 1:
+            return user_inputs[0]
+        return user_inputs
