@@ -3,7 +3,7 @@
     Should only be used as child class for other params.
 """
 import re
-from datetime import datetime
+from datetime import datetime, time
 import dateutil.parser as parser
 
 from flask_parameter_validation.exceptions import ValidationError
@@ -145,4 +145,9 @@ class Parameter:
                         f"datetime format does not match: {self.datetime_format}"
                     )
                 pass
+        elif time in allowed_types:
+            try:
+                return time.fromisoformat(str(value))
+            except ValueError:
+                raise ValueError("time format does not match ISO 8601")
         return value
