@@ -131,6 +131,8 @@ class Parameter:
     def convert(self, value, allowed_types):
         """Some parameter types require manual type conversion (see Query)"""
         # Datetime conversion
+        if None in allowed_types and value is None:
+            return value
         if datetime in allowed_types:
             if self.datetime_format is None:
                 try:
