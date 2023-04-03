@@ -24,7 +24,7 @@ class Parameter:
         whitelist=None,  # str: character whitelist
         blacklist=None,  # str: character blacklist
         pattern=None,  # str: regexp pattern
-        func=None,  # Callable: function performing a fully customized validation
+        func=None,  # Callable -> Union[bool, tuple[bool, str]]: function performing a fully customized validation
         datetime_format=None,  # str: datetime format string (https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)
     ):
         self.default = default

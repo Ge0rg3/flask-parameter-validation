@@ -63,6 +63,8 @@ The validation on files are different to the others, but file input can still be
 * typing.Union
 * typing.Optional
 * datetime.datetime
+* datetime.date
+* datetime.time
 
 ### Validation
 All parameters can have default values, and automatic validation.  
@@ -77,7 +79,8 @@ All parameters can have default values, and automatic validation.
 * whitelist: str, A string containing allowed characters for the value
 * blacklist: str, A string containing forbidden characters for the value
 * pattern: str, A regex pattern to test for string matches
-* func: Callable, A function containing a fully customized logic to validate the value
+* func: Callable -> Union[bool, tuple[bool, str]], A function containing a fully customized logic to validate the value
+* datetime_format: str, str: datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))
 
 `File` has the following options:
 * content_types: array of strings, an array of allowed content types.
