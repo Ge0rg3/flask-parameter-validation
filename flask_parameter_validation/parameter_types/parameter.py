@@ -3,8 +3,10 @@
     Should only be used as child class for other params.
 """
 import re
-from datetime import datetime
+from datetime import datetime, time, date
 import dateutil.parser as parser
+
+from flask_parameter_validation.exceptions import ValidationError
 
 
 class Parameter:
@@ -22,7 +24,8 @@ class Parameter:
         whitelist=None,  # str: character whitelist
         blacklist=None,  # str: character blacklist
         pattern=None,  # str: regexp pattern
-        func=None,  # Callable: function performing a fully customized validation
+        func=None,  # Callable -> Union[bool, tuple[bool, str]]: function performing a fully customized validation
+        datetime_format=None,  # str: datetime format string (https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)
     ):
         self.default = default
         self.min_list_length = min_list_length
@@ -35,6 +38,7 @@ class Parameter:
         self.blacklist = blacklist
         self.pattern = pattern
         self.func = func
+        self.datetime_format = datetime_format
 
     # Validator
     def validate(self, value):
@@ -105,19 +109,52 @@ class Parameter:
 
             # Callable
             if self.func is not None:
-                if not self.func(value):
-                    raise ValueError(
-                        f"value does not match the validator function."
-                    )
+                func_result = self.func(value)
+                if type(func_result) is bool:
+                    if not func_result:
+                        raise ValueError(
+                            f"value does not match the validator function."
+                        )
+                elif type(func_result) is tuple:
+                    if len(func_result) == 2 and type(func_result[0]) is bool and type(func_result[1]) is str:
+                        if not func_result[0]:
+                            raise ValueError(
+                                func_result[1]
+                            )
+                    else:
+                        raise ValueError(
+                            f"validator function returned incorrect type: {str(type(func_result))}, should return bool or (bool, str)"
+                        )
 
         return True
 
     def convert(self, value, allowed_types):
         """Some parameter types require manual type conversion (see Query)"""
         # Datetime conversion
+        if None in allowed_types and value is None:
+            return value
         if datetime in allowed_types:
-            try:
-                return parser.parse(str(value))
-            except parser._parser.ParserError:
+            if self.datetime_format is None:
+                try:
+                    return parser.parse(str(value))
+                except parser._parser.ParserError:
+                    pass
+            else:
+                try:
+                    return datetime.strptime(str(value), self.datetime_format)
+                except ValueError:
+                    raise ValueError(
+                        f"datetime format does not match: {self.datetime_format}"
+                    )
                 pass
+        elif time in allowed_types:
+            try:
+                return time.fromisoformat(str(value))
+            except ValueError:
+                raise ValueError("time format does not match ISO 8601")
+        elif date in allowed_types:
+            try:
+                return date.fromisoformat(str(value))
+            except ValueError:
+                raise ValueError("date format does not match ISO 8601")
         return value
