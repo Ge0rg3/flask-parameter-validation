@@ -25,7 +25,8 @@ class Parameter:
         blacklist=None,  # str: character blacklist
         pattern=None,  # str: regexp pattern
         func=None,  # Callable -> Union[bool, tuple[bool, str]]: function performing a fully customized validation
-        datetime_format=None,  # str: datetime format string (https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)
+        datetime_format=None,  # str: datetime format string (https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes),
+        comment=None
     ):
         self.default = default
         self.min_list_length = min_list_length
@@ -39,6 +40,7 @@ class Parameter:
         self.pattern = pattern
         self.func = func
         self.datetime_format = datetime_format
+        self.comment = comment
 
     # Validator
     def validate(self, value):
