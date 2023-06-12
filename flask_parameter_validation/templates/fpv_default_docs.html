@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ site_name }} API Docs</title>
+    <style>
+        body {
+            background: whitesmoke;
+            font-family: Proxima Nova, sans-serif;
+        }
+        div.card {
+            background: lightgrey;
+            border-radius: 0.75rem;
+        }
+        div.card > .card-title, .card-body {
+            padding-left: 0.75rem;
+        }
+        .card-title + .card-body {
+            padding-top: 0;
+        }
+        div.card-body {
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+        div.card > h2 {
+            background: slategray;
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            border-radius: 0.75rem 0.75rem 0 0;
+        }
+        div.card > h2:last-child {
+            border-radius: 0.75rem;
+        }
+        div.card > h3 {
+        }
+        span.http_badge {
+            font-size: 1rem;
+            padding: 0.5rem;
+            margin-right: 0.5rem;
+        }
+        span.http_badge.get {
+            background: deepskyblue;
+        }
+        span.http_badge.post {
+            background: lightgreen;
+        }
+        span.http_badge.put {
+            background: goldenrod;
+        }
+        span.http_badge.delete {
+            background: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ site_name }} API Documentation</h1>
+    {% for block in custom_blocks | sort(attribute='order') %}
+        <div class="card">
+            {% if block.title %}
+                <h2 class="card-title">{{ block.title }}</h2>
+            {% endif %}
+            {% if block.body %}
+                <div class="card-body">
+                    {{ block.body | safe }}
+                </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+    {% for route in docs | sort(attribute='rule') %}
+        <div class="card">
+            <h2 class="card-title">
+                {% for method in route.methods | sort %}
+                    {% if method not in ["OPTIONS", "HEAD"] %}
+                        <span class="http_badge {{ method | lower }}">{{ method }}</span>
+                    {% endif %}
+                {% endfor %}
+                {{ route.rule }}
+            </h2>
+            {% if (route.args | length > 0) or route.docstring %}
+                <div class="card-body">
+                    {% if route.docstring %}
+                        <h3>Docstring</h3>
+                        <div>
+                            {{ route.docstring | safe }}
+                        </div>
+                    {% endif %}
+                    {% if route.args | length > 0 %}
+                        <h3>Arguments</h3>
+                        <div>
+                            {% for arg_loc in route.args %}
+                                <h4>{{ arg_loc }}</h4>
+                                <ul>
+                                    {% for arg in route.args[arg_loc] %}
+{#                                        <li>{{ arg }}</li>#}
+                                        <li>{{ arg.name }}: {{ arg.type }}{% if "comment" in arg.loc_args %} {{ arg.loc_args.comment }}{% endif %}</li>
+                                        {% if ("comment" in arg.loc_args and arg.loc_args | length > 1) or ("comment" not in arg.loc_args and arg.loc_args | length > 0) %}
+                                            <ul>
+                                                {% for loc_arg in arg.loc_args %}
+                                                    {% if loc_arg != "comment" %}
+                                                    <li>{{ loc_arg }} = {{ arg.loc_args[loc_arg] }}</li>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    {% endfor %}
+</body>
+</html>

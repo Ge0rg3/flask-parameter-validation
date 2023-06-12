@@ -23,6 +23,7 @@ setup(
               'flask_parameter_validation.exceptions',
               'flask_parameter_validation.parameter_types'],
     zip_safe=False,
+    package_data={'': ['templates/fpv_default_docs.html']},
     include_package_data=True,
     platforms='any',
     install_requires=[

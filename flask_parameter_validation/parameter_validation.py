@@ -9,12 +9,14 @@ from inspect import signature
 from werkzeug.exceptions import BadRequest
 import inspect
 
-
+fn_list = dict()
 class ValidateParameters:
+    @classmethod
+    def get_fn_list(cls):
+        return fn_list
 
-    def __init__(self, error_handler=None, fn_list=dict()):
+    def __init__(self, error_handler=None):
         self.custom_error_handler = error_handler
-        self.fn_list = fn_list
 
     def __call__(self, f):
         """
@@ -23,7 +25,7 @@ class ValidateParameters:
         fsig = f.__module__+"."+f.__name__
         argspec = inspect.getfullargspec(f)
         fdocs = {"argspec": argspec, "docstring": f.__doc__}
-        self.fn_list[fsig] = fdocs
+        fn_list[fsig] = fdocs
 
         def nested_func(**kwargs):
             # Step 1 - Combine all flask input types to one dict

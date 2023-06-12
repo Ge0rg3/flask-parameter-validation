@@ -108,3 +108,52 @@ def error_handler(err):
 @ValidateParameters(error_handler)
 def api(...)
 ```
+
+### API Documentation
+Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate an API Documentation page. To make this easy to use, it comes with a default template and the configuration options below:
+* `FPV_DOCS_SITE_NAME: str`: Your site's name, to be displayed in the page title, default: `Site`
+* `FPV_DOCS_URL_PREFIX: str`: The Flask URL Prefix you want API Documentation to be available from, default: `/docs`
+* `FPV_DOCS_CUSTOM_BLOCKS: array`: An array of dicts to display as cards at the top of your documentation, with the (optional) keys:
+  * `title: Optional[str]`: The title of the card
+  * `body: Optional[str] (HTML allowed)`: The body of the card
+  * `order: int`: The order in which to display this card (out of the other custom cards)
+
+#### Example
+Code:
+```py
+@config_api.get("/")
+@ValidateParameters()
+def get_all_configs():
+    """
+    Get the System Configuration
+    Returns:
+    <code>{"configs":
+        [{"id": int,
+        "module": str,
+        "name": str,
+        "description": str,
+        "value": str}, ...]
+    }</code>
+    """
+    system_configs = []
+    for system_config in SystemConfig.query.all():
+        system_configs.append(system_config.toDict())
+    return resp_success({"configs": system_configs})
+
+
+@config_api.post("/<int:config_id>")
+@ValidateParameters()
+def edit_config(
+        config_id: int = Route(),
+        value: str = Json(min_str_length=1, max_str_length=2000)
+):
+    """Edit a specific System Configuration value"""
+    config = SystemConfig.get_by_id(config_id)
+    if config is None:
+        return resp_not_found("No link exists with ID " + str(config_id))
+    else:
+        config.update(value)
+        return resp_success()
+```
+Documentation Generated:
+![](docs/api_documentation_example.png)
