@@ -110,13 +110,19 @@ def api(...)
 ```
 
 ### API Documentation
-Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate an API Documentation page. To make this easy to use, it comes with a default template and the configuration options below:
+Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate an API Documentation page. To make this easy to use, it comes with a blueprint and the configuration options below:
 * `FPV_DOCS_SITE_NAME: str`: Your site's name, to be displayed in the page title, default: `Site`
-* `FPV_DOCS_URL_PREFIX: str`: The Flask URL Prefix you want API Documentation to be available from, default: `/docs`
 * `FPV_DOCS_CUSTOM_BLOCKS: array`: An array of dicts to display as cards at the top of your documentation, with the (optional) keys:
   * `title: Optional[str]`: The title of the card
   * `body: Optional[str] (HTML allowed)`: The body of the card
   * `order: int`: The order in which to display this card (out of the other custom cards)
+
+The documentation blueprint can be added using the following code:
+```py
+from flask_parameter_validation.docs_blueprint import docs_blueprint
+...
+app.register_blueprint(docs_blueprint)
+```
 
 #### Example
 Code:
