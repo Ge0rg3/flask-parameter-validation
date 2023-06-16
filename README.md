@@ -80,7 +80,8 @@ All parameters can have default values, and automatic validation.
 * blacklist: str, A string containing forbidden characters for the value
 * pattern: str, A regex pattern to test for string matches
 * func: Callable -> Union[bool, tuple[bool, str]], A function containing a fully customized logic to validate the value
-* datetime_format: str, str: datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))
+* datetime_format: str: datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))
+* comment: str: A string to display as the argument description in generated documentation (if used)
 
 `File` has the following options:
 * content_types: array of strings, an array of allowed content types.
@@ -183,8 +184,8 @@ def get_all_configs():
 @config_api.post("/<int:config_id>")
 @ValidateParameters()
 def edit_config(
-        config_id: int = Route(),
-        value: str = Json(min_str_length=1, max_str_length=2000)
+        config_id: int = Route(comment="The ID of the Config Record to Edit"),
+        value: str = Json(min_str_length=1, max_str_length=2000, comment="The value to set in the Config Record")
 ):
     """Edit a specific System Configuration value"""
     config = SystemConfig.get_by_id(config_id)
