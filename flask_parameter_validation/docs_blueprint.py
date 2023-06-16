@@ -5,9 +5,7 @@ from flask_parameter_validation import ValidateParameters
 
 docs_blueprint = Blueprint("docs", __name__, url_prefix="/docs", template_folder="./templates")
 
-@docs_blueprint.get("/")
-def docs_html():
-    config = flask.current_app.config
+def get_docs_arr():
     docs_arr = []
     for rule in current_app.url_map.iter_rules():  # Iterate through all Flask Routes
         this_docs = dict()
@@ -27,7 +25,7 @@ def docs_html():
                     while docstring.startswith("\n"):
                         docstring = docstring[1:]
                     docstring = docstring.replace("\n", "<br/>")
-                    this_docs["docstring"] = docstring.replace("    ", "&nbsp;"*4)
+                    this_docs["docstring"] = docstring.replace("    ", "&nbsp;" * 4)
                 else:
                     this_docs["docstring"] = None
                 this_docs["args"] = dict()
@@ -46,7 +44,8 @@ def docs_html():
                     this_arg["type"] = arg_print_type
                     arg_print += arg_print_type + " in request "
                     arg_loc = fdocs["argspec"].defaults[i]
-                    this_arg["loc"] = type(arg_loc).__name__  # Where in the Request the Argument comes from, one of FPV's Parameter classes
+                    this_arg["loc"] = type(
+                        arg_loc).__name__  # Where in the Request the Argument comes from, one of FPV's Parameter classes
                     arg_print += type(arg_loc).__name__
                     # print(arg_loc.__dict__)
                     arg_loc_has_params = False
@@ -59,17 +58,23 @@ def docs_html():
                             if not callable(arg_loc.__dict__[param]):  # For non-callable arguments (most arguments)
                                 this_arg["loc_args"][param] = arg_loc.__dict__[param]  # Just save it to the dict as is
                             else:  # For callable arguments (func), convert it to the module path and function name
-                                this_arg["loc_args"][param] = arg_loc.__dict__[param].__module__+"."+arg_loc.__dict__[param].__name__
-                    if this_arg["loc"] in this_docs["args"]:  # Does this function aleady have an argument list for this Parameter class?
+                                this_arg["loc_args"][param] = arg_loc.__dict__[param].__module__ + "." + \
+                                                              arg_loc.__dict__[param].__name__
+                    if this_arg["loc"] in this_docs[
+                        "args"]:  # Does this function aleady have an argument list for this Parameter class?
                         this_docs["args"][this_arg["loc"]].append(this_arg)
                     else:
                         this_docs["args"][this_arg["loc"]] = [this_arg]
                     if arg_loc_has_params:
                         arg_print = arg_print[0:-2] + ")"
                     print(arg_print)
-
         docs_arr.append(this_docs)
+    return docs_arr
+
+@docs_blueprint.get("/")
+def docs_html():
+    config = flask.current_app.config
     return flask.render_template("fpv_default_docs.html",
                                  site_name=config.get("FPV_DOCS_SITE_NAME", "Site"),
-                                 docs=docs_arr,
+                                 docs=get_docs_arr(),
                                  custom_blocks=config.get("FPV_DOCS_CUSTOM_BLOCKS", []))

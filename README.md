@@ -124,7 +124,40 @@ from flask_parameter_validation.docs_blueprint import docs_blueprint
 app.register_blueprint(docs_blueprint)
 ```
 
-#### Example
+If you would like to use your own blueprint, or output the docs to JSON, you can get the raw data from the following function:
+```py
+from flask_parameter_validation.docs_blueprint import get_docs_arr
+...
+get_docs_arr()
+```
+
+This method returns an object with the following structure:
+
+```json
+[
+  {
+    "rule": "/path/to/route",
+    "methods": ["HTTPVerb"],
+    "docstring": "String, unsanitized of HTML Tags",
+    "args": {
+      "<Subclass of Parameter this route uses>": [
+        {
+          "name": "Argument Name",
+          "type": "Argument Type",
+          "loc_args": {
+            "<Name of argument passed to Parameter Subclass>": "Value passed to Argument",
+            "<Name of another argument passed to Parameter Subclass>": 0
+          }
+        }
+      ],
+      "<Another Subclass of Parameter this route uses>": []
+    }
+  },
+  ...
+]
+```
+
+#### Example with default Blueprint
 Code:
 ```py
 @config_api.get("/")
