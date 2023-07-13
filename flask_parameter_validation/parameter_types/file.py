@@ -16,8 +16,10 @@ class File(Parameter):
         min_length=None,  # Minimum file content-length
         max_length=None  # Maximum file content-length
     ):
-        super().__init__(default, min_length=min_length, max_length=max_length)
-        self.content_types = content_types  # Array of content type strs
+        super().__init__(default)
+        self.content_types = content_types
+        self.min_length = min_length
+        self.max_length = max_length
 
     def validate(self, value):
         # Content type validation
