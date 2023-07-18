@@ -24,7 +24,13 @@ class ValidateParameters:
         """
         fsig = f.__module__+"."+f.__name__
         argspec = inspect.getfullargspec(f)
-        fdocs = {"argspec": argspec, "docstring": f.__doc__}
+        source = inspect.getsource(f)
+        index = source.find("def ")
+        decorators = []
+        for line in source[:index].strip().splitlines():
+            if line.strip()[0] == "@":
+                decorators.append(line)
+        fdocs = {"argspec": argspec, "docstring": f.__doc__.strip() if f.__doc__ else None, "decorators": decorators.copy()}
         fn_list[fsig] = fdocs
 
         def nested_func(**kwargs):

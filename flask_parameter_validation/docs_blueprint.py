@@ -28,6 +28,7 @@ def get_docs_arr():
                     this_docs["docstring"] = docstring.replace("    ", "&nbsp;" * 4)
                 else:
                     this_docs["docstring"] = None
+                this_docs["decorators"] = fdocs["decorators"]  # Add array of decorators captured by inspect
                 this_docs["args"] = dict()
                 for i in range(len(fdocs["argspec"].args)):  # Iterate through arguments captured by ValidateParameters
                     arg = fdocs["argspec"].args[i]
