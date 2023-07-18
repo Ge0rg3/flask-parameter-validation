@@ -1,5 +1,5 @@
 import flask
-from flask import Blueprint, current_app
+from flask import Blueprint, current_app, jsonify
 
 from flask_parameter_validation import ValidateParameters
 
@@ -71,10 +71,32 @@ def get_docs_arr():
         docs_arr.append(this_docs)
     return docs_arr
 
+
+@docs_blueprint.app_template_filter()
+def http_badge_bg(http_method):
+    if http_method == "GET":
+        return "bg-primary"
+    elif http_method == "POST":
+        return "bg-success"
+    elif http_method == "DELETE":
+        return "bg-danger"
+    return "bg-warning"
+
 @docs_blueprint.get("/")
 def docs_html():
     config = flask.current_app.config
     return flask.render_template("fpv_default_docs.html",
                                  site_name=config.get("FPV_DOCS_SITE_NAME", "Site"),
                                  docs=get_docs_arr(),
-                                 custom_blocks=config.get("FPV_DOCS_CUSTOM_BLOCKS", []))
+                                 custom_blocks=config.get("FPV_DOCS_CUSTOM_BLOCKS", []),
+                                 default_theme=config.get("FPV_DOCS_DEFAULT_THEME", "light"))
+
+@docs_blueprint.get("/json")
+def docs_json():
+    config = flask.current_app.config
+    return jsonify({
+        "site_name": config.get("FPV_DOCS_SITE_NAME", "Site"),
+        "docs": get_docs_arr(),
+        "custom_blocks": config.get("FPV_DOCS_CUSTOM_BLOCKS", []),
+        "default_theme": config.get("FPV_DOCS_DEFAULT_THEME", "light")
+    })

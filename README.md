@@ -117,7 +117,9 @@ Using the data provided through parameters, docstrings, and Flask route registra
   * `title: Optional[str]`: The title of the card
   * `body: Optional[str] (HTML allowed)`: The body of the card
   * `order: int`: The order in which to display this card (out of the other custom cards)
+* `FPV_DOCS_DEFAULT_THEME: str`: The default theme to display in the generated webpage
 
+#### Included Blueprint
 The documentation blueprint can be added using the following code:
 ```py
 from flask_parameter_validation.docs_blueprint import docs_blueprint
@@ -125,40 +127,21 @@ from flask_parameter_validation.docs_blueprint import docs_blueprint
 app.register_blueprint(docs_blueprint)
 ```
 
-If you would like to use your own blueprint, or output the docs to JSON, you can get the raw data from the following function:
-```py
-from flask_parameter_validation.docs_blueprint import get_docs_arr
-...
-get_docs_arr()
-```
+The default blueprint adds two `GET` routes:
+* `/`: HTML Page with Bootstrap CSS and toggleable light/dark mode
+* `/json`: JSON Representation of the generated documentation
 
-This method returns an object with the following structure:
-
+The `/json` route yields a response with the following format:
 ```json
-[
-  {
-    "rule": "/path/to/route",
-    "methods": ["HTTPVerb"],
-    "docstring": "String, unsanitized of HTML Tags",
-    "args": {
-      "<Subclass of Parameter this route uses>": [
-        {
-          "name": "Argument Name",
-          "type": "Argument Type",
-          "loc_args": {
-            "<Name of argument passed to Parameter Subclass>": "Value passed to Argument",
-            "<Name of another argument passed to Parameter Subclass>": 0
-          }
-        }
-      ],
-      "<Another Subclass of Parameter this route uses>": []
-    }
-  },
-  ...
-]
+{
+  "custom_blocks": "<array entered in the FPV_DOCS_CUSTOM_BLOCKS config option, default: []>",
+  "default_theme": "<string entered in the FPV_DOCS_DEFAULT_THEME config option, default: 'light'>",
+  "docs": "<see get_docs_arr() return value format below>",
+  "site_name": "<string entered in the FPV_DOCS_SITE_NAME config option, default: 'Site'"
+}
 ```
 
-#### Example with default Blueprint
+##### Example with included Blueprint
 Code:
 ```py
 @config_api.get("/")
@@ -185,7 +168,7 @@ def get_all_configs():
 @ValidateParameters()
 def edit_config(
         config_id: int = Route(comment="The ID of the Config Record to Edit"),
-        value: str = Json(min_str_length=1, max_str_length=2000, comment="The value to set in the Config Record")
+        value: str = Json(max_str_length=2000, comment="The value to set in the Config Record")
 ):
     """Edit a specific System Configuration value"""
     config = SystemConfig.get_by_id(config_id)
@@ -196,4 +179,40 @@ def edit_config(
         return resp_success()
 ```
 Documentation Generated:
+
 ![](docs/api_documentation_example.png)
+
+#### Custom Blueprint
+If you would like to use your own blueprint, you can get the raw data from the following function:
+```py
+from flask_parameter_validation.docs_blueprint import get_docs_arr
+...
+get_docs_arr()
+```
+
+##### get_docs_arr() return value format
+This method returns an object with the following structure:
+
+```json
+[
+  {
+    "rule": "/path/to/route",
+    "methods": ["HTTPVerb"],
+    "docstring": "String, unsanitized of HTML Tags",
+    "args": {
+      "<Subclass of Parameter this route uses>": [
+        {
+          "name": "Argument Name",
+          "type": "Argument Type",
+          "loc_args": {
+            "<Name of argument passed to Parameter Subclass>": "Value passed to Argument",
+            "<Name of another argument passed to Parameter Subclass>": 0
+          }
+        }
+      ],
+      "<Another Subclass of Parameter this route uses>": []
+    }
+  },
+  ...
+]
+```
