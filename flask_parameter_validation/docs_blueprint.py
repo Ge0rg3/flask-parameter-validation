@@ -3,101 +3,141 @@ from flask import Blueprint, current_app, jsonify
 
 from flask_parameter_validation import ValidateParameters
 
-docs_blueprint = Blueprint("docs", __name__, url_prefix="/docs", template_folder="./templates")
+docs_blueprint = Blueprint(
+    "docs", __name__, url_prefix="/docs", template_folder="./templates"
+)
 
-def get_docs_arr():
-    docs_arr = []
+
+def get_route_docs():
+    """
+    Generate documentation for all Flask routes that use the ValidateParameters decorator.
+    Returns a list of dictionaries, each containing documentation for a particular route.
+    """
+    docs = []
     for rule in current_app.url_map.iter_rules():  # Iterate through all Flask Routes
-        this_docs = dict()
-        rule_func = current_app.view_functions[rule.endpoint]  # Get the function that the Flask Route calls
-        fn_list = ValidateParameters().get_fn_list()  # Get the function list that ValidateParameters accumulates
-        this_docs["rule"] = str(rule)  # Get the URL rule for this Route
-        # Gather all HTTP methods applicable to this Route
-        this_docs["methods"] = []
-        for method in rule.methods:
-            this_docs["methods"].append(str(method))
-        for fsig, fdocs in fn_list.items():  # Iterate through all functions ValidateParameters decorates
-            # Find the ValidateParameters function for rule_func - this will find nothing if ValidateParameters isn't
-            # the bottommost decorator (confirmation needed), or if ValidateParameters isn't present at all
-            if fsig.endswith(rule_func.__name__):
-                if fdocs["docstring"] is not None:  # Add docstring to result in HTML format, do not sanitize tags
-                    docstring = fdocs["docstring"]
-                    while docstring.startswith("\n"):
-                        docstring = docstring[1:]
-                    docstring = docstring.replace("\n", "<br/>")
-                    this_docs["docstring"] = docstring.replace("    ", "&nbsp;" * 4)
-                else:
-                    this_docs["docstring"] = None
-                this_docs["decorators"] = fdocs["decorators"]  # Add array of decorators captured by inspect
-                this_docs["args"] = dict()
-                for i in range(len(fdocs["argspec"].args)):  # Iterate through arguments captured by ValidateParameters
-                    arg = fdocs["argspec"].args[i]
-                    this_arg = dict()  # Store argument data as a dictionary
-                    this_arg["name"] = arg  # Argument Name
-                    arg_print = "    " + arg + ": "
-                    arg_annots = fdocs["argspec"].annotations[arg]  # Argument Type Hint
-                    arg_print_type = arg_annots.__name__
-                    if hasattr(arg_annots, "__args__"):  # Sub-types of Optional, Union, list, etc.
-                        arg_print_type += "["
-                        for annot_arg in arg_annots.__args__:
-                            arg_print_type += str(annot_arg.__name__) + ", "
-                        arg_print_type = arg_print_type[0:-2] + "]"
-                    this_arg["type"] = arg_print_type
-                    arg_print += arg_print_type + " in request "
-                    arg_loc = fdocs["argspec"].defaults[i]
-                    this_arg["loc"] = type(
-                        arg_loc).__name__  # Where in the Request the Argument comes from, one of FPV's Parameter classes
-                    arg_print += type(arg_loc).__name__
-                    # print(arg_loc.__dict__)
-                    arg_loc_has_params = False
-                    this_arg["loc_args"] = dict()
-                    for param in arg_loc.__dict__.keys():  # Iterate through arguments to the Parameter constructor
-                        if arg_loc.__dict__[param] is not None:
-                            if arg_loc_has_params is False:
-                                arg_loc_has_params = True
-                                arg_print += " ("
-                            if not callable(arg_loc.__dict__[param]):  # For non-callable arguments (most arguments)
-                                this_arg["loc_args"][param] = arg_loc.__dict__[param]  # Just save it to the dict as is
-                            else:  # For callable arguments (func), convert it to the module path and function name
-                                this_arg["loc_args"][param] = arg_loc.__dict__[param].__module__ + "." + \
-                                                              arg_loc.__dict__[param].__name__
-                    if this_arg["loc"] in this_docs[
-                        "args"]:  # Does this function aleady have an argument list for this Parameter class?
-                        this_docs["args"][this_arg["loc"]].append(this_arg)
-                    else:
-                        this_docs["args"][this_arg["loc"]] = [this_arg]
-                    if arg_loc_has_params:
-                        arg_print = arg_print[0:-2] + ")"
-                    print(arg_print)
-        docs_arr.append(this_docs)
-    return docs_arr
+        rule_func = current_app.view_functions[
+            rule.endpoint
+        ]  # Get the associated function
+        fn_docs = get_function_docs(rule_func)
+        if fn_docs:
+            fn_docs["rule"] = str(rule)
+            fn_docs["methods"] = [str(method) for method in rule.methods]
+            docs.append(fn_docs)
+    return docs
+
+
+def get_function_docs(func):
+    """
+    Get documentation for a specific function that uses the ValidateParameters decorator.
+    Returns a dictionary containing documentation details, or None if the decorator is not used.
+    """
+    fn_list = ValidateParameters().get_fn_list()
+    for fsig, fdocs in fn_list.items():
+        if fsig.endswith(func.__name__):
+            return {
+                "docstring": format_docstring(fdocs.get("docstring")),
+                "decorators": fdocs.get("decorators"),
+                "args": extract_argument_details(fdocs),
+            }
+    return None
+
+
+def format_docstring(docstring):
+    """
+    Format a function's docstring for HTML display.
+    """
+    if not docstring:
+        return None
+
+    docstring = docstring.strip().replace("\n", "<br/>")
+    return docstring.replace("    ", "&nbsp;" * 4)
+
+
+def extract_argument_details(fdocs):
+    """
+    Extract details about a function's arguments, including type hints and ValidateParameters details.
+    """
+    args_data = {}
+    for idx, arg_name in enumerate(fdocs["argspec"].args):
+        arg_data = {
+            "name": arg_name,
+            "type": get_arg_type_hint(fdocs, arg_name),
+            "loc": get_arg_location(fdocs, idx),
+            "loc_args": get_arg_location_details(fdocs, idx),
+        }
+        args_data.setdefault(arg_data["loc"], []).append(arg_data)
+    return args_data
+
+
+def get_arg_type_hint(fdocs, arg_name):
+    """
+    Extract the type hint for a specific argument.
+    """
+    arg_type = fdocs["argspec"].annotations[arg_name]
+    if hasattr(arg_type, "__args__"):
+        return (
+            f"{arg_type.__name__}[{', '.join([a.__name__ for a in arg_type.__args__])}]"
+        )
+    return arg_type.__name__
+
+
+def get_arg_location(fdocs, idx):
+    """
+    Determine where in the request the argument comes from (e.g., Route, Json, Query).
+    """
+    return type(fdocs["argspec"].defaults[idx]).__name__
+
+
+def get_arg_location_details(fdocs, idx):
+    """
+    Extract additional details about the location of an argument in the request.
+    """
+    loc_details = {}
+    location = fdocs["argspec"].defaults[idx]
+    for param, value in location.__dict__.items():
+        if value is not None:
+            if callable(value):
+                loc_details[param] = f"{value.__module__}.{value.__name__}"
+            else:
+                loc_details[param] = value
+    return loc_details
 
 
 @docs_blueprint.app_template_filter()
 def http_badge_bg(http_method):
-    if http_method == "GET":
-        return "bg-primary"
-    elif http_method == "POST":
-        return "bg-success"
-    elif http_method == "DELETE":
-        return "bg-danger"
-    return "bg-warning"
+    """
+    Provide a color badge for various HTTP methods.
+    """
+    color_map = {"GET": "bg-primary", "POST": "bg-success", "DELETE": "bg-danger"}
+    return color_map.get(http_method, "bg-warning")
 
-@docs_blueprint.get("/")
+
+@docs_blueprint.route("/")
 def docs_html():
+    """
+    Render the documentation as an HTML page.
+    """
     config = flask.current_app.config
-    return flask.render_template("fpv_default_docs.html",
-                                 site_name=config.get("FPV_DOCS_SITE_NAME", "Site"),
-                                 docs=get_docs_arr(),
-                                 custom_blocks=config.get("FPV_DOCS_CUSTOM_BLOCKS", []),
-                                 default_theme=config.get("FPV_DOCS_DEFAULT_THEME", "light"))
+    return flask.render_template(
+        "fpv_default_docs.html",
+        site_name=config.get("FPV_DOCS_SITE_NAME", "Site"),
+        docs=get_route_docs(),
+        custom_blocks=config.get("FPV_DOCS_CUSTOM_BLOCKS", []),
+        default_theme=config.get("FPV_DOCS_DEFAULT_THEME", "light"),
+    )
 
-@docs_blueprint.get("/json")
+
+@docs_blueprint.route("/json")
 def docs_json():
+    """
+    Provide the documentation as a JSON response.
+    """
     config = flask.current_app.config
-    return jsonify({
-        "site_name": config.get("FPV_DOCS_SITE_NAME", "Site"),
-        "docs": get_docs_arr(),
-        "custom_blocks": config.get("FPV_DOCS_CUSTOM_BLOCKS", []),
-        "default_theme": config.get("FPV_DOCS_DEFAULT_THEME", "light")
-    })
+    return jsonify(
+        {
+            "site_name": config.get("FPV_DOCS_SITE_NAME", "Site"),
+            "docs": get_route_docs(),
+            "custom_blocks": config.get("FPV_DOCS_CUSTOM_BLOCKS", []),
+            "default_theme": config.get("FPV_DOCS_DEFAULT_THEME", "light"),
+        }
+    )
