@@ -90,7 +90,7 @@ All parameters can have default values, and automatic validation.
 
 These validators are passed into the classes in the route function, such as:
 * `username: str = Json("defaultusername", min_length=5)`
-* `profile_picture: Any = File(content_types=["image/png", "image/jpeg"])`
+* `profile_picture: werkzeug.datastructures.FileStorage = File(content_types=["image/png", "image/jpeg"])`
 * `filter: str = Query()`
 
 ### Overwriting default errors
