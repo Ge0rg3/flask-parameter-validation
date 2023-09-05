@@ -1,13 +1,19 @@
+import typing
+
 import re
 
 from .parameter_types import Route, Json, Query, Form, File
 from .exceptions import MissingInputError, InvalidParameterTypeError, ValidationError
-from flask import request
+from flask import request, current_app
 from inspect import signature
 from werkzeug.exceptions import BadRequest
+import inspect
 
-
+fn_list = dict()
 class ValidateParameters:
+    @classmethod
+    def get_fn_list(cls):
+        return fn_list
 
     def __init__(self, error_handler=None):
         self.custom_error_handler = error_handler
@@ -16,6 +22,17 @@ class ValidateParameters:
         """
         Parent flow for validating each required parameter
         """
+        fsig = f.__module__+"."+f.__name__
+        argspec = inspect.getfullargspec(f)
+        source = inspect.getsource(f)
+        index = source.find("def ")
+        decorators = []
+        for line in source[:index].strip().splitlines():
+            if line.strip()[0] == "@":
+                decorators.append(line)
+        fdocs = {"argspec": argspec, "docstring": f.__doc__.strip() if f.__doc__ else None, "decorators": decorators.copy()}
+        fn_list[fsig] = fdocs
+
         def nested_func(**kwargs):
             # Step 1 - Combine all flask input types to one dict
             json_input = None
@@ -165,3 +182,4 @@ class ValidateParameters:
         if len(user_inputs) == 1:
             return user_inputs[0]
         return user_inputs
+

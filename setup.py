@@ -11,7 +11,7 @@ with open("README.md", "r") as f:
 
 setup(
     name='Flask-Parameter-Validation',
-    version='2.1.5',
+     version='2.1.6',
     url='https://github.com/Ge0rg3/flask-parameter-validation',
     license='MIT',
     author='George Omnet',
@@ -23,6 +23,7 @@ setup(
               'flask_parameter_validation.exceptions',
               'flask_parameter_validation.parameter_types'],
     zip_safe=False,
+    package_data={'': ['templates/fpv_default_docs.html']},
     include_package_data=True,
     platforms='any',
     install_requires=[

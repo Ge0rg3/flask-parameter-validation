@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme={{ default_theme }}>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ site_name }} API Docs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script>
+        function toggleDarkMode() {
+            let htmlEl = document.getElementsByTagName("html")[0]
+            let iconEl = document.getElementById("dmToggle")
+            let dark_mode_enabled = htmlEl.getAttribute("data-bs-theme") === "dark"
+            let target_theme = dark_mode_enabled ? "light" : "dark"
+            let target_icon = dark_mode_enabled ? "bi-sun-fill" : "bi-moon-stars-fill"
+            htmlEl.setAttribute("data-bs-theme", target_theme)
+            iconEl.className = target_icon
+        }
+    </script>
+</head>
+<body id="fpv_docs_body">
+    <div class="mt-3 container">
+        <div class="d-flex">
+            <h2 class="flex-grow-1">{{ site_name }} API Documentation</h2>
+            <button class="btn" type="button" onclick="toggleDarkMode()"><i id="dmToggle" class={{ "bi-sun-fill" if default_theme == "light" else "bi-moon-stars-fill" }}></i></button>
+        </div>
+        {% for block in custom_blocks | sort(attribute='order') %}
+            <div class="mb-3 card">
+                {% if block.title %}
+                    <div class="card-header">
+                        <div class="card-title h5">
+                            {{ block.title }}
+                        </div>
+                    </div>
+                {% endif %}
+                {% if block.body %}
+                    <div class="card-body">
+                        {{ block.body | safe }}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+        {% for route in docs | sort(attribute='rule') %}
+            <div class="mb-3 card">
+                <div class="card-header">
+                    <div class="card-title h5">
+                        {% for method in route.methods | sort %}
+                            {% if method not in ["OPTIONS", "HEAD"] %}
+                                <span class="me-2 badge {{ method | http_badge_bg }}">{{ method }}</span>
+                            {% endif %}
+                        {% endfor %}
+                        {{ route.rule }}
+                    </div>
+                </div>
+                {% if (route.args | length > 0) or route.docstring %}
+                    <div class="card-body">
+                        {% if route.docstring %}
+                            <h3>Docstring</h3>
+                            <div>
+                                {{ route.docstring | safe }}
+                            </div>
+                        {% endif %}
+                        {% if route.args | length > 0 %}
+                            <h3>Arguments</h3>
+                            <div>
+                                {% for arg_loc in route.args %}
+                                    <h4>{{ arg_loc }}</h4>
+                                    <ul>
+                                        {% for arg in route.args[arg_loc] %}
+    {#                                        <li>{{ arg }}</li>#}
+                                            <li>{{ arg.name }}: {{ arg.type }}{% if "comment" in arg.loc_args %} {{ arg.loc_args.comment }}{% endif %}</li>
+                                            {% if ("comment" in arg.loc_args and arg.loc_args | length > 1) or ("comment" not in arg.loc_args and arg.loc_args | length > 0) %}
+                                                <ul>
+                                                    {% for loc_arg in arg.loc_args %}
+                                                        {% if loc_arg != "comment" %}
+                                                        <li>{{ loc_arg }} = {{ arg.loc_args[loc_arg] }}</li>
+                                                        {% endif %}
+                                                    {% endfor %}
+                                                </ul>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </ul>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

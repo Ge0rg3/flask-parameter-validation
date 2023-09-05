@@ -80,7 +80,8 @@ All parameters can have default values, and automatic validation.
 * blacklist: str, A string containing forbidden characters for the value
 * pattern: str, A regex pattern to test for string matches
 * func: Callable -> Union[bool, tuple[bool, str]], A function containing a fully customized logic to validate the value
-* datetime_format: str, str: datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))
+* datetime_format: str: datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))
+* comment: str: A string to display as the argument description in generated documentation (if used)
 
 `File` has the following options:
 * content_types: array of strings, an array of allowed content types.
@@ -107,4 +108,111 @@ def error_handler(err):
 
 @ValidateParameters(error_handler)
 def api(...)
+```
+
+### API Documentation
+Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate an API Documentation page. To make this easy to use, it comes with a blueprint and the configuration options below:
+* `FPV_DOCS_SITE_NAME: str`: Your site's name, to be displayed in the page title, default: `Site`
+* `FPV_DOCS_CUSTOM_BLOCKS: array`: An array of dicts to display as cards at the top of your documentation, with the (optional) keys:
+  * `title: Optional[str]`: The title of the card
+  * `body: Optional[str] (HTML allowed)`: The body of the card
+  * `order: int`: The order in which to display this card (out of the other custom cards)
+* `FPV_DOCS_DEFAULT_THEME: str`: The default theme to display in the generated webpage
+
+#### Included Blueprint
+The documentation blueprint can be added using the following code:
+```py
+from flask_parameter_validation.docs_blueprint import docs_blueprint
+...
+app.register_blueprint(docs_blueprint)
+```
+
+The default blueprint adds two `GET` routes:
+* `/`: HTML Page with Bootstrap CSS and toggleable light/dark mode
+* `/json`: JSON Representation of the generated documentation
+
+The `/json` route yields a response with the following format:
+```json
+{
+  "custom_blocks": "<array entered in the FPV_DOCS_CUSTOM_BLOCKS config option, default: []>",
+  "default_theme": "<string entered in the FPV_DOCS_DEFAULT_THEME config option, default: 'light'>",
+  "docs": "<see get_docs_arr() return value format below>",
+  "site_name": "<string entered in the FPV_DOCS_SITE_NAME config option, default: 'Site'"
+}
+```
+
+##### Example with included Blueprint
+Code:
+```py
+@config_api.get("/")
+@ValidateParameters()
+def get_all_configs():
+    """
+    Get the System Configuration
+    Returns:
+    <code>{"configs":
+        [{"id": int,
+        "module": str,
+        "name": str,
+        "description": str,
+        "value": str}, ...]
+    }</code>
+    """
+    system_configs = []
+    for system_config in SystemConfig.query.all():
+        system_configs.append(system_config.toDict())
+    return resp_success({"configs": system_configs})
+
+
+@config_api.post("/<int:config_id>")
+@ValidateParameters()
+def edit_config(
+        config_id: int = Route(comment="The ID of the Config Record to Edit"),
+        value: str = Json(max_str_length=2000, comment="The value to set in the Config Record")
+):
+    """Edit a specific System Configuration value"""
+    config = SystemConfig.get_by_id(config_id)
+    if config is None:
+        return resp_not_found("No link exists with ID " + str(config_id))
+    else:
+        config.update(value)
+        return resp_success()
+```
+Documentation Generated:
+
+![](docs/api_documentation_example.png)
+
+#### Custom Blueprint
+If you would like to use your own blueprint, you can get the raw data from the following function:
+```py
+from flask_parameter_validation.docs_blueprint import get_docs_arr
+...
+get_docs_arr()
+```
+
+##### get_docs_arr() return value format
+This method returns an object with the following structure:
+
+```json
+[
+  {
+    "rule": "/path/to/route",
+    "methods": ["HTTPVerb"],
+    "docstring": "String, unsanitized of HTML Tags",
+    "args": {
+      "<Subclass of Parameter this route uses>": [
+        {
+          "name": "Argument Name",
+          "type": "Argument Type",
+          "loc_args": {
+            "<Name of argument passed to Parameter Subclass>": "Value passed to Argument",
+            "<Name of another argument passed to Parameter Subclass>": 0
+          }
+        }
+      ],
+      "<Another Subclass of Parameter this route uses>": []
+    }
+  },
+  ...
+]
 ```
