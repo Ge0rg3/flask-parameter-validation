@@ -50,7 +50,7 @@ class ValidateParameters:
                         return {"error": "Could not parse JSON."}, 400
             request_inputs = {
                 Route: kwargs.copy(),
-                Json: json_input,
+                Json: json_input or {},
                 Query: request.args.to_dict(),
                 Form: request.form.to_dict(),
                 File: request.files.to_dict(),
