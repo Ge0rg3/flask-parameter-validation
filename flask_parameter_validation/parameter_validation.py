@@ -1,15 +1,17 @@
-import typing
-
-import re
-
-from .parameter_types import Route, Json, Query, Form, File
-from .exceptions import MissingInputError, InvalidParameterTypeError, ValidationError
-from flask import request, current_app
-from inspect import signature
-from werkzeug.exceptions import BadRequest
 import inspect
+import re
+from inspect import signature
+
+from flask import request
+from werkzeug.exceptions import BadRequest
+
+from .exceptions import (InvalidParameterTypeError, MissingInputError,
+                         ValidationError)
+from .parameter_types import File, Form, Json, Query, Route
 
 fn_list = dict()
+
+
 class ValidateParameters:
     @classmethod
     def get_fn_list(cls):
@@ -22,7 +24,7 @@ class ValidateParameters:
         """
         Parent flow for validating each required parameter
         """
-        fsig = f.__module__+"."+f.__name__
+        fsig = f.__module__ + "." + f.__name__
         argspec = inspect.getfullargspec(f)
         source = inspect.getsource(f)
         index = source.find("def ")
@@ -30,7 +32,11 @@ class ValidateParameters:
         for line in source[:index].strip().splitlines():
             if line.strip()[0] == "@":
                 decorators.append(line)
-        fdocs = {"argspec": argspec, "docstring": f.__doc__.strip() if f.__doc__ else None, "decorators": decorators.copy()}
+        fdocs = {
+            "argspec": argspec,
+            "docstring": f.__doc__.strip() if f.__doc__ else None,
+            "decorators": decorators.copy(),
+        }
         fn_list[fsig] = fdocs
 
         def nested_func(**kwargs):
@@ -47,7 +53,7 @@ class ValidateParameters:
                 Json: json_input,
                 Query: request.args.to_dict(),
                 Form: request.form.to_dict(),
-                File: request.files.to_dict()
+                File: request.files.to_dict(),
             }
             # Step 2 - Get expected input details as dict
             expected_inputs = signature(f).parameters
@@ -97,8 +103,7 @@ class ValidateParameters:
             raise InvalidParameterTypeError(expected_delivery_type)
 
         # Validate that user supplied input in expected delivery type (unless specified as Optional)
-        user_input = all_request_inputs[expected_delivery_type.__class__].get(
-            expected_name)
+        user_input = all_request_inputs[expected_delivery_type.__class__].get(expected_name)
         if user_input is None:
             # If default is given, set and continue
             if expected_delivery_type.default is not None:
@@ -108,8 +113,7 @@ class ValidateParameters:
                 if hasattr(expected_input_type, "__args__") and type(None) in expected_input_type.__args__:
                     return user_input
                 else:
-                    raise MissingInputError(
-                        expected_name, expected_delivery_type.__class__)
+                    raise MissingInputError(expected_name, expected_delivery_type.__class__)
 
         # Skip validation if typing.Any is given
         if expected_input_type_str.startswith("typing.Any"):
@@ -119,7 +123,6 @@ class ValidateParameters:
         if expected_input_type_str.startswith("typing.Optional"):
             new_type = expected_input_type.__args__[0]
             expected_input_type = new_type
-            expected_input_type_str_str = str(new_type)
 
         # Prepare expected type checks for unions, lists and plain types
         if expected_input_type_str.startswith("typing.Union"):
@@ -149,14 +152,12 @@ class ValidateParameters:
         # Perform automatic type conversion for parameter types (i.e. "true" -> True)
         for count, value in enumerate(user_inputs):
             try:
-                user_inputs[count] = expected_delivery_type.convert(
-                    value, expected_input_types)
+                user_inputs[count] = expected_delivery_type.convert(value, expected_input_types)
             except ValueError as e:
                 raise ValidationError(str(e), expected_name, expected_input_type)
 
         # Validate that user type(s) match expected type(s)
-        validation_success = all(
-            type(inp) in expected_input_types for inp in user_inputs)
+        validation_success = all(type(inp) in expected_input_types for inp in user_inputs)
 
         # Validate that if lists are required, lists are given
         if expected_input_type_str.startswith("typing.List"):
@@ -165,12 +166,13 @@ class ValidateParameters:
 
         # Error if types don't match
         if not validation_success:
-            if hasattr(original_expected_input_type, "__name__") and not original_expected_input_type_str.startswith("typing."):
+            if hasattr(original_expected_input_type, "__name__") and not original_expected_input_type_str.startswith(
+                "typing."
+            ):
                 type_name = original_expected_input_type.__name__
             else:
                 type_name = original_expected_input_type_str
-            raise ValidationError(
-                f"must be type '{type_name}'", expected_name, original_expected_input_type)
+            raise ValidationError(f"must be type '{type_name}'", expected_name, original_expected_input_type)
 
         # Validate parameter-specific requirements are met
         try:
@@ -182,4 +184,3 @@ class ValidateParameters:
         if len(user_inputs) == 1:
             return user_inputs[0]
         return user_inputs
-

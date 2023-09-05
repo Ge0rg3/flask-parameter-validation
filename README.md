@@ -216,3 +216,11 @@ This method returns an object with the following structure:
   ...
 ]
 ```
+
+## Contributions
+Many thanks to all those who have made contributions to the project:
+* [d3-steichman](https://github.com/d3-steichman): API documentation, custom error handling, datetime validation and bug fixes
+* [Garcel](https://github.com/Garcel): Allow passing custom validator function
+* [iml1111](https://github.com/iml1111): Implement regex validation
+* [borisowww](https://github.com/borisowww): Fix file handling bugs
+* [Charlie-Mindified](https://github.com/Charlie-Mindified): Fix JSON handling bug
