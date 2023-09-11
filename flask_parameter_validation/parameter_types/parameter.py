@@ -3,10 +3,9 @@
     Should only be used as child class for other params.
 """
 import re
-from datetime import datetime, time, date
-import dateutil.parser as parser
+from datetime import date, datetime, time
 
-from flask_parameter_validation.exceptions import ValidationError
+import dateutil.parser as parser
 
 
 class Parameter:
@@ -115,7 +114,7 @@ class Parameter:
                 if type(func_result) is bool:
                     if not func_result:
                         raise ValueError(
-                            f"value does not match the validator function."
+                            "value does not match the validator function."
                         )
                 elif type(func_result) is tuple:
                     if len(func_result) == 2 and type(func_result[0]) is bool and type(func_result[1]) is str:
