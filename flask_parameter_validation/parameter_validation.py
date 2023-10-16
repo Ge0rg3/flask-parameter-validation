@@ -54,7 +54,7 @@ class ValidateParameters:
             request_inputs = {
                 Route: kwargs.copy(),
                 Json: json_input or {},
-                Query: self._to_dict_with_lists(request.args),
+                Query: self._to_dict_with_lists(request.args, split_strings=True),
                 Form: self._to_dict_with_lists(request.form),
                 File: self._to_dict_with_lists(request.files),
             }
@@ -82,13 +82,15 @@ class ValidateParameters:
         nested_func.__name__ = f.__name__
         return nested_func
 
-    def _to_dict_with_lists(self, multi_dict: ImmutableMultiDict) -> dict:
+    def _to_dict_with_lists(
+        self, multi_dict: ImmutableMultiDict, split_strings: bool = False
+    ) -> dict:
         dict_with_lists = {}
 
         for key, values in multi_dict.lists():
             list_values = []
             for value in values:
-                if isinstance(value, str):
+                if split_strings:
                     list_values.extend(value.split(","))
                 else:
                     list_values.append(value)
