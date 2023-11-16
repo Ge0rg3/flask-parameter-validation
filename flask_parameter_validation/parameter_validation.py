@@ -6,7 +6,8 @@ from flask import request
 from werkzeug.datastructures import ImmutableMultiDict
 from werkzeug.exceptions import BadRequest
 
-from .exceptions import InvalidParameterTypeError, MissingInputError, ValidationError
+from .exceptions import (InvalidParameterTypeError, MissingInputError,
+                         ValidationError)
 from .parameter_types import File, Form, Json, Query, Route
 
 fn_list = dict()
@@ -85,18 +86,19 @@ class ValidateParameters:
     def _to_dict_with_lists(
         self, multi_dict: ImmutableMultiDict, split_strings: bool = False
     ) -> dict:
+        # If a dict has duplicate keys, they should instead be stored as a list under the same key
         dict_with_lists = {}
-
+        # Iterate over all keys and values in ImmutableMultiDict
         for key, values in multi_dict.lists():
             list_values = []
+            # If split strings, split each value by comma
             for value in values:
                 if split_strings:
                     list_values.extend(value.split(","))
                 else:
                     list_values.append(value)
-            dict_with_lists[key] = (
-                list_values[0] if len(list_values) == 1 else list_values
-            )
+            # Create tuple of all values
+            dict_with_lists[key] = list_values
 
         return dict_with_lists
 
@@ -134,8 +136,7 @@ class ValidateParameters:
             else:
                 # Optionals are Unions with a NoneType, so we should check if None is part of Union __args__ (if exist)
                 if (
-                    hasattr(expected_input_type, "__args__")
-                    and type(None) in expected_input_type.__args__
+                    hasattr(expected_input_type, "__args__") and type(None) in expected_input_type.__args__
                 ):
                     return user_input
                 else:
@@ -190,6 +191,11 @@ class ValidateParameters:
         validation_success = all(
             type(inp) in expected_input_types for inp in user_inputs
         )
+
+        # Validate that if lists are required, lists are given
+        if expected_input_type_str.startswith("typing.List"):
+            if type(user_input) is not list:
+                validation_success = False
 
         # Error if types don't match
         if not validation_success:
