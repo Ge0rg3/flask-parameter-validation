@@ -1,3 +1,5 @@
+import asyncio
+import functools
 import inspect
 import re
 from inspect import signature
@@ -40,7 +42,8 @@ class ValidateParameters:
         }
         fn_list[fsig] = fdocs
 
-        def nested_func(**kwargs):
+        @functools.wraps(f)
+        async def nested_func(**kwargs):
             # Step 1 - Combine all flask input types to one dict
             json_input = None
             if request.headers.get("Content-Type") is not None:
@@ -78,7 +81,11 @@ class ValidateParameters:
                     except Exception as e:
                         return self.custom_error_handler(e)
                 validated_inputs[expected.name] = new_input
-            return f(**validated_inputs)
+
+            if asyncio.iscoroutinefunction(f):
+                return await f(**validated_inputs)
+            else:
+                return f(**validated_inputs)
 
         nested_func.__name__ = f.__name__
         return nested_func

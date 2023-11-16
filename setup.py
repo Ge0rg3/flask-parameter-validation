@@ -28,6 +28,7 @@ setup(
     platforms='any',
     install_requires=[
         'Flask',
+        'flask[async]',
         'python-dateutil',
     ],
     classifiers=[
