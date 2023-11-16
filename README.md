@@ -95,6 +95,8 @@ These validators are passed into the classes in the route function, such as:
 * `profile_picture: werkzeug.datastructures.FileStorage = File(content_types=["image/png", "image/jpeg"])`
 * `filter: str = Query()`
 
+Note: For `typing.List` Query inputs, users can pass via either `value=1&value=2&value=3`, or `value=1,2,3`. Both will be transformed to a list. 
+
 ### Overwriting default errors
 By default, the error messages are returned as a JSON response, with the detailed error in the "error" field. However, this can be edited by passing a custom error function into the ValidateParameters decorator. For example:
 ```py
@@ -222,6 +224,7 @@ This method returns an object with the following structure:
 ## Contributions
 Many thanks to all those who have made contributions to the project:
 * [d3-steichman](https://github.com/d3-steichman): API documentation, custom error handling, datetime validation and bug fixes
+* [summersz](https://github.com/summersz): Parameter aliases, async support, form type conversion and list bug fixes
 * [Garcel](https://github.com/Garcel): Allow passing custom validator function
 * [iml1111](https://github.com/iml1111): Implement regex validation
 * [borisowww](https://github.com/borisowww): Fix file handling bugs
