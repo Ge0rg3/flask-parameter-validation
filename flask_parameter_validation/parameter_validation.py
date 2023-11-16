@@ -77,8 +77,8 @@ class ValidateParameters:
                     except Exception as e:
                         return self.custom_error_handler(e)
                 validated_inputs[expected.name] = new_input
-            
-            if asyncio.iscoroutinefunctions(f):
+
+            if asyncio.iscoroutinefunction(f):
                 return await f(**validated_inputs)
             else:
                 return f(**validated_inputs)
