@@ -107,11 +107,14 @@ class ValidateParameters:
         Validate that a given expected input exists in the requested input collection
         """
         # Extract useful information from expected input
-        expected_name = expected_input.name
         expected_input_type = expected_input.annotation  # i.e. str, int etc.
         # i.e. Form, Query, Json etc.
         expected_delivery_type = expected_input.default
-
+        # Check if an alias is given, otherwise use the input name
+        if expected_delivery_type.alias:
+            expected_name = expected_delivery_type.alias
+        else:
+            expected_name = expected_input.name
         # Get input type as string to recognize typing objects, e.g. to convert typing.List to "typing.List"
         # Note: We use this str() method, as typing API is too unreliable, see https://stackoverflow.com/a/52664522/7173479
         expected_input_type_str = str(expected_input.annotation)

@@ -27,7 +27,8 @@ def hello(
         nicknames: List[str] = Json(),
         date_of_birth: datetime = Json(),
         password_expiry: Optional[int] = Json(5),
-        is_admin: bool = Query(False)
+        is_admin: bool = Query(False),
+        user_type: str = Json(alias="type")
      ):
     return "Hello World!"
 
@@ -80,8 +81,9 @@ All parameters can have default values, and automatic validation.
 * blacklist: str, A string containing forbidden characters for the value
 * pattern: str, A regex pattern to test for string matches
 * func: Callable -> Union[bool, tuple[bool, str]], A function containing a fully customized logic to validate the value
-* datetime_format: str: datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))
-* comment: str: A string to display as the argument description in generated documentation (if used)
+* datetime_format: str, datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))
+* comment: str, A string to display as the argument description in generated documentation (if used)
+* alias: str, An expected parameter name instead of the function name. See `access_type` example for clarification.
 
 `File` has the following options:
 * content_types: array of strings, an array of allowed content types.
