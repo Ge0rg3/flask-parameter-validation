@@ -105,7 +105,7 @@ class ValidateParameters:
                 else:
                     list_values.append(value)
             # Create tuple of all values
-            dict_with_lists[key] = list_values
+            dict_with_lists[key] = list_values if len(list_values) > 1 else list_values[0]
 
         return dict_with_lists
 
