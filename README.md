@@ -229,3 +229,5 @@ Many thanks to all those who have made contributions to the project:
 * [iml1111](https://github.com/iml1111): Implement regex validation
 * [borisowww](https://github.com/borisowww): Fix file handling bugs
 * [Charlie-Mindified](https://github.com/Charlie-Mindified): Fix JSON handling bug
+* [dkassen](https://github.com/dkassen): Helped to resolve broken list parsing logic
+
