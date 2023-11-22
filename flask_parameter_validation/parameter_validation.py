@@ -44,7 +44,10 @@ class ValidateParameters:
 
         @functools.wraps(f)
         async def nested_func(**kwargs):
-            # Step 1 - Combine all flask input types to one dict
+            # Step 1 - Get expected input details as dict
+            expected_inputs = signature(f).parameters
+            
+            # Step 2 - Validate JSON inputs
             json_input = None
             if request.headers.get("Content-Type") is not None:
                 if re.search(
@@ -55,25 +58,28 @@ class ValidateParameters:
                     except BadRequest:
                         return {"error": "Could not parse JSON."}, 400
 
+            # Step 3 - Extract list of parameters expected to be lists (otherwise all values are converted to lists)
+            expected_list_params = []
+            for name, param in expected_inputs.items():
+                if str(param.annotation).startswith("typing.List"):
+                    expected_list_params.append(name)
+
+            # Step 4 - Convert request inputs to dicts
             request_inputs = {
                 Route: kwargs.copy(),
                 Json: json_input or {},
-                Query: self._to_dict_with_lists(request.args, split_strings=True),
-                Form: self._to_dict_with_lists(request.form),
-                File: self._to_dict_with_lists(request.files),
+                Query: self._to_dict_with_lists(request.args, expected_list_params, True),
+                Form: self._to_dict_with_lists(request.form, expected_list_params),
+                File: self._to_dict_with_lists(request.files, expected_list_params),
             }
-            # Step 2 - Get expected input details as dict
-            expected_inputs = signature(f).parameters
 
-            # Step 3 - Validate each expected input
+            # Step 5 - Validate each expected input
             validated_inputs = {}
             for expected in expected_inputs.values():
                 if self.custom_error_handler is None:
                     try:
                         new_input = self.validate(expected, request_inputs)
-                    except MissingInputError as e:
-                        return {"error": str(e)}, 400
-                    except ValidationError as e:
+                    except (MissingInputError, ValidationError) as e:
                         return {"error": str(e)}, 400
                 else:
                     try:
@@ -91,22 +97,22 @@ class ValidateParameters:
         return nested_func
 
     def _to_dict_with_lists(
-        self, multi_dict: ImmutableMultiDict, split_strings: bool = False
+        self, multi_dict: ImmutableMultiDict, expected_lists: list, split_strings: bool = False
     ) -> dict:
-        # If a dict has duplicate keys, they should instead be stored as a list under the same key
         dict_with_lists = {}
-        # Iterate over all keys and values in ImmutableMultiDict
         for key, values in multi_dict.lists():
-            list_values = []
-            # If split strings, split each value by comma
-            for value in values:
-                if split_strings:
-                    list_values.extend(value.split(","))
-                else:
-                    list_values.append(value)
-            # Create tuple of all values
-            dict_with_lists[key] = list_values
-
+            # Only create lists for keys that are expected to be lists
+            if key in expected_lists:
+                list_values = []
+                for value in values:
+                    if split_strings:
+                        list_values.extend(value.split(","))
+                    else:
+                        list_values.append(value)
+                dict_with_lists[key] = list_values
+            else:
+                # If only one value and not expected to be a list, don't use a list
+                dict_with_lists[key] = values[0] if len(values) == 1 else values
         return dict_with_lists
 
     def validate(self, expected_input, all_request_inputs):
