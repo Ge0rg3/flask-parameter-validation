@@ -13,7 +13,7 @@ class Query(Parameter):
 
     def convert(self, value, allowed_types):
         """Convert query parameters to corresponding types."""
-        if type(value) == str:
+        if type(value) is str:
             # int conversion
             if int in allowed_types:
                 try:

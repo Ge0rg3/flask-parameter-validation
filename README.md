@@ -60,7 +60,7 @@ The validation on files are different to the others, but file input can still be
 * int
 * bool
 * float
-* typing.List
+* typing.List (must use this, not just `list`)
 * typing.Union
 * typing.Optional
 * datetime.datetime
