@@ -66,7 +66,7 @@ class Parameter:
         for value in values:
             # Min length
             if self.min_str_length is not None:
-                if len(value) < self.min_str_length:
+                if hasattr(value, "len") and len(value) < self.min_str_length:
                     raise ValueError(
                         f"must have at least {self.min_str_length} characters."
                     )

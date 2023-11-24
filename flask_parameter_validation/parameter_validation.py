@@ -179,11 +179,12 @@ class ValidateParameters:
                 if str(exp_type).startswith("typing.List"):
                     if type(user_input) is list:
                         # Only convert if validation passes
-                        if all(type(inp) in exp_type.__args__ for inp in user_input):
-                            expected_input_type = exp_type
-                            expected_input_types = expected_input_type.__args__
-                            expected_input_type_str = str(exp_type)
-                            user_inputs = user_input
+                        if hasattr(exp_type, "__args__"):
+                            if all(type(inp) in exp_type.__args__ for inp in user_input):
+                                expected_input_type = exp_type
+                                expected_input_types = expected_input_type.__args__
+                                expected_input_type_str = str(exp_type)
+                                user_inputs = user_input
         # If list, expand inner typing items. Otherwise, convert to list to match anyway.
         elif expected_input_type_str.startswith("typing.List"):
             expected_input_types = expected_input_type.__args__
