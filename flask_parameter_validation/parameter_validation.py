@@ -168,6 +168,7 @@ class ValidateParameters:
         if expected_input_type_str.startswith("typing.Optional"):
             new_type = expected_input_type.__args__[0]
             expected_input_type = new_type
+            expected_input_type_str = str(new_type)
 
         # Prepare expected type checks for unions, lists and plain types
         if expected_input_type_str.startswith("typing.Union"):
