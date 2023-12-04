@@ -62,7 +62,7 @@ class ValidateParameters:
             expected_list_params = []
             for name, param in expected_inputs.items():
                 if str(param.annotation).startswith("typing.List") or str(param.annotation).startswith("typing.Optional[typing.List"):
-                    expected_list_params.append(name)
+                    expected_list_params.append(param.default.alias or name)
 
             # Step 4 - Convert request inputs to dicts
             request_inputs = {
