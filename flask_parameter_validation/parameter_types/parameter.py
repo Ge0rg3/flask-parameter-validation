@@ -94,13 +94,13 @@ class Parameter:
             if self.min_int is not None:
                 if int(value) < self.min_int:
                     raise ValueError(
-                        f"must be larger than {self.min_int}."
+                        f"must be at least {self.min_int}."
                     )
             # Max int
             if self.max_int is not None:
                 if int(value) > self.max_int:
                     raise ValueError(
-                        f"must be smaller than {self.max_int}."
+                        f"must be at most {self.max_int}."
                     )
 
             # Regexp
