@@ -33,13 +33,13 @@ class File(Parameter):
         if self.min_length is not None:
             if value.content_length < self.min_length:
                 raise ValueError(
-                    f"must have a content-length larger than {self.min_length}."
+                    f"must have a content-length at least {self.min_length}."
                 )
 
         # Max content length validation
         if self.max_length is not None:
             if value.content_length > self.max_length:
                 raise ValueError(
-                    f"must have a content-length smaller than {self.max_length}."
+                    f"must have a content-length at most {self.max_length}."
                 )
         return True
