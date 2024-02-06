@@ -2,6 +2,8 @@
     Query Parameters
     - i.e. sent in GET requests, /?username=myname
 """
+import json
+
 from .parameter import Parameter
 
 
@@ -13,6 +15,7 @@ class Query(Parameter):
 
     def convert(self, value, allowed_types):
         """Convert query parameters to corresponding types."""
+        print(f"Query#convert received {type(value)}")
         if type(value) is str:
             # int conversion
             if int in allowed_types:
@@ -32,5 +35,11 @@ class Query(Parameter):
                     value = True
                 elif value.lower() == "false":
                     value = False
-
+            # dict conversion
+            if dict in allowed_types:
+                try:
+                    value = json.loads(value)
+                except ValueError:
+                    raise ValueError(f"invalid JSON")
+        print(f"Query#convert returned {type(value)}")
         return super().convert(value, allowed_types)

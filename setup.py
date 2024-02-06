@@ -30,6 +30,7 @@ setup(
         'Flask',
         'flask[async]',
         'python-dateutil',
+        'jsonschema',
     ],
     classifiers=[
         'Environment :: Web Environment',
