@@ -10,6 +10,7 @@ query_int_blueprint = Blueprint('query_int', __name__, url_prefix="/int")
 @query_int_blueprint.get("/required")
 @ValidateParameters()
 def query_required_int(v: int = Query()):
+    assert type(v) is int
     return jsonify({"v": v})
 
 
@@ -44,7 +45,7 @@ def query_max_int(v: int = Query(max_int=0)):
 
 
 def is_even(v):
-    print(type(v))
+    assert type(v) is int
     return v % 2 == 0
 
 

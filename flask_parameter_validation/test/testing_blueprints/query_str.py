@@ -10,6 +10,7 @@ query_str_blueprint = Blueprint('query_str', __name__, url_prefix="/str")
 @query_str_blueprint.get("/required")
 @ValidateParameters()
 def query_required_str(v: str = Query()):
+    assert type(v) is str
     return jsonify({"v": v})
 
 
@@ -80,6 +81,7 @@ def is_digit(v):
 def query_str_func(
         v: str = Query(func=is_digit)
 ):
+    assert type(v) is str
     return jsonify({"v": v})
 
 
