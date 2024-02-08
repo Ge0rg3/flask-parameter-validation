@@ -1,6 +1,7 @@
 from flask import Blueprint
 
 from flask_parameter_validation.test.testing_blueprints.query_bool import query_bool_blueprint
+from flask_parameter_validation.test.testing_blueprints.query_float import query_float_blueprint
 from flask_parameter_validation.test.testing_blueprints.query_int import query_int_blueprint
 from flask_parameter_validation.test.testing_blueprints.query_str import query_str_blueprint
 
@@ -9,3 +10,4 @@ query_blueprint = Blueprint('query', __name__, url_prefix="/query")
 query_blueprint.register_blueprint(query_str_blueprint)
 query_blueprint.register_blueprint(query_int_blueprint)
 query_blueprint.register_blueprint(query_bool_blueprint)
+query_blueprint.register_blueprint(query_float_blueprint)

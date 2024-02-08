@@ -285,3 +285,67 @@ def test_bool_func(client):
     # Test that input failing func yields error
     r = client.get(f"{url}?v=False")
     assert "error" in r.json
+
+
+# Int Validation
+def test_required_float(client):
+    url = "/query/float/required"
+    # Test that present float input yields input value
+    r = client.get(f"{url}?v=1.2")
+    assert "v" in r.json
+    assert r.json["v"] == 1.2
+    # Test that present int input yields float(input) value
+    r = client.get(f"{url}?v=1")
+    assert "v" in r.json
+    assert r.json["v"] == 1.0
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+    # Test that present non-float input yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+
+
+def test_optional_float(client):
+    url = "/query/float/optional"
+    # Test that missing input yields None
+    r = client.get(f"{url}")
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present float input yields input value
+    r = client.get(f"{url}?v=1.2")
+    assert "v" in r.json
+    assert r.json["v"] == 1.2
+    # Test that present non-float input yields error
+    r = client.get(f"{url}?v=v")
+    assert "error" in r.json
+
+
+def test_float_default(client):
+    url = "/query/float/default"
+    # Test that missing input for required and optional yields default values
+    r = client.get(f"{url}")
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == 2.3
+    assert "opt" in r.json
+    assert r.json["opt"] == 3.4
+    # Test that present float input for required and optional yields input values
+    r = client.get(f"{url}?opt=4.5&n_opt=5.6")
+    assert "opt" in r.json
+    assert r.json["opt"] == 4.5
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == 5.6
+    # Test that present non-float input for required yields error
+    r = client.get(f"{url}?opt=a&n_opt=b")
+    assert "error" in r.json
+
+
+def test_float_func(client):
+    url = "/query/float/func"
+    # Test that input passing func yields input
+    r = client.get(f"{url}?v=3.141592")
+    assert "v" in r.json
+    assert r.json["v"] == 3.141592
+    # Test that input failing func yields error
+    r = client.get(f"{url}?v=3.15")
+    assert "error" in r.json
