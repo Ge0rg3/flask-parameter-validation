@@ -217,3 +217,71 @@ def test_int_func(client):
     # Test that input failing func yields error
     r = client.get(f"{url}?v=9")
     assert "error" in r.json
+
+
+# Bool Validation
+def test_required_bool(client):
+    url = "/query/bool/required"
+    # Test that present lowercase bool input yields input value
+    r = client.get(f"{url}?v=true")
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that present mixed-case bool input yields input value
+    r = client.get(f"{url}?v=TruE")
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that present uppercase bool input yields input value
+    r = client.get(f"{url}?v=TRUE")
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+    # Test that present non-bool input yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+
+
+def test_optional_bool(client):
+    url = "/query/bool/optional"
+    # Test that missing input yields None
+    r = client.get(f"{url}")
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present bool input yields input value
+    r = client.get(f"{url}?v=True")
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that present non-bool input yields error
+    r = client.get(f"{url}?v=v")
+    assert "error" in r.json
+
+
+def test_bool_default(client):
+    url = "/query/bool/default"
+    # Test that missing input for required and optional yields default values
+    r = client.get(f"{url}")
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] is False
+    assert "opt" in r.json
+    assert r.json["opt"] is True
+    # Test that present bool input for required and optional yields input values
+    r = client.get(f"{url}?opt=False&n_opt=True")
+    assert "opt" in r.json
+    assert r.json["opt"] is False
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] is True
+    # Test that present non-bool input for required yields error
+    r = client.get(f"{url}?opt=a&n_opt=b")
+    assert "error" in r.json
+
+
+def test_bool_func(client):
+    url = "/query/bool/func"
+    # Test that input passing func yields input
+    r = client.get(f"{url}?v=True")
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that input failing func yields error
+    r = client.get(f"{url}?v=False")
+    assert "error" in r.json
