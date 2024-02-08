@@ -127,3 +127,93 @@ def test_str_alias(client):
     r = client.get(f"{url}?v=abc")
     assert "value" in r.json
     assert r.json["value"] == "abc"
+
+
+# Int Validation
+def test_required_int(client):
+    url = "/query/int/required"
+    # Test that present int input yields input value
+    r = client.get(f"{url}?v=1")
+    assert "v" in r.json
+    assert r.json["v"] == 1
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+    # Test that present non-int input yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+
+
+def test_optional_int(client):
+    url = "/query/int/optional"
+    # Test that missing input yields None
+    r = client.get(f"{url}")
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present int input yields input value
+    r = client.get(f"{url}?v=1")
+    assert "v" in r.json
+    assert r.json["v"] == 1
+    # Test that present non-int input yields error
+    r = client.get(f"{url}?v=v")
+    assert "error" in r.json
+
+
+def test_int_default(client):
+    url = "/query/int/default"
+    # Test that missing input for required and optional yields default values
+    r = client.get(f"{url}")
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == 1
+    assert "opt" in r.json
+    assert r.json["opt"] == 2
+    # Test that present int input for required and optional yields input values
+    r = client.get(f"{url}?opt=3&n_opt=4")
+    assert "opt" in r.json
+    assert r.json["opt"] == 3
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == 4
+    # Test that present non-int input for required yields error
+    r = client.get(f"{url}?opt=a&n_opt=b")
+    assert "error" in r.json
+
+
+def test_int_min_int(client):
+    url = "/query/int/min_int"
+    # Test that below minimum yields error
+    r = client.get(f"{url}?v=-1")
+    assert "error" in r.json
+    # Test that at minimum yields input
+    r = client.get(f"{url}?v=0")
+    assert "v" in r.json
+    assert r.json["v"] == 0
+    # Test that above minimum yields input
+    r = client.get(f"{url}?v=1")
+    assert "v" in r.json
+    assert r.json["v"] == 1
+
+
+def test_int_max_int(client):
+    url = "/query/int/max_int"
+    # Test that below maximum yields input
+    r = client.get(f"{url}?v=-1")
+    assert "v" in r.json
+    assert r.json["v"] == -1
+    # Test that at maximum yields input
+    r = client.get(f"{url}?v=0")
+    assert "v" in r.json
+    assert r.json["v"] == 0
+    # Test that above maximum yields error
+    r = client.get(f"{url}?v=1")
+    assert "error" in r.json
+
+
+def test_int_func(client):
+    url = "/query/int/func"
+    # Test that input passing func yields input
+    r = client.get(f"{url}?v=8")
+    assert "v" in r.json
+    assert r.json["v"] == 8
+    # Test that input failing func yields error
+    r = client.get(f"{url}?v=9")
+    assert "error" in r.json
