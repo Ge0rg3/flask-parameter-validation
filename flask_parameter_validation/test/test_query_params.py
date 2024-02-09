@@ -1,4 +1,7 @@
 # String Validation
+import datetime
+
+
 def test_required_str(client):
     url = "/query/str/required"
     # Test that present input yields input value
@@ -348,4 +351,74 @@ def test_float_func(client):
     assert r.json["v"] == 3.141592
     # Test that input failing func yields error
     r = client.get(f"{url}?v=3.15")
+    assert "error" in r.json
+
+# datetime Validation
+def test_required_datetime(client):
+    url = "/query/datetime/required"
+    # Test that present ISO 8601 input yields input value
+    r = client.get(f"{url}?v=2024-02-09T03:47Z")
+    assert "v" in r.json
+    assert r.json["v"] == "2024-02-09T03:47:00+00:00"
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+
+
+def test_optional_datetime(client):
+    url = "/query/datetime/optional"
+    # Test that missing input yields None
+    r = client.get(f"{url}")
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present ISO 8601 input yields input value
+    r = client.get(f"{url}?v=2024-02-08T22:50-05:00")
+    assert "v" in r.json
+    assert r.json["v"] == "2024-02-08T22:50:00-05:00"
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(f"{url}?v=v")
+    assert "error" in r.json
+
+
+def test_datetime_default(client):
+    url = "/query/datetime/default"
+    # Test that missing input for required and optional yields default values
+    r = client.get(f"{url}")
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == "2024-02-08T21:48:00"
+    assert "opt" in r.json
+    assert r.json["opt"] == "2024-02-08T21:49:00"
+    # Test that present ISO 8601 input for required and optional yields input values
+    r = client.get(f"{url}?opt=2024-02-09T04:07Z&n_opt=2024-02-09T04:08Z")
+    assert "opt" in r.json
+    assert r.json["opt"] == "2024-02-09T04:07:00+00:00"
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == "2024-02-09T04:08:00+00:00"
+    # Test that present non-ISO 8601 input for required yields error
+    r = client.get(f"{url}?opt=a&n_opt=b")
+    assert "error" in r.json
+
+
+def test_datetime_func(client):
+    url = "/query/datetime/func"
+    # Test that input passing func yields input
+    r = client.get(f"{url}?v=2024-02-08T23:15-05:00")
+    assert "v" in r.json
+    assert r.json["v"] == "2024-02-08T23:15:00-05:00"
+    # Test that input failing func yields error
+    r = client.get(f"{url}?v=4/8/2024 11:17 PM")
+    assert "error" in r.json
+
+
+def test_datetime_format(client):
+    url = "/query/datetime/datetime_format"
+    # Test that input passing format yields input
+    r = client.get(f"{url}?v=2/8/2024 11:19 PM")
+    assert "v" in r.json
+    assert r.json["v"] == "2024-02-08T23:19:00"
+    # Test that input failing format yields error
+    r = client.get(f"{url}?v=2024-02-08T23:18-05:00")
     assert "error" in r.json
