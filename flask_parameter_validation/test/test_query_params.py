@@ -287,7 +287,7 @@ def test_bool_func(client):
     assert "error" in r.json
 
 
-# Int Validation
+# Float Validation
 def test_required_float(client):
     url = "/query/float/required"
     # Test that present float input yields input value
