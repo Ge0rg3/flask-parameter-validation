@@ -353,6 +353,7 @@ def test_float_func(client):
     r = client.get(f"{url}?v=3.15")
     assert "error" in r.json
 
+
 # datetime Validation
 def test_required_datetime(client):
     url = "/query/datetime/required"
@@ -423,6 +424,7 @@ def test_datetime_format(client):
     r = client.get(f"{url}?v=2024-02-08T23:18-05:00")
     assert "error" in r.json
 
+
 # date Validation
 def test_required_date(client):
     url = "/query/date/required"
@@ -482,6 +484,7 @@ def test_date_func(client):
     r = client.get(f"{url}?v=2024-09-09")
     assert "error" in r.json
 
+
 # time Validation
 def test_required_time(client):
     url = "/query/time/required"
@@ -540,6 +543,7 @@ def test_time_func(client):
     # Test that input failing func yields error
     r = client.get(f"{url}?v=23:27:16")
     assert "error" in r.json
+
 
 # Union Validation
 def test_required_union(client):
@@ -613,4 +617,212 @@ def test_union_func(client):
     assert "error" in r.json
     # Test that int input failing func yields error
     r = client.get(f"{url}?v=0")
+    assert "error" in r.json
+
+
+# List Validation
+def test_required_list_str(client):
+    url = "/query/list/req_str"
+    # Test that present single str input yields [input value]
+    r = client.get(f"{url}?v=w")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == "w"
+    # Test that present CSV str input yields [input values]
+    r = client.get(f"{url}?v=x,y")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is str
+    assert type(r.json["v"][1]) is str
+    assert r.json["v"][0] == "x"
+    assert r.json["v"][1] == "y"
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+
+
+def test_required_list_int(client):
+    url = "/query/list/req_int"
+    # Test that present single int input yields [input value]
+    r = client.get(f"{url}?v=-1")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is int
+    assert r.json["v"][0] == -1
+    # Test that present CSV int input yields [input values]
+    r = client.get(f"{url}?v=0,1")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is int
+    assert type(r.json["v"][1]) is int
+    assert r.json["v"][0] == 0
+    assert r.json["v"][1] == 1
+    # Test that present non-int list items yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+
+
+def test_required_list_bool(client):
+    url = "/query/list/req_bool"
+    # Test that present single bool input yields [input value]
+    r = client.get(f"{url}?v=true")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is bool
+    assert r.json["v"][0] is True
+    # Test that present CSV bool input yields [input values]
+    r = client.get(f"{url}?v=false,true")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is bool
+    assert type(r.json["v"][1]) is bool
+    assert r.json["v"][0] is False
+    assert r.json["v"][1] is True
+    # Test that present non-bool list items yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+
+
+def test_optional_list(client):
+    url = "/query/list/optional"
+    # Test that missing input yields None
+    r = client.get(f"{url}")
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present str input yields [input value]
+    r = client.get(f"{url}?v=test")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == "test"
+    # Test that present CSV str input yields [input values]
+    r = client.get(f"{url}?v=two,tests")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is str
+    assert type(r.json["v"][1]) is str
+    assert r.json["v"][0] == "two"
+    assert r.json["v"][1] == "tests"
+
+
+def test_list_default(client):
+    url = "/query/list/default"
+    # Test that missing input for required and optional yields default values
+    r = client.get(f"{url}")
+    assert "n_opt" in r.json
+    assert type(r.json["n_opt"]) is list
+    assert len(r.json["n_opt"]) == 2
+    assert type(r.json["n_opt"][0]) is str
+    assert type(r.json["n_opt"][1]) is str
+    assert r.json["n_opt"][0] == "a"
+    assert r.json["n_opt"][1] == "b"
+    assert "opt" in r.json
+    assert type(r.json["opt"]) is list
+    assert len(r.json["opt"]) == 2
+    assert type(r.json["opt"][0]) is int
+    assert type(r.json["opt"][1]) is int
+    assert r.json["opt"][0] == 0
+    assert r.json["opt"][1] == 1
+    # Test that present bool input for required and optional yields [input values]
+    r = client.get(f"{url}?opt=2,3&n_opt=c,d")
+    assert "n_opt" in r.json
+    assert type(r.json["n_opt"]) is list
+    assert len(r.json["n_opt"]) == 2
+    assert type(r.json["n_opt"][0]) is str
+    assert type(r.json["n_opt"][1]) is str
+    assert r.json["n_opt"][0] == "c"
+    assert r.json["n_opt"][1] == "d"
+    assert "opt" in r.json
+    assert type(r.json["opt"]) is list
+    assert len(r.json["opt"]) == 2
+    assert type(r.json["opt"][0]) is int
+    assert type(r.json["opt"][1]) is int
+    assert r.json["opt"][0] == 2
+    assert r.json["opt"][1] == 3
+
+
+def test_list_func(client):
+    url = "/query/list/func"
+    # Test that input passing func yields input
+    r = client.get(f"{url}?v=0.1,0.2")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is float
+    assert type(r.json["v"][1]) is float
+    assert r.json["v"][0] == 0.1
+    assert r.json["v"][1] == 0.2
+    # Test that input failing func yields error
+    r = client.get(f"{url}?v=0.3,0.4,0.5")
+    assert "error" in r.json
+
+
+def test_min_list_length(client):
+    url = "/query/list/min_list_length"
+    # Test that below length yields error
+    r = client.get(f"{url}?v=short,list")
+    assert "error" in r.json
+    # Test that at length yields [input values]
+    r = client.get(f"{url}?v=kinda,longer,list")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 3
+    assert type(r.json["v"][0]) is str
+    assert type(r.json["v"][1]) is str
+    assert type(r.json["v"][2]) is str
+    assert r.json["v"][0] == "kinda"
+    assert r.json["v"][1] == "longer"
+    assert r.json["v"][2] == "list"
+    # Test that above length yields [input values]
+    r = client.get(f"{url}?v=the,longest,of,lists")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 4
+    assert type(r.json["v"][0]) is str
+    assert type(r.json["v"][1]) is str
+    assert type(r.json["v"][2]) is str
+    assert type(r.json["v"][3]) is str
+    assert r.json["v"][0] == "the"
+    assert r.json["v"][1] == "longest"
+    assert r.json["v"][2] == "of"
+    assert r.json["v"][3] == "lists"
+
+def test_max_list_length(client):
+    url = "/query/list/max_list_length"
+    # Test that below length yields [input values]
+    r = client.get(f"{url}?v=short,list")
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is str
+    assert type(r.json["v"][1]) is str
+    assert r.json["v"][0] == "short"
+    assert r.json["v"][1] == "list"
+    # Test that at length yields [input values]
+    r = client.get(f"{url}?v=kinda,longer,list")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 3
+    assert type(r.json["v"][0]) is str
+    assert type(r.json["v"][1]) is str
+    assert type(r.json["v"][2]) is str
+    assert r.json["v"][0] == "kinda"
+    assert r.json["v"][1] == "longer"
+    assert r.json["v"][2] == "list"
+    # Test that above length yields error
+    r = client.get(f"{url}?v=the,longest,of,lists")
     assert "error" in r.json
