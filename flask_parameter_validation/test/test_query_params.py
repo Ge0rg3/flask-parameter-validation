@@ -540,3 +540,77 @@ def test_time_func(client):
     # Test that input failing func yields error
     r = client.get(f"{url}?v=23:27:16")
     assert "error" in r.json
+
+# Union Validation
+def test_required_union(client):
+    url = "/query/union/required"
+    # Test that present bool input yields input value
+    r = client.get(f"{url}?v=true")
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that present int input yields input value
+    r = client.get(f"{url}?v=5541")
+    assert "v" in r.json
+    assert r.json["v"] == 5541
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+    # Test that present non-bool/int input yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+
+
+def test_optional_union(client):
+    url = "/query/union/optional"
+    # Test that missing input yields None
+    r = client.get(f"{url}")
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present bool input yields input value
+    r = client.get(f"{url}?v=False")
+    assert "v" in r.json
+    assert r.json["v"] is False
+    # Test that present int input yields input value
+    r = client.get(f"{url}?v=8616")
+    assert "v" in r.json
+    assert r.json["v"] == 8616
+    # Test that present non-bool/int input yields error
+    r = client.get(f"{url}?v=v")
+    assert "error" in r.json
+
+
+def test_union_default(client):
+    url = "/query/union/default"
+    # Test that missing input for required and optional yields default values
+    r = client.get(f"{url}")
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] is True
+    assert "opt" in r.json
+    assert r.json["opt"] == 5
+    # Test that present bool/int input for required and optional yields input values
+    r = client.get(f"{url}?opt=False&n_opt=6")
+    assert "opt" in r.json
+    assert r.json["opt"] is False
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == 6
+    # Test that present non-bool/int input for required yields error
+    r = client.get(f"{url}?opt=a&n_opt=b")
+    assert "error" in r.json
+
+
+def test_union_func(client):
+    url = "/query/union/func"
+    # Test that bool input passing func yields input
+    r = client.get(f"{url}?v=true")
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that int input passing func yields input
+    r = client.get(f"{url}?v=7")
+    assert "v" in r.json
+    assert r.json["v"] == 7
+    # Test that bool input failing func yields error
+    r = client.get(f"{url}?v=False")
+    assert "error" in r.json
+    # Test that int input failing func yields error
+    r = client.get(f"{url}?v=0")
+    assert "error" in r.json
