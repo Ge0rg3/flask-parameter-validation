@@ -422,3 +422,62 @@ def test_datetime_format(client):
     # Test that input failing format yields error
     r = client.get(f"{url}?v=2024-02-08T23:18-05:00")
     assert "error" in r.json
+
+# date Validation
+def test_required_date(client):
+    url = "/query/date/required"
+    # Test that present ISO 8601 input yields input value
+    r = client.get(f"{url}?v=2024-02-09")
+    assert "v" in r.json
+    assert r.json["v"] == "2024-02-09"
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+
+
+def test_optional_date(client):
+    url = "/query/date/optional"
+    # Test that missing input yields None
+    r = client.get(f"{url}")
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present ISO 8601 input yields input value
+    r = client.get(f"{url}?v=2024-02-10")
+    assert "v" in r.json
+    assert r.json["v"] == "2024-02-10"
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(f"{url}?v=v")
+    assert "error" in r.json
+
+
+def test_date_default(client):
+    url = "/query/date/default"
+    # Test that missing input for required and optional yields default values
+    r = client.get(f"{url}")
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == "2024-02-09"
+    assert "opt" in r.json
+    assert r.json["opt"] == "2024-02-10"
+    # Test that present ISO 8601 input for required and optional yields input values
+    r = client.get(f"{url}?opt=2024-02-09&n_opt=2024-02-10")
+    assert "opt" in r.json
+    assert r.json["opt"] == "2024-02-09"
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == "2024-02-10"
+    # Test that present non-ISO 8601 input for required yields error
+    r = client.get(f"{url}?opt=a&n_opt=b")
+    assert "error" in r.json
+
+
+def test_date_func(client):
+    url = "/query/date/func"
+    # Test that input passing func yields input
+    r = client.get(f"{url}?v=2024-02-02")
+    assert "v" in r.json
+    assert r.json["v"] == "2024-02-02"
+    # Test that input failing func yields error
+    r = client.get(f"{url}?v=2024-09-09")
+    assert "error" in r.json
