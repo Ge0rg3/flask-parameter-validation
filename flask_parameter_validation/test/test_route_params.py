@@ -103,3 +103,58 @@ def test_str_func(client):
     # Test that input failing func yields error
     r = client.get(f"{url}/abc")
     assert "error" in r.json
+
+# Int Validation
+def test_required_int(client):
+    url = "/route/int/required"
+    # Test that present int input yields input value
+    r = client.get(f"{url}/1")
+    assert "v" in r.json
+    assert r.json["v"] == 1
+    # Test that missing input is 404
+    r = client.get(f"{url}")
+    assert r.status_code == 404
+    # Test that present non-int input is 404
+    r = client.get(f"{url}/a")
+    assert r.status_code == 404
+
+
+def test_int_min_int(client):
+    url = "/route/int/min_int"
+    # Test that below minimum yields error
+    r = client.get(f"{url}/-1")
+    assert "error" in r.json
+    # Test that at minimum yields input
+    r = client.get(f"{url}/0")
+    assert "v" in r.json
+    assert r.json["v"] == 0
+    # Test that above minimum yields input
+    r = client.get(f"{url}/1")
+    assert "v" in r.json
+    assert r.json["v"] == 1
+
+
+def test_int_max_int(client):
+    url = "/route/int/max_int"
+    # Test that below maximum yields input
+    r = client.get(f"{url}/-1")
+    assert "v" in r.json
+    assert r.json["v"] == -1
+    # Test that at maximum yields input
+    r = client.get(f"{url}/0")
+    assert "v" in r.json
+    assert r.json["v"] == 0
+    # Test that above maximum yields error
+    r = client.get(f"{url}/1")
+    assert "error" in r.json
+
+
+def test_int_func(client):
+    url = "/route/int/func"
+    # Test that input passing func yields input
+    r = client.get(f"{url}/8")
+    assert "v" in r.json
+    assert r.json["v"] == 8
+    # Test that input failing func yields error
+    r = client.get(f"{url}/9")
+    assert "error" in r.json
