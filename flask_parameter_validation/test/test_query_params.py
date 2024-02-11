@@ -59,13 +59,13 @@ def test_str_min_str_length(client):
     r = client.get(url, query_string={"v": ""})
     assert "error" in r.json
     # Test that at minimum yields input
-    r = client.get(url, query_string={"v": "a"})
-    assert "v" in r.json
-    assert r.json["v"] == "a"
-    # Test that above minimum yields input
     r = client.get(url, query_string={"v": "aa"})
     assert "v" in r.json
     assert r.json["v"] == "aa"
+    # Test that above minimum yields input
+    r = client.get(url, query_string={"v": "aaa"})
+    assert "v" in r.json
+    assert r.json["v"] == "aaa"
 
 
 def test_str_max_str_length(client):
@@ -75,11 +75,11 @@ def test_str_max_str_length(client):
     assert "v" in r.json
     assert r.json["v"] == ""
     # Test that at maximum yields input
-    r = client.get(url, query_string={"v": "a"})
-    assert "v" in r.json
-    assert r.json["v"] == "a"
-    # Test that above maximum yields error
     r = client.get(url, query_string={"v": "aa"})
+    assert "v" in r.json
+    assert r.json["v"] == "aa"
+    # Test that above maximum yields error
+    r = client.get(url, query_string={"v": "aaa"})
     assert "error" in r.json
 
 

@@ -35,14 +35,14 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
     @decorator("/min_str_length")
     @ValidateParameters()
     def min_str_length(
-            v: str = ParamType(min_str_length=1)
+            v: str = ParamType(min_str_length=2)
     ):
         return jsonify({"v": v})
 
     @decorator("/max_str_length")
     @ValidateParameters()
     def max_str_length(
-            v: str = ParamType(max_str_length=1)
+            v: str = ParamType(max_str_length=2)
     ):
         return jsonify({"v": v})
 
