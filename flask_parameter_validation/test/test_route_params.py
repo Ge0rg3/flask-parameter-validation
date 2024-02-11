@@ -184,3 +184,33 @@ def test_bool_func(client):
     # Test that input failing func yields error
     r = client.get(f"{url}/false")
     assert "error" in r.json
+
+
+# Float Validation
+def test_required_float(client):
+    url = "/route/float/required"
+    # Test that present float input yields input value
+    r = client.get(f"{url}/1.2")
+    assert "v" in r.json
+    assert r.json["v"] == 1.2
+    # Test that present int input yields float(input) value
+    r = client.get(f"{url}/1.0")
+    assert "v" in r.json
+    assert r.json["v"] == 1.0
+    # Test that missing input is 404
+    r = client.get(f"{url}")
+    assert r.status_code == 404
+    # Test that present non-float input yields error
+    r = client.get(f"{url}/a")
+    assert "error" in r.json
+
+
+def test_float_func(client):
+    url = "/route/float/func"
+    # Test that input passing func yields input
+    r = client.get(f"{url}/3.141592")
+    assert "v" in r.json
+    assert r.json["v"] == 3.141592
+    # Test that input failing func yields error
+    r = client.get(f"{url}/3.15")
+    assert "error" in r.json
