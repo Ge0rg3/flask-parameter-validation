@@ -2,7 +2,7 @@ from typing import Optional
 
 from flask import Blueprint, jsonify
 
-from flask_parameter_validation import ValidateParameters
+from flask_parameter_validation import ValidateParameters, Route
 from flask_parameter_validation.parameter_types.parameter import Parameter
 
 
@@ -10,18 +10,21 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
     str_bp = Blueprint(bp_name, __name__, url_prefix="/str")
     decorator = getattr(str_bp, http_verb)
 
-    @decorator("/required")
+    def path(base: str, route_additions: str) -> str:
+        return base + (route_additions if ParamType is Route else "")
+
+    @decorator(path("/required", "/<v>"))
     @ValidateParameters()
     def required(v: str = ParamType()):
         assert type(v) is str
         return jsonify({"v": v})
 
-    @decorator("/optional")
+    @decorator("/optional")  # Route not currently supported by Optional
     @ValidateParameters()
     def optional(v: Optional[str] = ParamType()):
         return jsonify({"v": v})
 
-    @decorator("/default")
+    @decorator("/default")  # Route not currently supported by default
     @ValidateParameters()
     def default(
             n_opt: str = ParamType(default="not_optional"),
@@ -32,35 +35,35 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             "opt": opt
         })
 
-    @decorator("/min_str_length")
+    @decorator(path("/min_str_length", "/<v>"))
     @ValidateParameters()
     def min_str_length(
             v: str = ParamType(min_str_length=2)
     ):
         return jsonify({"v": v})
 
-    @decorator("/max_str_length")
+    @decorator(path("/max_str_length", "/<v>"))
     @ValidateParameters()
     def max_str_length(
             v: str = ParamType(max_str_length=2)
     ):
         return jsonify({"v": v})
 
-    @decorator("/whitelist")
+    @decorator(path("/whitelist", "/<v>"))
     @ValidateParameters()
     def whitelist(
             v: str = ParamType(whitelist="ABC123")
     ):
         return jsonify({"v": v})
 
-    @decorator("/blacklist")
+    @decorator(path("/blacklist", "/<v>"))
     @ValidateParameters()
     def blacklist(
             v: str = ParamType(blacklist="ABC123")
     ):
         return jsonify({"v": v})
 
-    @decorator("/pattern")
+    @decorator(path("/pattern", "/<v>"))
     @ValidateParameters()
     def pattern(
             v: str = ParamType(pattern="\\w{3}\\d{3}")
@@ -70,7 +73,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
     def is_digit(v):
         return v.isdigit()
 
-    @decorator("/func")
+    @decorator(path("/func", "/<v>"))
     @ValidateParameters()
     def func(
             v: str = ParamType(func=is_digit)
@@ -78,7 +81,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
         assert type(v) is str
         return jsonify({"v": v})
 
-    @decorator("/alias")
+    @decorator("/alias")  # Route not currently supported by alias
     @ValidateParameters()
     def alias(
             value: str = ParamType(alias="v")
