@@ -3,13 +3,17 @@ from typing import Optional, List, Union
 
 from flask import Blueprint, jsonify
 
-from flask_parameter_validation import ValidateParameters
+from flask_parameter_validation import ValidateParameters, Route
 from flask_parameter_validation.parameter_types.parameter import Parameter
 
 
 def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) -> Blueprint:
     list_bp = Blueprint(bp_name, __name__, url_prefix="/list")
     decorator = getattr(list_bp, http_verb)
+
+    # List not currently supported by Route
+    # def path(base: str, route_additions: str) -> str:
+    #     return base + (route_additions if ParamType is Route else "")
 
     @decorator("/req_str")
     @ValidateParameters()
