@@ -314,3 +314,40 @@ def test_time_func(client):
     v = datetime.time(23, 26, 16)
     r = client.get(f"{url}/{v.isoformat()}")
     assert "error" in r.json
+
+
+# Union Validation
+def test_required_union(client):
+    url = "/route/union/required"
+    # Test that present bool input yields input value
+    r = client.get(f"{url}/true")
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that present int input yields input value
+    r = client.get(f"{url}/5541")
+    assert "v" in r.json
+    assert r.json["v"] == 5541
+    # Test that missing input is 404
+    r = client.get(f"{url}")
+    assert r.status_code == 404
+    # Test that present non-bool/int input yields error
+    r = client.get(f"{url}/a")
+    assert "error" in r.json
+
+
+def test_union_func(client):
+    url = "/route/union/func"
+    # Test that bool input passing func yields input
+    r = client.get(f"{url}/true")
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that int input passing func yields input
+    r = client.get(f"{url}/7")
+    assert "v" in r.json
+    assert r.json["v"] == 7
+    # Test that bool input failing func yields error
+    r = client.get(f"{url}/false")
+    assert "error" in r.json
+    # Test that int input failing func yields error
+    r = client.get(f"{url}/0")
+    assert "error" in r.json
