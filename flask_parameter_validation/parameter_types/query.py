@@ -28,9 +28,12 @@ class Query(Parameter):
                     pass
             # bool conversion
             if bool in allowed_types:
-                if value.lower() == "true":
-                    value = True
-                elif value.lower() == "false":
-                    value = False
+                try:
+                    if value.lower() == "true":
+                        value = True
+                    elif value.lower() == "false":
+                        value = False
+                except AttributeError:
+                    pass
 
         return super().convert(value, allowed_types)

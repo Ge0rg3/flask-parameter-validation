@@ -231,7 +231,10 @@ class ValidateParameters:
 
         # Validate parameter-specific requirements are met
         try:
-            expected_delivery_type.validate(user_input)
+            if type(user_input) is list:
+                expected_delivery_type.validate(user_input)
+            else:
+                expected_delivery_type.validate(user_inputs[0])
         except ValueError as e:
             raise ValidationError(str(e), expected_name, expected_input_type)
 
