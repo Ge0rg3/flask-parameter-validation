@@ -3,6 +3,10 @@
     - Would originally be in Flask's request.file
     - Value will be a FileStorage object
 """
+import io
+
+from werkzeug.datastructures import FileStorage
+
 from .parameter import Parameter
 
 
@@ -21,7 +25,7 @@ class File(Parameter):
         self.min_length = min_length
         self.max_length = max_length
 
-    def validate(self, value):
+    def validate(self, value: FileStorage):
         # Content type validation
         if self.content_types is not None:
             # We check mimetype, as it strips charset etc.
@@ -31,15 +35,19 @@ class File(Parameter):
 
         # Min content length validation
         if self.min_length is not None:
-            if value.content_length < self.min_length:
+            origin = value.stream.tell()
+            if value.stream.seek(0, io.SEEK_END) < self.min_length:
                 raise ValueError(
                     f"must have a content-length at least {self.min_length}."
                 )
+            value.stream.seek(origin)
 
         # Max content length validation
         if self.max_length is not None:
-            if value.content_length > self.max_length:
+            origin = value.stream.tell()
+            if value.stream.seek(0, io.SEEK_END) > self.max_length:
                 raise ValueError(
                     f"must have a content-length at most {self.max_length}."
                 )
+            value.stream.seek(origin)
         return True
