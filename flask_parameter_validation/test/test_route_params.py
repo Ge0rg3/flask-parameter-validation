@@ -256,3 +256,32 @@ def test_datetime_format(client):
     v = datetime.datetime(2024, 2, 8, 23, 18, tzinfo=datetime.timezone(datetime.timedelta(hours=-5)))
     r = client.get(f"{url}/{v.isoformat()}")
     assert "error" in r.json
+
+
+# date Validation
+def test_required_date(client):
+    url = "/route/date/required"
+    # Test that present ISO 8601 input yields input value
+    v = datetime.date(2024, 2, 9)
+    r = client.get(f"{url}/{v.isoformat()}")
+    assert "v" in r.json
+    assert r.json["v"] == v.isoformat()
+    # Test that missing input is 404
+    r = client.get(f"{url}")
+    assert r.status_code == 404
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(f"{url}/a")
+    assert "error" in r.json
+
+
+def test_date_func(client):
+    url = "/route/date/func"
+    # Test that input passing func yields input
+    v = datetime.date(2024, 2, 2)
+    r = client.get(f"{url}/{v.isoformat()}")
+    assert "v" in r.json
+    assert r.json["v"] == v.isoformat()
+    # Test that input failing func yields error
+    v = datetime.date(2024, 9, 9)
+    r = client.get(f"{url}/{v.isoformat()}")
+    assert "error" in r.json
