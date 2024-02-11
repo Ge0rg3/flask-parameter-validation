@@ -31,13 +31,14 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str) -> Blueprint:
         assert type(v[0]) is bool
         return jsonify({"v": v})
 
-    @list_bp.get("/req_union")
-    @ValidateParameters()
-    def req_union(v: List[Union[int, float]] = ParamType()):
-        assert type(v) is list
-        assert type(v[0]) is int
-        assert type(v[1]) is float
-        return jsonify({"v": v})
+    # List[Union[]] not currently supported
+    # @list_bp.get("/req_union")
+    # @ValidateParameters()
+    # def req_union(v: List[Union[int, float]] = ParamType()):
+    #     assert type(v) is list
+    #     assert type(v[0]) is int
+    #     assert type(v[1]) is float
+    #     return jsonify({"v": v})
 
     @list_bp.get("/req_datetime")
     @ValidateParameters()

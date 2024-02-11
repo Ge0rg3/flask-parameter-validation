@@ -696,6 +696,118 @@ def test_required_list_bool(client):
     assert "error" in r.json
 
 
+# List[Union[]] not currently supported
+# def test_required_list_union(client):
+#     url = "/query/list/req_union"
+#     # Test that present single int input yields [input value]
+#     r = client.get(f"{url}?v=2")
+#     assert "v" in r.json
+#     assert type(r.json["v"]) is list
+#     assert len(r.json["v"]) == 1
+#     assert type(r.json["v"][0]) is int
+#     assert r.json["v"][0] == 2
+#     # Test that present single float input yields [input value]
+#     r = client.get(f"{url}?v=3.14")
+#     assert "v" in r.json
+#     assert type(r.json["v"]) is list
+#     assert len(r.json["v"]) == 1
+#     assert type(r.json["v"][0]) is float
+#     assert r.json["v"][0] == 3.14
+#     # Test that present CSV int/float input yields [input values]
+#     r = client.get(f"{url}?v=4,5.62")
+#     assert "v" in r.json
+#     assert type(r.json["v"]) is list
+#     assert len(r.json["v"]) == 2
+#     assert type(r.json["v"][0]) is int
+#     assert type(r.json["v"][1]) is float
+#     assert r.json["v"][0] == 4
+#     assert r.json["v"][1] == 5.62
+#     # Test that present non-int/float list items yields error
+#     r = client.get(f"{url}?v=a")
+#     assert "error" in r.json
+#     # Test that missing input yields error
+#     r = client.get(f"{url}")
+#     assert "error" in r.json
+
+
+def test_required_list_datetime(client):
+    url = "/query/list/req_datetime"
+    # Test that present single datetime input yields [input value]
+    r = client.get(f"{url}?v=2024-02-10T14:31:47")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == datetime.datetime(2024, 2, 10, 14, 31, 47).isoformat()
+    # Test that present CSV datetime input yields [input values]
+    r = client.get(f"{url}?v=2024-02-10T14:32:38,2024-02-10T14:32:53")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is str
+    assert type(r.json["v"][1]) is str
+    assert r.json["v"][0] == datetime.datetime(2024, 2, 10, 14, 32, 38).isoformat()
+    assert r.json["v"][1] == datetime.datetime(2024, 2, 10, 14, 32, 53).isoformat()
+    # Test that present non-datetime list items yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+
+
+def test_required_list_date(client):
+    url = "/query/list/req_date"
+    # Test that present single date input yields [input value]
+    r = client.get(f"{url}?v=2024-02-09")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == datetime.date(2024, 2, 9).isoformat()
+    # Test that present CSV date input yields [input values]
+    r = client.get(f"{url}?v=2024-02-10,2024-02-11")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is str
+    assert type(r.json["v"][1]) is str
+    assert r.json["v"][0] == datetime.date(2024, 2, 10).isoformat()
+    assert r.json["v"][1] == datetime.date(2024, 2, 11).isoformat()
+    # Test that present non-date list items yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+
+
+def test_required_list_time(client):
+    url = "/query/list/req_time"
+    # Test that present single time input yields [input value]
+    r = client.get(f"{url}?v=14:37:02")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == datetime.time(14, 37, 2).isoformat()
+    # Test that present CSV time input yields [input values]
+    r = client.get(f"{url}?v=14:37:34,14:37:45")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is str
+    assert type(r.json["v"][1]) is str
+    assert r.json["v"][0] == datetime.time(14, 37, 34).isoformat()
+    assert r.json["v"][1] == datetime.time(14, 37, 45).isoformat()
+    # Test that present non-bool list items yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(f"{url}")
+    assert "error" in r.json
+
+
 def test_optional_list(client):
     url = "/query/list/optional"
     # Test that missing input yields None
