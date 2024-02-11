@@ -9,7 +9,7 @@ from flask_parameter_validation.test.testing_blueprints.parameter_blueprint impo
 def create_app():
     app = Flask(__name__)
 
-    app.register_blueprint(get_parameter_blueprint(Query, "query", "query"))
-    app.register_blueprint(get_parameter_blueprint(Json, "json", "json"))
+    app.register_blueprint(get_parameter_blueprint(Query, "query", "query", "get"))
+    app.register_blueprint(get_parameter_blueprint(Json, "json", "json", "post"))
 
     return app

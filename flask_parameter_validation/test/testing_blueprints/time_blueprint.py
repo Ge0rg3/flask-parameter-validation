@@ -7,23 +7,24 @@ from flask_parameter_validation import ValidateParameters
 from flask_parameter_validation.parameter_types.parameter import Parameter
 
 
-def get_time_blueprint(ParamType: type[Parameter], bp_name: str) -> Blueprint:
+def get_time_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) -> Blueprint:
     time_bp = Blueprint(bp_name, __name__, url_prefix="/time")
+    decorator = getattr(time_bp, http_verb)
 
-    @time_bp.get("/required")
+    @decorator("/required")
     @ValidateParameters()
     def required(v: datetime.time = ParamType()):
         assert type(v) is datetime.time
         return jsonify({"v": v.isoformat()})
 
-    @time_bp.get("/optional")
+    @decorator("/optional")
     @ValidateParameters()
     def optional(v: Optional[datetime.time] = ParamType()):
         if v:
             return jsonify({"v": v.isoformat()})
         return jsonify({"v": None})
 
-    @time_bp.get("/default")
+    @decorator("/default")
     @ValidateParameters()
     def default(
             n_opt: datetime.time = ParamType(default=datetime.time(23, 21, 23)),
@@ -38,7 +39,7 @@ def get_time_blueprint(ParamType: type[Parameter], bp_name: str) -> Blueprint:
         assert type(v) is datetime.time
         return v.hour < 12
 
-    @time_bp.get("/func")
+    @decorator("/func")
     @ValidateParameters()
     def func(v: datetime.time = ParamType(func=is_am)):
         return jsonify({"v": v.isoformat()})

@@ -7,21 +7,22 @@ from flask_parameter_validation import ValidateParameters
 from flask_parameter_validation.parameter_types.parameter import Parameter
 
 
-def get_union_blueprint(ParamType: type[Parameter], bp_name: str) -> Blueprint:
+def get_union_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) -> Blueprint:
     union_bp = Blueprint(bp_name, __name__, url_prefix="/union")
+    decorator = getattr(union_bp, http_verb)
 
-    @union_bp.get("/required")
+    @decorator("/required")
     @ValidateParameters()
     def required(v: Union[bool, int] = ParamType()):
         assert type(v) is bool or type(v) is int
         return jsonify({"v": v})
 
-    @union_bp.get("/optional")
+    @decorator("/optional")
     @ValidateParameters()
     def optional(v: Optional[Union[bool, int]] = ParamType()):
         return jsonify({"v": v})
 
-    @union_bp.get("/default")
+    @decorator("/default")
     @ValidateParameters()
     def default(
             n_opt: Union[bool, int] = ParamType(default=True),
@@ -38,7 +39,7 @@ def get_union_blueprint(ParamType: type[Parameter], bp_name: str) -> Blueprint:
             return True
         return False
 
-    @union_bp.get("/func")
+    @decorator("/func")
     @ValidateParameters()
     def func(v: Union[bool, int] = ParamType(func=is_truthy)):
         return jsonify({"v": v})

@@ -6,21 +6,22 @@ from flask_parameter_validation import ValidateParameters
 from flask_parameter_validation.parameter_types.parameter import Parameter
 
 
-def get_int_blueprint(ParamType: type[Parameter], bp_name: str) -> Blueprint:
+def get_int_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) -> Blueprint:
     int_bp = Blueprint(bp_name, __name__, url_prefix="/int")
+    decorator = getattr(int_bp, http_verb)
 
-    @int_bp.get("/required")
+    @decorator("/required")
     @ValidateParameters()
     def required(v: int = ParamType()):
         assert type(v) is int
         return jsonify({"v": v})
 
-    @int_bp.get("/optional")
+    @decorator("/optional")
     @ValidateParameters()
     def optional(v: Optional[int] = ParamType()):
         return jsonify({"v": v})
 
-    @int_bp.get("/default")
+    @decorator("/default")
     @ValidateParameters()
     def default(
             n_opt: int = ParamType(default=1),
@@ -31,12 +32,12 @@ def get_int_blueprint(ParamType: type[Parameter], bp_name: str) -> Blueprint:
             "opt": opt
         })
 
-    @int_bp.get("/min_int")
+    @decorator("/min_int")
     @ValidateParameters()
     def min_int(v: int = ParamType(min_int=0)):
         return jsonify({"v": v})
 
-    @int_bp.get("/max_int")
+    @decorator("/max_int")
     @ValidateParameters()
     def max_int(v: int = ParamType(max_int=0)):
         return jsonify({"v": v})
@@ -45,7 +46,7 @@ def get_int_blueprint(ParamType: type[Parameter], bp_name: str) -> Blueprint:
         assert type(v) is int
         return v % 2 == 0
 
-    @int_bp.get("/func")
+    @decorator("/func")
     @ValidateParameters()
     def func(v: int = ParamType(func=is_even)):
         return jsonify({"v": v})
