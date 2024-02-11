@@ -1,26 +1,38 @@
 # String Validation
 import datetime
+from typing import Type, List, Optional
+
+
+def list_assertion_helper(length: int, list_children_type: Type, expected_list: List, tested_list,
+                          expected_call: Optional[str] = None):
+    for i in range(length):
+        assert type(tested_list[i]) is list_children_type
+        if expected_call is not None:
+            fn = getattr(expected_list[i], expected_call)
+            assert fn() == tested_list[i]
+        else:
+            assert expected_list[i] == tested_list[i]
 
 
 def test_required_str(client):
     url = "/query/str/required"
     # Test that present input yields input value
-    r = client.get(f"{url}?v=v")
+    r = client.get(url, query_string={"v": "v"})
     assert "v" in r.json
     assert r.json["v"] == "v"
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
 
 
 def test_optional_str(client):
     url = "/query/str/optional"
     # Test that missing input yields None
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "v" in r.json
     assert r.json["v"] is None
     # Test that present input yields input value
-    r = client.get(f"{url}?v=v")
+    r = client.get(url, query_string={"v": "v"})
     assert "v" in r.json
     assert r.json["v"] == "v"
 
@@ -28,13 +40,13 @@ def test_optional_str(client):
 def test_str_default(client):
     url = "/query/str/default"
     # Test that missing input for required and optional yields default values
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "opt" in r.json
     assert r.json["opt"] == "optional"
     assert "n_opt" in r.json
     assert r.json["n_opt"] == "not_optional"
     # Test that present input for required and optional yields input values
-    r = client.get(f"{url}?opt=a&n_opt=b")
+    r = client.get(url, query_string={"opt": "a", "n_opt": "b"})
     assert "opt" in r.json
     assert r.json["opt"] == "a"
     assert "n_opt" in r.json
@@ -44,14 +56,14 @@ def test_str_default(client):
 def test_str_min_str_length(client):
     url = "/query/str/min_str_length"
     # Test that below minimum yields error
-    r = client.get(f"{url}?v=")
+    r = client.get(url, query_string={"v": ""})
     assert "error" in r.json
     # Test that at minimum yields input
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "v" in r.json
     assert r.json["v"] == "a"
     # Test that above minimum yields input
-    r = client.get(f"{url}?v=aa")
+    r = client.get(url, query_string={"v": "aa"})
     assert "v" in r.json
     assert r.json["v"] == "aa"
 
@@ -59,42 +71,42 @@ def test_str_min_str_length(client):
 def test_str_max_str_length(client):
     url = "/query/str/max_str_length"
     # Test that below maximum yields input
-    r = client.get(f"{url}?v=")
+    r = client.get(url, query_string={"v": ""})
     assert "v" in r.json
     assert r.json["v"] == ""
     # Test that at maximum yields input
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "v" in r.json
     assert r.json["v"] == "a"
     # Test that above maximum yields error
-    r = client.get(f"{url}?v=aa")
+    r = client.get(url, query_string={"v": "aa"})
     assert "error" in r.json
 
 
 def test_str_whitelist(client):
     url = "/query/str/whitelist"
     # Test that input within whitelist yields input
-    r = client.get(f"{url}?v=ABC123")
+    r = client.get(url, query_string={"v": "ABC123"})
     assert "v" in r.json
     assert r.json["v"] == "ABC123"
     # Test that mixed input yields error
-    r = client.get(f"{url}?v=abc123")
+    r = client.get(url, query_string={"v": "abc123"})
     assert "error" in r.json
     # Test that input outside of whitelist yields error
-    r = client.get(f"{url}?v=def456")
+    r = client.get(url, query_string={"v": "def456"})
     assert "error" in r.json
 
 
 def test_str_blacklist(client):
     url = "/query/str/blacklist"
     # Test that input within blacklist yields error
-    r = client.get(f"{url}?v=ABC123")
+    r = client.get(url, query_string={"v": "ABC123"})
     assert "error" in r.json
     # Test that mixed input yields error
-    r = client.get(f"{url}?v=abc123")
+    r = client.get(url, query_string={"v": "abc123"})
     assert "error" in r.json
     # Test that input outside of blacklist yields input
-    r = client.get(f"{url}?v=def456")
+    r = client.get(url, query_string={"v": "def456"})
     assert "v" in r.json
     assert r.json["v"] == "def456"
 
@@ -102,32 +114,32 @@ def test_str_blacklist(client):
 def test_str_pattern(client):
     url = "/query/str/pattern"
     # Test that input matching pattern yields input
-    r = client.get(f"{url}?v=AbC123")
+    r = client.get(url, query_string={"v": "AbC123"})
     assert "v" in r.json
     assert r.json["v"] == "AbC123"
     # Test that input failing pattern yields error
-    r = client.get(f"{url}?v=123ABC")
+    r = client.get(url, query_string={"v": "123ABC"})
     assert "error" in r.json
 
 
 def test_str_func(client):
     url = "/query/str/func"
     # Test that input passing func yields input
-    r = client.get(f"{url}?v=123")
+    r = client.get(url, query_string={"v": "123"})
     assert "v" in r.json
     assert r.json["v"] == "123"
     # Test that input failing func yields error
-    r = client.get(f"{url}?v=abc")
+    r = client.get(url, query_string={"v": "abc"})
     assert "error" in r.json
 
 
 def test_str_alias(client):
     url = "/query/str/alias"
     # Test that original name yields error
-    r = client.get(f"{url}?value=abc")
+    r = client.get(url, query_string={"value": "abc"})
     assert "error" in r.json
     # Test that alias yields input
-    r = client.get(f"{url}?v=abc")
+    r = client.get(url, query_string={"v": "abc"})
     assert "value" in r.json
     assert r.json["value"] == "abc"
 
@@ -136,62 +148,62 @@ def test_str_alias(client):
 def test_required_int(client):
     url = "/query/int/required"
     # Test that present int input yields input value
-    r = client.get(f"{url}?v=1")
+    r = client.get(url, query_string={"v": 1})
     assert "v" in r.json
     assert r.json["v"] == 1
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
     # Test that present non-int input yields error
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
 
 
 def test_optional_int(client):
     url = "/query/int/optional"
     # Test that missing input yields None
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "v" in r.json
     assert r.json["v"] is None
     # Test that present int input yields input value
-    r = client.get(f"{url}?v=1")
+    r = client.get(url, query_string={"v": 1})
     assert "v" in r.json
     assert r.json["v"] == 1
     # Test that present non-int input yields error
-    r = client.get(f"{url}?v=v")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
 
 
 def test_int_default(client):
     url = "/query/int/default"
     # Test that missing input for required and optional yields default values
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "n_opt" in r.json
     assert r.json["n_opt"] == 1
     assert "opt" in r.json
     assert r.json["opt"] == 2
     # Test that present int input for required and optional yields input values
-    r = client.get(f"{url}?opt=3&n_opt=4")
+    r = client.get(url, query_string={"opt": 3, "n_opt": 4})
     assert "opt" in r.json
     assert r.json["opt"] == 3
     assert "n_opt" in r.json
     assert r.json["n_opt"] == 4
     # Test that present non-int input for required yields error
-    r = client.get(f"{url}?opt=a&n_opt=b")
+    r = client.get(url, query_string={"opt": "a", "n_opt": "b"})
     assert "error" in r.json
 
 
 def test_int_min_int(client):
     url = "/query/int/min_int"
     # Test that below minimum yields error
-    r = client.get(f"{url}?v=-1")
+    r = client.get(url, query_string={"v": -1})
     assert "error" in r.json
     # Test that at minimum yields input
-    r = client.get(f"{url}?v=0")
+    r = client.get(url, query_string={"v": 0})
     assert "v" in r.json
     assert r.json["v"] == 0
     # Test that above minimum yields input
-    r = client.get(f"{url}?v=1")
+    r = client.get(url, query_string={"v": 1})
     assert "v" in r.json
     assert r.json["v"] == 1
 
@@ -199,26 +211,26 @@ def test_int_min_int(client):
 def test_int_max_int(client):
     url = "/query/int/max_int"
     # Test that below maximum yields input
-    r = client.get(f"{url}?v=-1")
+    r = client.get(url, query_string={"v": -1})
     assert "v" in r.json
     assert r.json["v"] == -1
     # Test that at maximum yields input
-    r = client.get(f"{url}?v=0")
+    r = client.get(url, query_string={"v": 0})
     assert "v" in r.json
     assert r.json["v"] == 0
     # Test that above maximum yields error
-    r = client.get(f"{url}?v=1")
+    r = client.get(url, query_string={"v": 1})
     assert "error" in r.json
 
 
 def test_int_func(client):
     url = "/query/int/func"
     # Test that input passing func yields input
-    r = client.get(f"{url}?v=8")
+    r = client.get(url, query_string={"v": 8})
     assert "v" in r.json
     assert r.json["v"] == 8
     # Test that input failing func yields error
-    r = client.get(f"{url}?v=9")
+    r = client.get(url, query_string={"v": 9})
     assert "error" in r.json
 
 
@@ -226,67 +238,67 @@ def test_int_func(client):
 def test_required_bool(client):
     url = "/query/bool/required"
     # Test that present lowercase bool input yields input value
-    r = client.get(f"{url}?v=true")
+    r = client.get(url, query_string={"v": "true"})
     assert "v" in r.json
     assert r.json["v"] is True
     # Test that present mixed-case bool input yields input value
-    r = client.get(f"{url}?v=TruE")
+    r = client.get(url, query_string={"v": "TruE"})
     assert "v" in r.json
     assert r.json["v"] is True
     # Test that present uppercase bool input yields input value
-    r = client.get(f"{url}?v=TRUE")
+    r = client.get(url, query_string={"v": "TRUE"})
     assert "v" in r.json
     assert r.json["v"] is True
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
     # Test that present non-bool input yields error
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
 
 
 def test_optional_bool(client):
     url = "/query/bool/optional"
     # Test that missing input yields None
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "v" in r.json
     assert r.json["v"] is None
     # Test that present bool input yields input value
-    r = client.get(f"{url}?v=True")
+    r = client.get(url, query_string={"v": True})
     assert "v" in r.json
     assert r.json["v"] is True
     # Test that present non-bool input yields error
-    r = client.get(f"{url}?v=v")
+    r = client.get(url, query_string={"v": "v"})
     assert "error" in r.json
 
 
 def test_bool_default(client):
     url = "/query/bool/default"
     # Test that missing input for required and optional yields default values
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "n_opt" in r.json
     assert r.json["n_opt"] is False
     assert "opt" in r.json
     assert r.json["opt"] is True
     # Test that present bool input for required and optional yields input values
-    r = client.get(f"{url}?opt=False&n_opt=True")
+    r = client.get(url, query_string={"opt": False, "n_opt": True})
     assert "opt" in r.json
     assert r.json["opt"] is False
     assert "n_opt" in r.json
     assert r.json["n_opt"] is True
     # Test that present non-bool input for required yields error
-    r = client.get(f"{url}?opt=a&n_opt=b")
+    r = client.get(url, query_string={"opt": "a", "n_opt": "b"})
     assert "error" in r.json
 
 
 def test_bool_func(client):
     url = "/query/bool/func"
     # Test that input passing func yields input
-    r = client.get(f"{url}?v=True")
+    r = client.get(url, query_string={"v": True})
     assert "v" in r.json
     assert r.json["v"] is True
     # Test that input failing func yields error
-    r = client.get(f"{url}?v=False")
+    r = client.get(url, query_string={"v": False})
     assert "error" in r.json
 
 
@@ -294,63 +306,63 @@ def test_bool_func(client):
 def test_required_float(client):
     url = "/query/float/required"
     # Test that present float input yields input value
-    r = client.get(f"{url}?v=1.2")
+    r = client.get(url, query_string={"v": 1.2})
     assert "v" in r.json
     assert r.json["v"] == 1.2
     # Test that present int input yields float(input) value
-    r = client.get(f"{url}?v=1")
+    r = client.get(url, query_string={"v": 1})
     assert "v" in r.json
     assert r.json["v"] == 1.0
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
     # Test that present non-float input yields error
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
 
 
 def test_optional_float(client):
     url = "/query/float/optional"
     # Test that missing input yields None
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "v" in r.json
     assert r.json["v"] is None
     # Test that present float input yields input value
-    r = client.get(f"{url}?v=1.2")
+    r = client.get(url, query_string={"v": 1.2})
     assert "v" in r.json
     assert r.json["v"] == 1.2
     # Test that present non-float input yields error
-    r = client.get(f"{url}?v=v")
+    r = client.get(url, query_string={"v": "v"})
     assert "error" in r.json
 
 
 def test_float_default(client):
     url = "/query/float/default"
     # Test that missing input for required and optional yields default values
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "n_opt" in r.json
     assert r.json["n_opt"] == 2.3
     assert "opt" in r.json
     assert r.json["opt"] == 3.4
     # Test that present float input for required and optional yields input values
-    r = client.get(f"{url}?opt=4.5&n_opt=5.6")
+    r = client.get(url, query_string={"opt": 4.5, "n_opt": 5.6})
     assert "opt" in r.json
     assert r.json["opt"] == 4.5
     assert "n_opt" in r.json
     assert r.json["n_opt"] == 5.6
     # Test that present non-float input for required yields error
-    r = client.get(f"{url}?opt=a&n_opt=b")
+    r = client.get(url, query_string={"opt": "a", "n_opt": "b"})
     assert "error" in r.json
 
 
 def test_float_func(client):
     url = "/query/float/func"
     # Test that input passing func yields input
-    r = client.get(f"{url}?v=3.141592")
+    r = client.get(url, query_string={"v": 3.141592})
     assert "v" in r.json
     assert r.json["v"] == 3.141592
     # Test that input failing func yields error
-    r = client.get(f"{url}?v=3.15")
+    r = client.get(url, query_string={"v": 3.15})
     assert "error" in r.json
 
 
@@ -358,70 +370,80 @@ def test_float_func(client):
 def test_required_datetime(client):
     url = "/query/datetime/required"
     # Test that present ISO 8601 input yields input value
-    r = client.get(f"{url}?v=2024-02-09T03:47Z")
+    v = datetime.datetime(2024, 2, 9, 3, 47, tzinfo=datetime.timezone.utc)
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "v" in r.json
-    assert r.json["v"] == "2024-02-09T03:47:00+00:00"
+    assert r.json["v"] == v.isoformat()
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
     # Test that present non-ISO 8601 input yields error
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
 
 
 def test_optional_datetime(client):
     url = "/query/datetime/optional"
     # Test that missing input yields None
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "v" in r.json
     assert r.json["v"] is None
     # Test that present ISO 8601 input yields input value
-    r = client.get(f"{url}?v=2024-02-08T22:50-05:00")
+    v = datetime.datetime(2024, 2, 8, 22, 50, tzinfo=datetime.timezone(datetime.timedelta(hours=-5)))
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "v" in r.json
-    assert r.json["v"] == "2024-02-08T22:50:00-05:00"
+    assert r.json["v"] == v.isoformat()
     # Test that present non-ISO 8601 input yields error
-    r = client.get(f"{url}?v=v")
+    r = client.get(url, query_string={"v": "v"})
     assert "error" in r.json
 
 
 def test_datetime_default(client):
     url = "/query/datetime/default"
     # Test that missing input for required and optional yields default values
-    r = client.get(f"{url}")
+    n_opt = datetime.datetime(2024, 2, 8, 21, 48)
+    opt = datetime.datetime(2024, 2, 8, 21, 49)
+    r = client.get(url)
     assert "n_opt" in r.json
-    assert r.json["n_opt"] == "2024-02-08T21:48:00"
+    assert r.json["n_opt"] == n_opt.isoformat()
     assert "opt" in r.json
-    assert r.json["opt"] == "2024-02-08T21:49:00"
+    assert r.json["opt"] == opt.isoformat()
     # Test that present ISO 8601 input for required and optional yields input values
-    r = client.get(f"{url}?opt=2024-02-09T04:07Z&n_opt=2024-02-09T04:08Z")
+    opt = datetime.datetime(2024, 2, 9, 4, 7, tzinfo=datetime.timezone.utc)
+    n_opt = datetime.datetime(2024, 2, 9, 4, 8, tzinfo=datetime.timezone.utc)
+    r = client.get(url, query_string={"opt": opt.isoformat(), "n_opt": n_opt.isoformat()})
     assert "opt" in r.json
-    assert r.json["opt"] == "2024-02-09T04:07:00+00:00"
+    assert r.json["opt"] == opt.isoformat()
     assert "n_opt" in r.json
-    assert r.json["n_opt"] == "2024-02-09T04:08:00+00:00"
+    assert r.json["n_opt"] == n_opt.isoformat()
     # Test that present non-ISO 8601 input for required yields error
-    r = client.get(f"{url}?opt=a&n_opt=b")
+    r = client.get(url, query_string={"opt": "a", "n_opt": "b"})
     assert "error" in r.json
 
 
 def test_datetime_func(client):
     url = "/query/datetime/func"
     # Test that input passing func yields input
-    r = client.get(f"{url}?v=2024-02-08T23:15-05:00")
+    v = datetime.datetime(2024, 2, 8, 23, 15, tzinfo=datetime.timezone(datetime.timedelta(hours=-5)))
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "v" in r.json
-    assert r.json["v"] == "2024-02-08T23:15:00-05:00"
+    assert r.json["v"] == v.isoformat()
     # Test that input failing func yields error
-    r = client.get(f"{url}?v=4/8/2024 11:17 PM")
+    v = datetime.datetime(2024, 4, 8, 23, 17)
+    r = client.get(url, query_string={"v": v.strftime("%m/%d/%Y %I:%M %p")})
     assert "error" in r.json
 
 
 def test_datetime_format(client):
     url = "/query/datetime/datetime_format"
     # Test that input passing format yields input
-    r = client.get(f"{url}?v=2/8/2024 11:19 PM")
+    v = datetime.datetime(2024, 2, 8, 23, 19)
+    r = client.get(url, query_string={"v": v.strftime("%m/%d/%Y %I:%M %p")})
     assert "v" in r.json
-    assert r.json["v"] == "2024-02-08T23:19:00"
+    assert r.json["v"] == v.isoformat()
     # Test that input failing format yields error
-    r = client.get(f"{url}?v=2024-02-08T23:18-05:00")
+    v = datetime.datetime(2024, 2, 8, 23, 18, tzinfo=datetime.timezone(datetime.timedelta(hours=-5)))
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "error" in r.json
 
 
@@ -429,59 +451,67 @@ def test_datetime_format(client):
 def test_required_date(client):
     url = "/query/date/required"
     # Test that present ISO 8601 input yields input value
-    r = client.get(f"{url}?v=2024-02-09")
+    v = datetime.date(2024, 2, 9)
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "v" in r.json
-    assert r.json["v"] == "2024-02-09"
+    assert r.json["v"] == v.isoformat()
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
     # Test that present non-ISO 8601 input yields error
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
 
 
 def test_optional_date(client):
     url = "/query/date/optional"
     # Test that missing input yields None
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "v" in r.json
     assert r.json["v"] is None
     # Test that present ISO 8601 input yields input value
-    r = client.get(f"{url}?v=2024-02-10")
+    v = datetime.date(2024, 2, 10)
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "v" in r.json
-    assert r.json["v"] == "2024-02-10"
+    assert r.json["v"] == v.isoformat()
     # Test that present non-ISO 8601 input yields error
-    r = client.get(f"{url}?v=v")
+    r = client.get(url, query_string={"v": "v"})
     assert "error" in r.json
 
 
 def test_date_default(client):
     url = "/query/date/default"
     # Test that missing input for required and optional yields default values
-    r = client.get(f"{url}")
+    n_opt = datetime.date(2024, 2, 9)
+    opt = datetime.date(2024, 2, 10)
+    r = client.get(url)
     assert "n_opt" in r.json
-    assert r.json["n_opt"] == "2024-02-09"
+    assert r.json["n_opt"] == n_opt.isoformat()
     assert "opt" in r.json
-    assert r.json["opt"] == "2024-02-10"
+    assert r.json["opt"] == opt.isoformat()
     # Test that present ISO 8601 input for required and optional yields input values
-    r = client.get(f"{url}?opt=2024-02-09&n_opt=2024-02-10")
+    opt = datetime.date(2024, 2, 9)
+    n_opt = datetime.date(2024, 2, 10)
+    r = client.get(url, query_string={"opt": opt.isoformat(), "n_opt": n_opt.isoformat()})
     assert "opt" in r.json
-    assert r.json["opt"] == "2024-02-09"
+    assert r.json["opt"] == opt.isoformat()
     assert "n_opt" in r.json
-    assert r.json["n_opt"] == "2024-02-10"
+    assert r.json["n_opt"] == n_opt.isoformat()
     # Test that present non-ISO 8601 input for required yields error
-    r = client.get(f"{url}?opt=a&n_opt=b")
+    r = client.get(url, query_string={"opt": "a", "n_opt": "b"})
     assert "error" in r.json
 
 
 def test_date_func(client):
     url = "/query/date/func"
     # Test that input passing func yields input
-    r = client.get(f"{url}?v=2024-02-02")
+    v = datetime.date(2024, 2, 2)
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "v" in r.json
-    assert r.json["v"] == "2024-02-02"
+    assert r.json["v"] == v.isoformat()
     # Test that input failing func yields error
-    r = client.get(f"{url}?v=2024-09-09")
+    v = datetime.date(2024, 9, 9)
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "error" in r.json
 
 
@@ -489,59 +519,67 @@ def test_date_func(client):
 def test_required_time(client):
     url = "/query/time/required"
     # Test that present ISO 8601 input yields input value
-    r = client.get(f"{url}?v=23:24:21")
+    v = datetime.time(23, 24, 21)
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "v" in r.json
-    assert r.json["v"] == "23:24:21"
+    assert r.json["v"] == v.isoformat()
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
     # Test that present non-ISO 8601 input yields error
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
 
 
 def test_optional_time(client):
     url = "/query/time/optional"
     # Test that missing input yields None
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "v" in r.json
     assert r.json["v"] is None
     # Test that present ISO 8601 input yields input value
-    r = client.get(f"{url}?v=23:24:55")
+    v = datetime.time(23, 24, 55)
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "v" in r.json
-    assert r.json["v"] == "23:24:55"
+    assert r.json["v"] == v.isoformat()
     # Test that present non-ISO 8601 input yields error
-    r = client.get(f"{url}?v=v")
+    r = client.get(url, query_string={"v": "v"})
     assert "error" in r.json
 
 
 def test_time_default(client):
     url = "/query/time/default"
     # Test that missing input for required and optional yields default values
-    r = client.get(f"{url}")
+    n_opt = datetime.time(23, 21, 23)
+    opt = datetime.time(23, 21, 35)
+    r = client.get(url)
     assert "n_opt" in r.json
-    assert r.json["n_opt"] == "23:21:23"
+    assert r.json["n_opt"] == n_opt.isoformat()
     assert "opt" in r.json
-    assert r.json["opt"] == "23:21:35"
+    assert r.json["opt"] == opt.isoformat()
     # Test that present ISO 8601 input for required and optional yields input values
-    r = client.get(f"{url}?opt=23:25:42&n_opt=23:26:01")
+    opt = datetime.time(23, 25, 42)
+    n_opt = datetime.time(23, 26, 1)
+    r = client.get(url, query_string={"opt": opt.isoformat(), "n_opt": n_opt.isoformat()})
     assert "opt" in r.json
-    assert r.json["opt"] == "23:25:42"
+    assert r.json["opt"] == opt.isoformat()
     assert "n_opt" in r.json
-    assert r.json["n_opt"] == "23:26:01"
+    assert r.json["n_opt"] == n_opt.isoformat()
     # Test that present non-ISO 8601 input for required yields error
-    r = client.get(f"{url}?opt=a&n_opt=b")
+    r = client.get(url, query_string={"opt": "a", "n_opt": "b"})
     assert "error" in r.json
 
 
 def test_time_func(client):
     url = "/query/time/func"
     # Test that input passing func yields input
-    r = client.get(f"{url}?v=08:00:00")
+    v = datetime.time(8)
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "v" in r.json
-    assert r.json["v"] == "08:00:00"
+    assert r.json["v"] == v.isoformat()
     # Test that input failing func yields error
-    r = client.get(f"{url}?v=23:27:16")
+    v = datetime.time(23, 26, 16)
+    r = client.get(url, query_string={"v": v.isoformat()})
     assert "error" in r.json
 
 
@@ -549,74 +587,74 @@ def test_time_func(client):
 def test_required_union(client):
     url = "/query/union/required"
     # Test that present bool input yields input value
-    r = client.get(f"{url}?v=true")
+    r = client.get(url, query_string={"v": True})
     assert "v" in r.json
     assert r.json["v"] is True
     # Test that present int input yields input value
-    r = client.get(f"{url}?v=5541")
+    r = client.get(url, query_string={"v": 5541})
     assert "v" in r.json
     assert r.json["v"] == 5541
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
     # Test that present non-bool/int input yields error
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
 
 
 def test_optional_union(client):
     url = "/query/union/optional"
     # Test that missing input yields None
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "v" in r.json
     assert r.json["v"] is None
     # Test that present bool input yields input value
-    r = client.get(f"{url}?v=False")
+    r = client.get(url, query_string={"v": False})
     assert "v" in r.json
     assert r.json["v"] is False
     # Test that present int input yields input value
-    r = client.get(f"{url}?v=8616")
+    r = client.get(url, query_string={"v": 8616})
     assert "v" in r.json
     assert r.json["v"] == 8616
     # Test that present non-bool/int input yields error
-    r = client.get(f"{url}?v=v")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
 
 
 def test_union_default(client):
     url = "/query/union/default"
     # Test that missing input for required and optional yields default values
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "n_opt" in r.json
     assert r.json["n_opt"] is True
     assert "opt" in r.json
     assert r.json["opt"] == 5
     # Test that present bool/int input for required and optional yields input values
-    r = client.get(f"{url}?opt=False&n_opt=6")
+    r = client.get(url, query_string={"opt": False, "n_opt": 6})
     assert "opt" in r.json
     assert r.json["opt"] is False
     assert "n_opt" in r.json
     assert r.json["n_opt"] == 6
     # Test that present non-bool/int input for required yields error
-    r = client.get(f"{url}?opt=a&n_opt=b")
+    r = client.get(url, query_string={"opt": "a", "n_opt": "b"})
     assert "error" in r.json
 
 
 def test_union_func(client):
     url = "/query/union/func"
     # Test that bool input passing func yields input
-    r = client.get(f"{url}?v=true")
+    r = client.get(url, query_string={"v": True})
     assert "v" in r.json
     assert r.json["v"] is True
     # Test that int input passing func yields input
-    r = client.get(f"{url}?v=7")
+    r = client.get(url, query_string={"v": 7})
     assert "v" in r.json
     assert r.json["v"] == 7
     # Test that bool input failing func yields error
-    r = client.get(f"{url}?v=False")
+    r = client.get(url, query_string={"v": False})
     assert "error" in r.json
     # Test that int input failing func yields error
-    r = client.get(f"{url}?v=0")
+    r = client.get(url, query_string={"v": 0})
     assert "error" in r.json
 
 
@@ -624,75 +662,69 @@ def test_union_func(client):
 def test_required_list_str(client):
     url = "/query/list/req_str"
     # Test that present single str input yields [input value]
-    r = client.get(f"{url}?v=w")
+    r = client.get(url, query_string={"v": "w"})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     assert type(r.json["v"][0]) is str
     assert r.json["v"][0] == "w"
     # Test that present CSV str input yields [input values]
-    r = client.get(f"{url}?v=x,y")
+    v = ["x", "y"]
+    r = client.get(url, query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
-    assert type(r.json["v"][0]) is str
-    assert type(r.json["v"][1]) is str
-    assert r.json["v"][0] == "x"
-    assert r.json["v"][1] == "y"
+    list_assertion_helper(2, str, v, r.json["v"])
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
 
 
 def test_required_list_int(client):
     url = "/query/list/req_int"
     # Test that present single int input yields [input value]
-    r = client.get(f"{url}?v=-1")
+    r = client.get(url, query_string={"v": -1})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     assert type(r.json["v"][0]) is int
     assert r.json["v"][0] == -1
     # Test that present CSV int input yields [input values]
-    r = client.get(f"{url}?v=0,1")
+    v = [0, 1]
+    r = client.get(url, query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
-    assert type(r.json["v"][0]) is int
-    assert type(r.json["v"][1]) is int
-    assert r.json["v"][0] == 0
-    assert r.json["v"][1] == 1
+    list_assertion_helper(2, int, v, r.json["v"])
     # Test that present non-int list items yields error
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
 
 
 def test_required_list_bool(client):
     url = "/query/list/req_bool"
     # Test that present single bool input yields [input value]
-    r = client.get(f"{url}?v=true")
+    r = client.get(url, query_string={"v": True})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     assert type(r.json["v"][0]) is bool
     assert r.json["v"][0] is True
     # Test that present CSV bool input yields [input values]
-    r = client.get(f"{url}?v=false,true")
+    v = [False, True]
+    r = client.get(url, query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
-    assert type(r.json["v"][0]) is bool
-    assert type(r.json["v"][1]) is bool
-    assert r.json["v"][0] is False
-    assert r.json["v"][1] is True
+    list_assertion_helper(2, bool, v, r.json["v"])
     # Test that present non-bool list items yields error
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
 
 
@@ -726,215 +758,186 @@ def test_required_list_bool(client):
 #     r = client.get(f"{url}?v=a")
 #     assert "error" in r.json
 #     # Test that missing input yields error
-#     r = client.get(f"{url}")
+#     r = client.get(url)
 #     assert "error" in r.json
 
 
 def test_required_list_datetime(client):
     url = "/query/list/req_datetime"
     # Test that present single datetime input yields [input value]
-    r = client.get(f"{url}?v=2024-02-10T14:31:47")
+    v0 = datetime.datetime(2024, 2, 10, 14, 31, 47)
+    r = client.get(url, query_string={"v": v0.isoformat()})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     assert type(r.json["v"][0]) is str
-    assert r.json["v"][0] == datetime.datetime(2024, 2, 10, 14, 31, 47).isoformat()
+    assert r.json["v"][0] == v0.isoformat()
     # Test that present CSV datetime input yields [input values]
-    r = client.get(f"{url}?v=2024-02-10T14:32:38,2024-02-10T14:32:53")
+    v = [datetime.datetime(2024, 2, 10, 14, 32, 38),
+         datetime.datetime(2024, 2, 10, 14, 32, 53)]
+    r = client.get(url, query_string={"v": [d.isoformat() for d in v]})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
-    assert type(r.json["v"][0]) is str
-    assert type(r.json["v"][1]) is str
-    assert r.json["v"][0] == datetime.datetime(2024, 2, 10, 14, 32, 38).isoformat()
-    assert r.json["v"][1] == datetime.datetime(2024, 2, 10, 14, 32, 53).isoformat()
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
     # Test that present non-datetime list items yields error
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
 
 
 def test_required_list_date(client):
     url = "/query/list/req_date"
     # Test that present single date input yields [input value]
-    r = client.get(f"{url}?v=2024-02-09")
+    v0 = datetime.date(2024, 2, 9)
+    r = client.get(url, query_string={"v": v0.isoformat()})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     assert type(r.json["v"][0]) is str
-    assert r.json["v"][0] == datetime.date(2024, 2, 9).isoformat()
+    assert r.json["v"][0] == v0.isoformat()
     # Test that present CSV date input yields [input values]
-    r = client.get(f"{url}?v=2024-02-10,2024-02-11")
+    v = [datetime.date(2024, 2, 10), datetime.date(2024, 2, 11)]
+    r = client.get(url, query_string={"v": [d.isoformat() for d in v]})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
-    assert type(r.json["v"][0]) is str
-    assert type(r.json["v"][1]) is str
-    assert r.json["v"][0] == datetime.date(2024, 2, 10).isoformat()
-    assert r.json["v"][1] == datetime.date(2024, 2, 11).isoformat()
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
     # Test that present non-date list items yields error
-    r = client.get(f"{url}?v=a")
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
 
 
 def test_required_list_time(client):
     url = "/query/list/req_time"
     # Test that present single time input yields [input value]
-    r = client.get(f"{url}?v=14:37:02")
+    v0 = datetime.time(14, 37, 2)
+    r = client.get(url, query_string={"v": v0.isoformat()})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     assert type(r.json["v"][0]) is str
-    assert r.json["v"][0] == datetime.time(14, 37, 2).isoformat()
+    assert r.json["v"][0] == v0.isoformat()
     # Test that present CSV time input yields [input values]
-    r = client.get(f"{url}?v=14:37:34,14:37:45")
+    v = [datetime.time(14, 37, 34), datetime.time(14, 37, 45)]
+    r = client.get(url, query_string={"v": [d.isoformat() for d in v]})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
-    assert type(r.json["v"][0]) is str
-    assert type(r.json["v"][1]) is str
-    assert r.json["v"][0] == datetime.time(14, 37, 34).isoformat()
-    assert r.json["v"][1] == datetime.time(14, 37, 45).isoformat()
-    # Test that present non-bool list items yields error
-    r = client.get(f"{url}?v=a")
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that present non-time list items yields error
+    r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
     # Test that missing input yields error
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "error" in r.json
 
 
 def test_optional_list(client):
     url = "/query/list/optional"
     # Test that missing input yields None
-    r = client.get(f"{url}")
+    r = client.get(url)
     assert "v" in r.json
     assert r.json["v"] is None
     # Test that present str input yields [input value]
-    r = client.get(f"{url}?v=test")
+    r = client.get(url, query_string={"v": "test"})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     assert type(r.json["v"][0]) is str
     assert r.json["v"][0] == "test"
     # Test that present CSV str input yields [input values]
-    r = client.get(f"{url}?v=two,tests")
+    v = ["two", "tests"]
+    r = client.get(url, query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
-    assert type(r.json["v"][0]) is str
-    assert type(r.json["v"][1]) is str
-    assert r.json["v"][0] == "two"
-    assert r.json["v"][1] == "tests"
+    list_assertion_helper(2, str, v, r.json["v"])
 
 
 def test_list_default(client):
     url = "/query/list/default"
     # Test that missing input for required and optional yields default values
-    r = client.get(f"{url}")
+    n_opt = ["a", "b"]
+    opt = [0, 1]
+    r = client.get(url)
     assert "n_opt" in r.json
     assert type(r.json["n_opt"]) is list
     assert len(r.json["n_opt"]) == 2
-    assert type(r.json["n_opt"][0]) is str
-    assert type(r.json["n_opt"][1]) is str
-    assert r.json["n_opt"][0] == "a"
-    assert r.json["n_opt"][1] == "b"
+    list_assertion_helper(2, str, n_opt, r.json["n_opt"])
     assert "opt" in r.json
     assert type(r.json["opt"]) is list
     assert len(r.json["opt"]) == 2
-    assert type(r.json["opt"][0]) is int
-    assert type(r.json["opt"][1]) is int
-    assert r.json["opt"][0] == 0
-    assert r.json["opt"][1] == 1
+    list_assertion_helper(2, int, opt, r.json["opt"])
     # Test that present bool input for required and optional yields [input values]
-    r = client.get(f"{url}?opt=2,3&n_opt=c,d")
+    opt = [2, 3]
+    n_opt = ["c", "d"]
+    r = client.get(url, query_string={"opt": opt, "n_opt": n_opt})
     assert "n_opt" in r.json
     assert type(r.json["n_opt"]) is list
     assert len(r.json["n_opt"]) == 2
-    assert type(r.json["n_opt"][0]) is str
-    assert type(r.json["n_opt"][1]) is str
-    assert r.json["n_opt"][0] == "c"
-    assert r.json["n_opt"][1] == "d"
+    list_assertion_helper(2, str, n_opt, r.json["n_opt"])
     assert "opt" in r.json
     assert type(r.json["opt"]) is list
     assert len(r.json["opt"]) == 2
-    assert type(r.json["opt"][0]) is int
-    assert type(r.json["opt"][1]) is int
-    assert r.json["opt"][0] == 2
-    assert r.json["opt"][1] == 3
+    list_assertion_helper(2, int, opt, r.json["opt"])
 
 
 def test_list_func(client):
     url = "/query/list/func"
     # Test that input passing func yields input
-    r = client.get(f"{url}?v=0.1,0.2")
+    v = [0.1, 0.2]
+    r = client.get(url, query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
-    assert type(r.json["v"][0]) is float
-    assert type(r.json["v"][1]) is float
-    assert r.json["v"][0] == 0.1
-    assert r.json["v"][1] == 0.2
+    list_assertion_helper(2, float, v, r.json["v"])
     # Test that input failing func yields error
-    r = client.get(f"{url}?v=0.3,0.4,0.5")
+    r = client.get(url, query_string={"v": [0.3, 0.4, 0.5]})
     assert "error" in r.json
 
 
 def test_min_list_length(client):
     url = "/query/list/min_list_length"
     # Test that below length yields error
-    r = client.get(f"{url}?v=short,list")
+    r = client.get(url, query_string={"v": ["short", "list"]})
     assert "error" in r.json
     # Test that at length yields [input values]
-    r = client.get(f"{url}?v=kinda,longer,list")
+    v = ["kinda", "longer", "list"]
+    r = client.get(url, query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 3
-    assert type(r.json["v"][0]) is str
-    assert type(r.json["v"][1]) is str
-    assert type(r.json["v"][2]) is str
-    assert r.json["v"][0] == "kinda"
-    assert r.json["v"][1] == "longer"
-    assert r.json["v"][2] == "list"
+    list_assertion_helper(3, str, v, r.json["v"])
     # Test that above length yields [input values]
-    r = client.get(f"{url}?v=the,longest,of,lists")
+    v = ["the", "longest", "of", "lists"]
+    r = client.get(url, query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 4
-    assert type(r.json["v"][0]) is str
-    assert type(r.json["v"][1]) is str
-    assert type(r.json["v"][2]) is str
-    assert type(r.json["v"][3]) is str
-    assert r.json["v"][0] == "the"
-    assert r.json["v"][1] == "longest"
-    assert r.json["v"][2] == "of"
-    assert r.json["v"][3] == "lists"
+    list_assertion_helper(4, str, v, r.json["v"])
+
 
 def test_max_list_length(client):
     url = "/query/list/max_list_length"
     # Test that below length yields [input values]
-    r = client.get(f"{url}?v=short,list")
+    v = ["short", "list"]
+    r = client.get(url, query_string={"v": v})
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
-    assert type(r.json["v"][0]) is str
-    assert type(r.json["v"][1]) is str
-    assert r.json["v"][0] == "short"
-    assert r.json["v"][1] == "list"
+    list_assertion_helper(2, str, v, r.json["v"])
     # Test that at length yields [input values]
-    r = client.get(f"{url}?v=kinda,longer,list")
+    v = ["kinda", "longer", "list"]
+    r = client.get(url, query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 3
-    assert type(r.json["v"][0]) is str
-    assert type(r.json["v"][1]) is str
-    assert type(r.json["v"][2]) is str
-    assert r.json["v"][0] == "kinda"
-    assert r.json["v"][1] == "longer"
-    assert r.json["v"][2] == "list"
+    list_assertion_helper(3, str, v, r.json["v"])
     # Test that above length yields error
-    r = client.get(f"{url}?v=the,longest,of,lists")
+    r = client.get(url, query_string={"v": ["the", "longest", "of", "lists"]})
     assert "error" in r.json
