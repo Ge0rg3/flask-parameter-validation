@@ -1,0 +1,4 @@
+{
+  "name": "Test JSON Document",
+  "description": "This document will be uploaded to an API route that expects image/jpeg or image/png Content-Type, with the expectation that the API will return an error."
+}
