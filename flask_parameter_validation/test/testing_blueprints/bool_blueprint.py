@@ -2,7 +2,7 @@ from typing import Optional
 
 from flask import Blueprint, jsonify
 
-from flask_parameter_validation import ValidateParameters
+from flask_parameter_validation import ValidateParameters, Route
 from flask_parameter_validation.parameter_types.parameter import Parameter
 
 
@@ -10,18 +10,21 @@ def get_bool_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     bool_bp = Blueprint(bp_name, __name__, url_prefix="/bool")
     decorator = getattr(bool_bp, http_verb)
 
-    @decorator("/required")
+    def path(base: str, route_additions: str) -> str:
+        return base + (route_additions if ParamType is Route else "")
+
+    @decorator(path("/required", "/<v>"))
     @ValidateParameters()
     def required(v: bool = ParamType()):
         assert type(v) is bool
         return jsonify({"v": v})
 
-    @decorator("/optional")
+    @decorator("/optional")  # Route not supported by Optional
     @ValidateParameters()
     def optional(v: Optional[bool] = ParamType()):
         return jsonify({"v": v})
 
-    @decorator("/default")
+    @decorator("/default")  # Route not supported by default
     @ValidateParameters()
     def default(
             n_opt: bool = ParamType(default=False),
@@ -36,7 +39,7 @@ def get_bool_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
         assert type(v) is bool
         return v
 
-    @decorator("/func")
+    @decorator(path("/func", "/<v>"))
     @ValidateParameters()
     def func(v: bool = ParamType(func=is_true)):
         return jsonify({"v": v})

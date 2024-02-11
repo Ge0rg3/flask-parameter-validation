@@ -158,3 +158,29 @@ def test_int_func(client):
     # Test that input failing func yields error
     r = client.get(f"{url}/9")
     assert "error" in r.json
+
+
+# Bool Validation
+def test_required_bool(client):
+    url = "/route/bool/required"
+    # Test that present bool input yields input value
+    r = client.get(f"{url}/true")
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that missing input is 404
+    r = client.get(f"{url}")
+    assert r.status_code == 404
+    # Test that present non-bool input yields error
+    r = client.get(f"{url}/a")
+    assert "error" in r.json
+
+
+def test_bool_func(client):
+    url = "/route/bool/func"
+    # Test that input passing func yields input
+    r = client.get(f"{url}/true")
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that input failing func yields error
+    r = client.get(f"{url}/false")
+    assert "error" in r.json
