@@ -214,3 +214,45 @@ def test_float_func(client):
     # Test that input failing func yields error
     r = client.get(f"{url}/3.15")
     assert "error" in r.json
+
+
+# datetime Validation
+def test_required_datetime(client):
+    url = "/route/datetime/required"
+    # Test that present ISO 8601 input yields input value
+    v = datetime.datetime(2024, 2, 9, 3, 47, tzinfo=datetime.timezone.utc)
+    r = client.get(f"{url}/{v.isoformat()}")
+    assert "v" in r.json
+    assert r.json["v"] == v.isoformat()
+    # Test that missing input is 404
+    r = client.get(f"{url}")
+    assert r.status_code == 404
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(f"{url}/a")
+    assert "error" in r.json
+
+
+def test_datetime_func(client):
+    url = "/route/datetime/func"
+    # Test that input passing func yields input
+    v = datetime.datetime(2024, 2, 8, 23, 15, tzinfo=datetime.timezone(datetime.timedelta(hours=-5)))
+    r = client.get(f"{url}/{v.isoformat()}")
+    assert "v" in r.json
+    assert r.json["v"] == v.isoformat()
+    # Test that input failing func yields error
+    v = datetime.datetime(2024, 4, 8, 23, 17)
+    r = client.get(f"{url}/{v.isoformat}")
+    assert "error" in r.json
+
+
+def test_datetime_format(client):
+    url = "/route/datetime/datetime_format"
+    # Test that input passing format yields input
+    v = datetime.datetime(2024, 2, 8, 23, 19)
+    r = client.get(f"{url}/{v.strftime('%m/%d/%Y %I:%M %p')}")
+    assert "v" in r.json
+    assert r.json["v"] == v.isoformat()
+    # Test that input failing format yields error
+    v = datetime.datetime(2024, 2, 8, 23, 18, tzinfo=datetime.timezone(datetime.timedelta(hours=-5)))
+    r = client.get(f"{url}/{v.isoformat()}")
+    assert "error" in r.json
