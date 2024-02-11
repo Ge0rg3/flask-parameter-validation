@@ -679,6 +679,25 @@ def test_required_list_str(client):
     r = client.get(url)
     assert "error" in r.json
 
+def test_required_list_str_multiple_params(client):
+    url = "/query/list/req_str"
+    # Test that present single str input yields [input value]
+    r = client.get(url, query_string={"v": "w"})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == "w"
+    # Test that present multiple separate str inputs yields [input values]
+    v = ["x", "y"]
+    r = client.get(f"{url}?v=x&v=y")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
 
 def test_required_list_int(client):
     url = "/query/list/req_int"
