@@ -1,14 +1,11 @@
 import asyncio
 import functools
 import inspect
-import json
 import re
 from inspect import signature
-
 from flask import request
 from werkzeug.datastructures import ImmutableMultiDict
 from werkzeug.exceptions import BadRequest
-
 from .exceptions import (InvalidParameterTypeError, MissingInputError,
                          ValidationError)
 from .parameter_types import File, Form, Json, Query, Route
@@ -204,9 +201,6 @@ class ValidateParameters:
                 user_inputs[count] = expected_delivery_type.convert(
                     value, expected_input_types
                 )
-                for t in expected_input_types:
-                    print(f"Expected type: {t}")
-                print(f"Appended value of type {type(user_inputs[count])} to user_inputs")
             except ValueError as e:
                 raise ValidationError(str(e), expected_name, expected_input_type)
 
@@ -219,8 +213,6 @@ class ValidateParameters:
         if expected_input_type_str.startswith("typing.List"):
             if type(user_input) is not list:
                 validation_success = False
-
-        print(f"Validation Success? {validation_success}")
 
         # Error if types don't match
         if not validation_success:

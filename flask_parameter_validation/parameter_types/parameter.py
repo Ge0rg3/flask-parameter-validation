@@ -2,10 +2,8 @@
     Base Parameter class.
     Should only be used as child class for other params.
 """
-import json
 import re
 from datetime import date, datetime, time
-
 import dateutil.parser as parser
 import jsonschema
 from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
@@ -68,7 +66,6 @@ class Parameter:
 
     # Validator
     def validate(self, value):
-        print(f"Parameter#validate received {type(value)}")
         original_value_type_list = type(value) is list
         if type(value) is list:
             values = value
@@ -89,16 +86,13 @@ class Parameter:
             if self.json_schema is not None:
                 try:
                     jsonschema.validate(value, self.json_schema)
-                    print("JSON Schema Passed")
                 except JSONSchemaValidationError as e:
                     raise ValueError(f"failed JSON Schema validation: {e.args[0]}")
         elif type(value) is dict:
-            print("dict validate path")
             if self.json_schema is not None:
                 try:
                     jsonschema.validate(value, self.json_schema)
                 except JSONSchemaValidationError as e:
-                    print("Failed JSON Schema")
                     raise ValueError(f"failed JSON Schema validation: {e.args[0]}")
             values = [value]
         else:
@@ -162,7 +156,6 @@ class Parameter:
 
     def convert(self, value, allowed_types):
         """Some parameter types require manual type conversion (see Query)"""
-        print(f"Parameter#convert received {type(value)}")
         # Datetime conversion
         if None in allowed_types and value is None:
             return value
@@ -190,5 +183,4 @@ class Parameter:
                 return date.fromisoformat(str(value))
             except ValueError:
                 raise ValueError("date format does not match ISO 8601")
-        print(f"Parameter#convert returned {type(value)}")
         return value

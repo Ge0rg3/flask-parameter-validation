@@ -15,7 +15,6 @@ class Query(Parameter):
 
     def convert(self, value, allowed_types):
         """Convert query parameters to corresponding types."""
-        print(f"Query#convert received {type(value)}")
         if type(value) is str:
             # int conversion
             if int in allowed_types:
@@ -43,5 +42,4 @@ class Query(Parameter):
                     value = json.loads(value)
                 except ValueError:
                     raise ValueError(f"invalid JSON")
-        print(f"Query#convert returned {type(value)}")
         return super().convert(value, allowed_types)
