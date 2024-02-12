@@ -881,3 +881,109 @@ def test_max_list_length(client):
     # Test that above length yields error
     r = client.post(url, json={"v": ["the", "longest", "of", "lists"]})
     assert "error" in r.json
+
+
+def test_list_json_schema(client):
+    url = "/json/list/json_schema"
+    # Test that passing schema validation yields input
+    v = [{"user_id": 1, "first_name": "John", "last_name": "Doe", "tags": ["test_account"]}]
+    r = client.post(url, json={"v": v})
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is dict
+    assert v[0] == r.json["v"][0]
+    # Test that failing schema validation yields error
+    v = [{"user_id": 1, "first_name": "John", "last_name": "Doe"}]
+    r = client.post(url, json={"v": v})
+    assert "error" in r.json
+
+
+def test_required_dict(client):
+    url = "/json/dict/required"
+    # Test that dict yields input
+    v = {"a": "b"}
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is dict
+    assert v == r.json["v"]
+    # Test that non-dict yields error
+    r = client.post(url, json={"v": "a"})
+    assert "error" in r.json
+
+
+def test_optional_dict(client):
+    url = "/json/dict/optional"
+    # Test that dict yields input
+    v = {"a": "b"}
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is dict
+    assert v == r.json["v"]
+    # Test that non-dict yields error
+    r = client.post(url, json={"v": "a"})
+    assert "error" in r.json
+    # Test that no input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+
+
+def test_dict_default(client):
+    url = "/json/dict/default"
+    # Test that present dict yields input values
+    n_opt = {"e": "f"}
+    opt = {"g": "h"}
+    r = client.post(url, json={"n_opt": n_opt, "opt": opt})
+    assert "n_opt" in r.json
+    assert "opt" in r.json
+    assert type(r.json["n_opt"]) is dict
+    assert type(r.json["opt"]) is dict
+    assert n_opt == r.json["n_opt"]
+    assert opt == r.json["opt"]
+    # Test that missing dict yields default values
+    n_opt = {"a": "b"}
+    opt = {"c": "d"}
+    r = client.post(url)
+    assert "n_opt" in r.json
+    assert "opt" in r.json
+    assert type(r.json["n_opt"]) is dict
+    assert type(r.json["opt"]) is dict
+    assert n_opt == r.json["n_opt"]
+    assert opt == r.json["opt"]
+
+
+def test_dict_func(client):
+    url = "/json/dict/func"
+    # Test that dict passing func yields input value
+    v = {"a": "b", "c": "d"}
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is dict
+    assert v == r.json["v"]
+    # Test that dict failing func yields error
+    v = {"A": "B", "C": "D"}
+    r = client.post(url, json={"v": v})
+    assert "error" in r.json
+
+
+def test_dict_json_schema(client):
+    url = "/json/dict/json_schema"
+    # Test that dict passing schema yields input value
+    v = {
+        "user_id": 1,
+        "first_name": "John",
+        "last_name": "Doe",
+        "tags": []
+    }
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is dict
+    assert v == r.json["v"]
+    # Test that dict failing schema yields error
+    v = {
+        "user_id": 1,
+        "first_name": "John",
+        "last_name": "Doe"
+    }
+    r = client.post(url, json={"v": v})
+    assert "error" in r.json

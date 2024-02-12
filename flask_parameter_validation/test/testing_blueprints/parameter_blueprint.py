@@ -4,6 +4,7 @@ from flask_parameter_validation.parameter_types.parameter import Parameter
 from flask_parameter_validation.test.testing_blueprints.bool_blueprint import get_bool_blueprint
 from flask_parameter_validation.test.testing_blueprints.date_blueprint import get_date_blueprint
 from flask_parameter_validation.test.testing_blueprints.datetime_blueprint import get_datetime_blueprint
+from flask_parameter_validation.test.testing_blueprints.dict_blueprint import get_dict_blueprint
 from flask_parameter_validation.test.testing_blueprints.float_blueprint import get_float_blueprint
 from flask_parameter_validation.test.testing_blueprints.int_blueprint import get_int_blueprint
 from flask_parameter_validation.test.testing_blueprints.list_blueprint import get_list_blueprint
@@ -25,4 +26,5 @@ def get_parameter_blueprint(ParamType: type[Parameter], bp_name: str, param_name
     param_bp.register_blueprint(get_datetime_blueprint(ParamType, f"{bp_name}_datetime", http_verb))
     param_bp.register_blueprint(get_date_blueprint(ParamType, f"{bp_name}_date", http_verb))
     param_bp.register_blueprint(get_time_blueprint(ParamType, f"{bp_name}_time", http_verb))
+    param_bp.register_blueprint(get_dict_blueprint(ParamType, f"{bp_name}_dict", http_verb))
     return param_bp

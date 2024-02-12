@@ -104,4 +104,26 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     def max_list_length(v: List[str] = ParamType(max_list_length=3)):
         return jsonify({"v": v})
 
+    json_schema = {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "required": ["user_id", "first_name", "last_name", "tags"],
+            "properties": {
+                "user_id": {"type": "integer"},
+                "first_name": {"type": "string"},
+                "last_name": {"type": "string"},
+                "tags": {
+                    "type": "array",
+                    "items": {"type": "string"}
+                }
+            }
+        }
+    }
+
+    @decorator("/json_schema")
+    @ValidateParameters()
+    def json_schema(v: list = ParamType(json_schema=json_schema)):
+        return jsonify({"v": v})
+
     return list_bp
