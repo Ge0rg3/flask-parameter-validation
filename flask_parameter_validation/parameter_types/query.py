@@ -31,11 +31,13 @@ class Query(Parameter):
                     pass
             # bool conversion
             if bool in allowed_types:
-                if value.lower() == "true":
-                    value = True
-                elif value.lower() == "false":
-                    value = False
-            # dict conversion
+                try:
+                    if value.lower() == "true":
+                        value = True
+                    elif value.lower() == "false":
+                        value = False
+                except AttributeError:
+                    pass
             if dict in allowed_types:
                 try:
                     value = json.loads(value)

@@ -48,9 +48,28 @@ class Parameter:
         self.alias = alias
         self.json_schema = json_schema
 
+    def func_helper(self, v):
+        func_result = self.func(v)
+        if type(func_result) is bool:
+            if not func_result:
+                raise ValueError(
+                    "value does not match the validator function."
+                )
+        elif type(func_result) is tuple:
+            if len(func_result) == 2 and type(func_result[0]) is bool and type(func_result[1]) is str:
+                if not func_result[0]:
+                    raise ValueError(
+                        func_result[1]
+                    )
+            else:
+                raise ValueError(
+                    f"validator function returned incorrect type: {str(type(func_result))}, should return bool or (bool, str)"
+                )
+
     # Validator
     def validate(self, value):
         print(f"Parameter#validate received {type(value)}")
+        original_value_type_list = type(value) is list
         if type(value) is list:
             values = value
             # Min list len
@@ -65,6 +84,8 @@ class Parameter:
                     raise ValueError(
                         f"must have have a maximum of {self.max_list_length} items."
                     )
+            if self.func is not None:
+                self.func_helper(value)
             if self.json_schema is not None:
                 try:
                     jsonschema.validate(value, self.json_schema)
@@ -87,7 +108,7 @@ class Parameter:
         for value in values:
             # Min length
             if self.min_str_length is not None:
-                if hasattr(value, "len") and len(value) < self.min_str_length:
+                if len(value) < self.min_str_length:
                     raise ValueError(
                         f"must have at least {self.min_str_length} characters."
                     )
@@ -131,24 +152,11 @@ class Parameter:
                         f"pattern does not match: {self.pattern}."
                     )
 
-            # Callable
-            if self.func is not None:
-                func_result = self.func(value)
-                if type(func_result) is bool:
-                    if not func_result:
-                        raise ValueError(
-                            "value does not match the validator function."
-                        )
-                elif type(func_result) is tuple:
-                    if len(func_result) == 2 and type(func_result[0]) is bool and type(func_result[1]) is str:
-                        if not func_result[0]:
-                            raise ValueError(
-                                func_result[1]
-                            )
-                    else:
-                        raise ValueError(
-                            f"validator function returned incorrect type: {str(type(func_result))}, should return bool or (bool, str)"
-                        )
+            # Callable (non-list)
+            if self.func is not None and not original_value_type_list:
+                self.func_helper(value)
+
+
 
         return True
 

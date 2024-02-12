@@ -236,19 +236,14 @@ class ValidateParameters:
                 original_expected_input_type,
             )
 
-        print(json.dumps(user_input))
-
-        if expected_input_type_str.startswith("typing.List"):
-            # Validate parameter-specific requirements are met
-            try:
+        # Validate parameter-specific requirements are met
+        try:
+            if type(user_input) is list:
                 expected_delivery_type.validate(user_input)
-            except ValueError as e:
-                raise ValidationError(str(e), expected_name, expected_input_type)
-        else:
-            try:
+            else:
                 expected_delivery_type.validate(user_inputs[0])
-            except ValueError as e:
-                raise ValidationError(str(e), expected_name, expected_input_type)
+        except ValueError as e:
+            raise ValidationError(str(e), expected_name, expected_input_type)
 
         # Return input back to parent function
         if expected_input_type_str.startswith("typing.List"):
