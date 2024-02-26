@@ -66,6 +66,7 @@ The validation on files are different to the others, but file input can still be
 * datetime.datetime
 * datetime.date
 * datetime.time
+* dict
 
 ### Validation
 All parameters can have default values, and automatic validation.  
@@ -84,6 +85,7 @@ All parameters can have default values, and automatic validation.
 * datetime_format: str, datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))
 * comment: str, A string to display as the argument description in generated documentation (if used)
 * alias: str, An expected parameter name instead of the function name. See `access_type` example for clarification.
+* json_schema: dict, An expected [JSON Schema](https://json-schema.org) which the dict input must conform to
 
 `File` has the following options:
 * content_types: array of strings, an array of allowed content types.
@@ -219,6 +221,29 @@ This method returns an object with the following structure:
   },
   ...
 ]
+```
+
+### JSON Schema Validation
+An example of the [JSON Schema](https://json-schema.org) validation is provided below:
+```python
+json_schema = {
+    "type": "object",
+    "required": ["user_id", "first_name", "last_name", "tags"],
+    "properties": {
+        "user_id": {"type": "integer"},
+        "first_name": {"type": "string"},
+        "last_name": {"type": "string"},
+        "tags": {
+            "type": "array",
+            "items": {"type": "string"}
+        }
+    }
+}
+
+@api.get("/json_schema_example")
+@ValidateParameters()
+def json_schema(data: dict = Json(json_schema=json_schema)):
+    return jsonify({"data": data})
 ```
 
 ## Contributions
