@@ -3,11 +3,9 @@ import functools
 import inspect
 import re
 from inspect import signature
-
 from flask import request
 from werkzeug.datastructures import ImmutableMultiDict
 from werkzeug.exceptions import BadRequest
-
 from .exceptions import (InvalidParameterTypeError, MissingInputError,
                          ValidationError)
 from .parameter_types import File, Form, Json, Query, Route
@@ -46,7 +44,7 @@ class ValidateParameters:
         async def nested_func(**kwargs):
             # Step 1 - Get expected input details as dict
             expected_inputs = signature(f).parameters
-            
+
             # Step 2 - Validate JSON inputs
             json_input = None
             if request.headers.get("Content-Type") is not None:
@@ -61,7 +59,8 @@ class ValidateParameters:
             # Step 3 - Extract list of parameters expected to be lists (otherwise all values are converted to lists)
             expected_list_params = []
             for name, param in expected_inputs.items():
-                if str(param.annotation).startswith("typing.List") or str(param.annotation).startswith("typing.Optional[typing.List"):
+                if str(param.annotation).startswith("typing.List") or str(param.annotation).startswith(
+                        "typing.Optional[typing.List"):
                     expected_list_params.append(param.default.alias or name)
 
             # Step 4 - Convert request inputs to dicts
@@ -152,7 +151,7 @@ class ValidateParameters:
             else:
                 # Optionals are Unions with a NoneType, so we should check if None is part of Union __args__ (if exist)
                 if (
-                    hasattr(expected_input_type, "__args__") and type(None) in expected_input_type.__args__
+                        hasattr(expected_input_type, "__args__") and type(None) in expected_input_type.__args__
                 ):
                     return user_input
                 else:
@@ -231,7 +230,10 @@ class ValidateParameters:
 
         # Validate parameter-specific requirements are met
         try:
-            expected_delivery_type.validate(user_input)
+            if type(user_input) is list:
+                expected_delivery_type.validate(user_input)
+            else:
+                expected_delivery_type.validate(user_inputs[0])
         except ValueError as e:
             raise ValidationError(str(e), expected_name, expected_input_type)
 

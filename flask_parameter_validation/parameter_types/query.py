@@ -2,6 +2,8 @@
     Query Parameters
     - i.e. sent in GET requests, /?username=myname
 """
+import json
+
 from .parameter import Parameter
 
 
@@ -28,9 +30,16 @@ class Query(Parameter):
                     pass
             # bool conversion
             if bool in allowed_types:
-                if value.lower() == "true":
-                    value = True
-                elif value.lower() == "false":
-                    value = False
-
+                try:
+                    if value.lower() == "true":
+                        value = True
+                    elif value.lower() == "false":
+                        value = False
+                except AttributeError:
+                    pass
+            if dict in allowed_types:
+                try:
+                    value = json.loads(value)
+                except ValueError:
+                    raise ValueError(f"invalid JSON")
         return super().convert(value, allowed_types)
