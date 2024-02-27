@@ -25,6 +25,28 @@ def test_required_str(client):
     assert r.status_code == 404
 
 
+def test_required_str_decorator(client):
+    url = "/route/str/decorator/required"
+    # Test that present input yields input value
+    r = client.get(f"{url}/v")
+    assert "v" in r.json
+    assert r.json["v"] == "v"
+    # Test that missing input is 404
+    r = client.get(f"{url}")
+    assert r.status_code == 404
+
+
+def test_required_str_async_decorator(client):
+    url = "/route/str/async_decorator/required"
+    # Test that present input yields input value
+    r = client.get(f"{url}/v")
+    assert "v" in r.json
+    assert r.json["v"] == "v"
+    # Test that missing input is 404
+    r = client.get(f"{url}")
+    assert r.status_code == 404
+
+
 def test_str_min_str_length(client):
     url = "/route/str/min_str_length"
     # Test that below minimum yields error

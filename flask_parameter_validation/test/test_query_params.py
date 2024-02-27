@@ -25,6 +25,28 @@ def test_required_str(client):
     assert "error" in r.json
 
 
+def test_required_str_decorator(client):
+    url = "/query/str/decorator/required"
+    # Test that present input yields input value
+    r = client.get(url, query_string={"v": "v"})
+    assert "v" in r.json
+    assert r.json["v"] == "v"
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+
+def test_required_str_async_decorator(client):
+    url = "/query/str/async_decorator/required"
+    # Test that present input yields input value
+    r = client.get(url, query_string={"v": "v"})
+    assert "v" in r.json
+    assert r.json["v"] == "v"
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+
 def test_optional_str(client):
     url = "/query/str/optional"
     # Test that missing input yields None
@@ -37,8 +59,64 @@ def test_optional_str(client):
     assert r.json["v"] == "v"
 
 
+def test_optional_str_decorator(client):
+    url = "/query/str/decorator/optional"
+    # Test that missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present input yields input value
+    r = client.get(url, query_string={"v": "v"})
+    assert "v" in r.json
+    assert r.json["v"] == "v"
+
+
+def test_optional_str_async_decorator(client):
+    url = "/query/str/async_decorator/optional"
+    # Test that missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present input yields input value
+    r = client.get(url, query_string={"v": "v"})
+    assert "v" in r.json
+    assert r.json["v"] == "v"
+
+
 def test_str_default(client):
     url = "/query/str/default"
+    # Test that missing input for required and optional yields default values
+    r = client.get(url)
+    assert "opt" in r.json
+    assert r.json["opt"] == "optional"
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == "not_optional"
+    # Test that present input for required and optional yields input values
+    r = client.get(url, query_string={"opt": "a", "n_opt": "b"})
+    assert "opt" in r.json
+    assert r.json["opt"] == "a"
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == "b"
+
+
+def test_str_default_decorator(client):
+    url = "/query/str/decorator/default"
+    # Test that missing input for required and optional yields default values
+    r = client.get(url)
+    assert "opt" in r.json
+    assert r.json["opt"] == "optional"
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == "not_optional"
+    # Test that present input for required and optional yields input values
+    r = client.get(url, query_string={"opt": "a", "n_opt": "b"})
+    assert "opt" in r.json
+    assert r.json["opt"] == "a"
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == "b"
+
+
+def test_str_default_async_decorator(client):
+    url = "/query/str/async_decorator/default"
     # Test that missing input for required and optional yields default values
     r = client.get(url)
     assert "opt" in r.json
@@ -68,8 +146,68 @@ def test_str_min_str_length(client):
     assert r.json["v"] == "aaa"
 
 
+def test_str_min_str_length_decorator(client):
+    url = "/query/str/decorator/min_str_length"
+    # Test that below minimum yields error
+    r = client.get(url, query_string={"v": ""})
+    assert "error" in r.json
+    # Test that at minimum yields input
+    r = client.get(url, query_string={"v": "aa"})
+    assert "v" in r.json
+    assert r.json["v"] == "aa"
+    # Test that above minimum yields input
+    r = client.get(url, query_string={"v": "aaa"})
+    assert "v" in r.json
+    assert r.json["v"] == "aaa"
+
+
+def test_str_min_str_length_async_decorator(client):
+    url = "/query/str/async_decorator/min_str_length"
+    # Test that below minimum yields error
+    r = client.get(url, query_string={"v": ""})
+    assert "error" in r.json
+    # Test that at minimum yields input
+    r = client.get(url, query_string={"v": "aa"})
+    assert "v" in r.json
+    assert r.json["v"] == "aa"
+    # Test that above minimum yields input
+    r = client.get(url, query_string={"v": "aaa"})
+    assert "v" in r.json
+    assert r.json["v"] == "aaa"
+
+
 def test_str_max_str_length(client):
     url = "/query/str/max_str_length"
+    # Test that below maximum yields input
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
+    # Test that at maximum yields input
+    r = client.get(url, query_string={"v": "aa"})
+    assert "v" in r.json
+    assert r.json["v"] == "aa"
+    # Test that above maximum yields error
+    r = client.get(url, query_string={"v": "aaa"})
+    assert "error" in r.json
+
+
+def test_str_max_str_length_decorator(client):
+    url = "/query/str/decorator/max_str_length"
+    # Test that below maximum yields input
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
+    # Test that at maximum yields input
+    r = client.get(url, query_string={"v": "aa"})
+    assert "v" in r.json
+    assert r.json["v"] == "aa"
+    # Test that above maximum yields error
+    r = client.get(url, query_string={"v": "aaa"})
+    assert "error" in r.json
+
+
+def test_str_max_str_length_async_decorator(client):
+    url = "/query/str/async_decorator/max_str_length"
     # Test that below maximum yields input
     r = client.get(url, query_string={"v": ""})
     assert "v" in r.json
@@ -97,8 +235,64 @@ def test_str_whitelist(client):
     assert "error" in r.json
 
 
+def test_str_whitelist_decorator(client):
+    url = "/query/str/decorator/whitelist"
+    # Test that input within whitelist yields input
+    r = client.get(url, query_string={"v": "ABC123"})
+    assert "v" in r.json
+    assert r.json["v"] == "ABC123"
+    # Test that mixed input yields error
+    r = client.get(url, query_string={"v": "abc123"})
+    assert "error" in r.json
+    # Test that input outside of whitelist yields error
+    r = client.get(url, query_string={"v": "def456"})
+    assert "error" in r.json
+
+
+def test_str_whitelist_async_decorator(client):
+    url = "/query/str/async_decorator/whitelist"
+    # Test that input within whitelist yields input
+    r = client.get(url, query_string={"v": "ABC123"})
+    assert "v" in r.json
+    assert r.json["v"] == "ABC123"
+    # Test that mixed input yields error
+    r = client.get(url, query_string={"v": "abc123"})
+    assert "error" in r.json
+    # Test that input outside of whitelist yields error
+    r = client.get(url, query_string={"v": "def456"})
+    assert "error" in r.json
+
+
 def test_str_blacklist(client):
     url = "/query/str/blacklist"
+    # Test that input within blacklist yields error
+    r = client.get(url, query_string={"v": "ABC123"})
+    assert "error" in r.json
+    # Test that mixed input yields error
+    r = client.get(url, query_string={"v": "abc123"})
+    assert "error" in r.json
+    # Test that input outside of blacklist yields input
+    r = client.get(url, query_string={"v": "def456"})
+    assert "v" in r.json
+    assert r.json["v"] == "def456"
+
+
+def test_str_blacklist_decorator(client):
+    url = "/query/str/decorator/blacklist"
+    # Test that input within blacklist yields error
+    r = client.get(url, query_string={"v": "ABC123"})
+    assert "error" in r.json
+    # Test that mixed input yields error
+    r = client.get(url, query_string={"v": "abc123"})
+    assert "error" in r.json
+    # Test that input outside of blacklist yields input
+    r = client.get(url, query_string={"v": "def456"})
+    assert "v" in r.json
+    assert r.json["v"] == "def456"
+
+
+def test_str_blacklist_async_decorator(client):
+    url = "/query/str/async_decorator/blacklist"
     # Test that input within blacklist yields error
     r = client.get(url, query_string={"v": "ABC123"})
     assert "error" in r.json
@@ -122,8 +316,52 @@ def test_str_pattern(client):
     assert "error" in r.json
 
 
+def test_str_pattern_decorator(client):
+    url = "/query/str/decorator/pattern"
+    # Test that input matching pattern yields input
+    r = client.get(url, query_string={"v": "AbC123"})
+    assert "v" in r.json
+    assert r.json["v"] == "AbC123"
+    # Test that input failing pattern yields error
+    r = client.get(url, query_string={"v": "123ABC"})
+    assert "error" in r.json
+
+
+def test_str_pattern_async_decorator(client):
+    url = "/query/str/async_decorator/pattern"
+    # Test that input matching pattern yields input
+    r = client.get(url, query_string={"v": "AbC123"})
+    assert "v" in r.json
+    assert r.json["v"] == "AbC123"
+    # Test that input failing pattern yields error
+    r = client.get(url, query_string={"v": "123ABC"})
+    assert "error" in r.json
+
+
 def test_str_func(client):
     url = "/query/str/func"
+    # Test that input passing func yields input
+    r = client.get(url, query_string={"v": "123"})
+    assert "v" in r.json
+    assert r.json["v"] == "123"
+    # Test that input failing func yields error
+    r = client.get(url, query_string={"v": "abc"})
+    assert "error" in r.json
+
+
+def test_str_func_decorator(client):
+    url = "/query/str/decorator/func"
+    # Test that input passing func yields input
+    r = client.get(url, query_string={"v": "123"})
+    assert "v" in r.json
+    assert r.json["v"] == "123"
+    # Test that input failing func yields error
+    r = client.get(url, query_string={"v": "abc"})
+    assert "error" in r.json
+
+
+def test_str_func_async_decorator(client):
+    url = "/query/str/async_decorator/func"
     # Test that input passing func yields input
     r = client.get(url, query_string={"v": "123"})
     assert "v" in r.json
@@ -144,9 +382,59 @@ def test_str_alias(client):
     assert r.json["value"] == "abc"
 
 
+def test_str_alias_decorator(client):
+    url = "/query/str/decorator/alias"
+    # Test that original name yields error
+    r = client.get(url, query_string={"value": "abc"})
+    assert "error" in r.json
+    # Test that alias yields input
+    r = client.get(url, query_string={"v": "abc"})
+    assert "value" in r.json
+    assert r.json["value"] == "abc"
+
+
+def test_str_alias_async_decorator(client):
+    url = "/query/str/async_decorator/alias"
+    # Test that original name yields error
+    r = client.get(url, query_string={"value": "abc"})
+    assert "error" in r.json
+    # Test that alias yields input
+    r = client.get(url, query_string={"v": "abc"})
+    assert "value" in r.json
+    assert r.json["value"] == "abc"
+
+
 # Int Validation
 def test_required_int(client):
     url = "/query/int/required"
+    # Test that present int input yields input value
+    r = client.get(url, query_string={"v": 1})
+    assert "v" in r.json
+    assert r.json["v"] == 1
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-int input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_int_decorator(client):
+    url = "/query/int/decorator/required"
+    # Test that present int input yields input value
+    r = client.get(url, query_string={"v": 1})
+    assert "v" in r.json
+    assert r.json["v"] == 1
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-int input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_int_async_decorator(client):
+    url = "/query/int/async_decorator/required"
     # Test that present int input yields input value
     r = client.get(url, query_string={"v": 1})
     assert "v" in r.json
@@ -257,6 +545,50 @@ def test_required_bool(client):
     assert "error" in r.json
 
 
+def test_required_bool_decorator(client):
+    url = "/query/bool/decorator/required"
+    # Test that present lowercase bool input yields input value
+    r = client.get(url, query_string={"v": "true"})
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that present mixed-case bool input yields input value
+    r = client.get(url, query_string={"v": "TruE"})
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that present uppercase bool input yields input value
+    r = client.get(url, query_string={"v": "TRUE"})
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-bool input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_bool_async_decorator(client):
+    url = "/query/bool/async_decorator/required"
+    # Test that present lowercase bool input yields input value
+    r = client.get(url, query_string={"v": "true"})
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that present mixed-case bool input yields input value
+    r = client.get(url, query_string={"v": "TruE"})
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that present uppercase bool input yields input value
+    r = client.get(url, query_string={"v": "TRUE"})
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-bool input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
 def test_optional_bool(client):
     url = "/query/bool/optional"
     # Test that missing input yields None
@@ -321,6 +653,42 @@ def test_required_float(client):
     assert "error" in r.json
 
 
+def test_required_float_decorator(client):
+    url = "/query/float/decorator/required"
+    # Test that present float input yields input value
+    r = client.get(url, query_string={"v": 1.2})
+    assert "v" in r.json
+    assert r.json["v"] == 1.2
+    # Test that present int input yields float(input) value
+    r = client.get(url, query_string={"v": 1})
+    assert "v" in r.json
+    assert r.json["v"] == 1.0
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-float input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_float_async_decorator(client):
+    url = "/query/float/async_decorator/required"
+    # Test that present float input yields input value
+    r = client.get(url, query_string={"v": 1.2})
+    assert "v" in r.json
+    assert r.json["v"] == 1.2
+    # Test that present int input yields float(input) value
+    r = client.get(url, query_string={"v": 1})
+    assert "v" in r.json
+    assert r.json["v"] == 1.0
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-float input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
 def test_optional_float(client):
     url = "/query/float/optional"
     # Test that missing input yields None
@@ -369,6 +737,36 @@ def test_float_func(client):
 # datetime Validation
 def test_required_datetime(client):
     url = "/query/datetime/required"
+    # Test that present ISO 8601 input yields input value
+    v = datetime.datetime(2024, 2, 9, 3, 47, tzinfo=datetime.timezone.utc)
+    r = client.get(url, query_string={"v": v.isoformat()})
+    assert "v" in r.json
+    assert r.json["v"] == v.isoformat()
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_datetime_decorator(client):
+    url = "/query/datetime/decorator/required"
+    # Test that present ISO 8601 input yields input value
+    v = datetime.datetime(2024, 2, 9, 3, 47, tzinfo=datetime.timezone.utc)
+    r = client.get(url, query_string={"v": v.isoformat()})
+    assert "v" in r.json
+    assert r.json["v"] == v.isoformat()
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_datetime_async_decorator(client):
+    url = "/query/datetime/async_decorator/required"
     # Test that present ISO 8601 input yields input value
     v = datetime.datetime(2024, 2, 9, 3, 47, tzinfo=datetime.timezone.utc)
     r = client.get(url, query_string={"v": v.isoformat()})
@@ -463,6 +861,36 @@ def test_required_date(client):
     assert "error" in r.json
 
 
+def test_required_date_decorator(client):
+    url = "/query/date/decorator/required"
+    # Test that present ISO 8601 input yields input value
+    v = datetime.date(2024, 2, 9)
+    r = client.get(url, query_string={"v": v.isoformat()})
+    assert "v" in r.json
+    assert r.json["v"] == v.isoformat()
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_date_async_decorator(client):
+    url = "/query/date/async_decorator/required"
+    # Test that present ISO 8601 input yields input value
+    v = datetime.date(2024, 2, 9)
+    r = client.get(url, query_string={"v": v.isoformat()})
+    assert "v" in r.json
+    assert r.json["v"] == v.isoformat()
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
 def test_optional_date(client):
     url = "/query/date/optional"
     # Test that missing input yields None
@@ -531,6 +959,36 @@ def test_required_time(client):
     assert "error" in r.json
 
 
+def test_required_time_decorator(client):
+    url = "/query/time/decorator/required"
+    # Test that present ISO 8601 input yields input value
+    v = datetime.time(23, 24, 21)
+    r = client.get(url, query_string={"v": v.isoformat()})
+    assert "v" in r.json
+    assert r.json["v"] == v.isoformat()
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_time_async_decorator(client):
+    url = "/query/time/async_decorator/required"
+    # Test that present ISO 8601 input yields input value
+    v = datetime.time(23, 24, 21)
+    r = client.get(url, query_string={"v": v.isoformat()})
+    assert "v" in r.json
+    assert r.json["v"] == v.isoformat()
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-ISO 8601 input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
 def test_optional_time(client):
     url = "/query/time/optional"
     # Test that missing input yields None
@@ -586,6 +1044,42 @@ def test_time_func(client):
 # Union Validation
 def test_required_union(client):
     url = "/query/union/required"
+    # Test that present bool input yields input value
+    r = client.get(url, query_string={"v": True})
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that present int input yields input value
+    r = client.get(url, query_string={"v": 5541})
+    assert "v" in r.json
+    assert r.json["v"] == 5541
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-bool/int input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_union_decorator(client):
+    url = "/query/union/decorator/required"
+    # Test that present bool input yields input value
+    r = client.get(url, query_string={"v": True})
+    assert "v" in r.json
+    assert r.json["v"] is True
+    # Test that present int input yields input value
+    r = client.get(url, query_string={"v": 5541})
+    assert "v" in r.json
+    assert r.json["v"] == 5541
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+    # Test that present non-bool/int input yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_union_async_decorator(client):
+    url = "/query/union/async_decorator/required"
     # Test that present bool input yields input value
     r = client.get(url, query_string={"v": True})
     assert "v" in r.json
@@ -679,6 +1173,49 @@ def test_required_list_str(client):
     r = client.get(url)
     assert "error" in r.json
 
+
+def test_required_list_str_decorator(client):
+    url = "/query/list/decorator/req_str"
+    # Test that present single str input yields [input value]
+    r = client.get(url, query_string={"v": "w"})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == "w"
+    # Test that present CSV str input yields [input values]
+    v = ["x", "y"]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+
+def test_required_list_str_async_decorator(client):
+    url = "/query/list/async_decorator/req_str"
+    # Test that present single str input yields [input value]
+    r = client.get(url, query_string={"v": "w"})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == "w"
+    # Test that present CSV str input yields [input values]
+    v = ["x", "y"]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+
 def test_required_list_str_multiple_params(client):
     url = "/query/list/req_str"
     # Test that present single str input yields [input value]
@@ -698,6 +1235,49 @@ def test_required_list_str_multiple_params(client):
     # Test that missing input yields error
     r = client.get(url)
     assert "error" in r.json
+
+
+def test_required_list_str_multiple_params_decorator(client):
+    url = "/query/list/decorator/req_str"
+    # Test that present single str input yields [input value]
+    r = client.get(url, query_string={"v": "w"})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == "w"
+    # Test that present multiple separate str inputs yields [input values]
+    v = ["x", "y"]
+    r = client.get(f"{url}?v=x&v=y")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+
+def test_required_list_str_multiple_params_async_decorator(client):
+    url = "/query/list/async_decorator/req_str"
+    # Test that present single str input yields [input value]
+    r = client.get(url, query_string={"v": "w"})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == "w"
+    # Test that present multiple separate str inputs yields [input values]
+    v = ["x", "y"]
+    r = client.get(f"{url}?v=x&v=y")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
 
 def test_required_list_int(client):
     url = "/query/list/req_int"
@@ -881,6 +1461,62 @@ def test_optional_list(client):
 
 def test_list_default(client):
     url = "/query/list/default"
+    # Test that missing input for required and optional yields default values
+    n_opt = ["a", "b"]
+    opt = [0, 1]
+    r = client.get(url)
+    assert "n_opt" in r.json
+    assert type(r.json["n_opt"]) is list
+    assert len(r.json["n_opt"]) == 2
+    list_assertion_helper(2, str, n_opt, r.json["n_opt"])
+    assert "opt" in r.json
+    assert type(r.json["opt"]) is list
+    assert len(r.json["opt"]) == 2
+    list_assertion_helper(2, int, opt, r.json["opt"])
+    # Test that present bool input for required and optional yields [input values]
+    opt = [2, 3]
+    n_opt = ["c", "d"]
+    r = client.get(url, query_string={"opt": opt, "n_opt": n_opt})
+    assert "n_opt" in r.json
+    assert type(r.json["n_opt"]) is list
+    assert len(r.json["n_opt"]) == 2
+    list_assertion_helper(2, str, n_opt, r.json["n_opt"])
+    assert "opt" in r.json
+    assert type(r.json["opt"]) is list
+    assert len(r.json["opt"]) == 2
+    list_assertion_helper(2, int, opt, r.json["opt"])
+
+
+def test_list_default_decorator(client):
+    url = "/query/list/decorator/default"
+    # Test that missing input for required and optional yields default values
+    n_opt = ["a", "b"]
+    opt = [0, 1]
+    r = client.get(url)
+    assert "n_opt" in r.json
+    assert type(r.json["n_opt"]) is list
+    assert len(r.json["n_opt"]) == 2
+    list_assertion_helper(2, str, n_opt, r.json["n_opt"])
+    assert "opt" in r.json
+    assert type(r.json["opt"]) is list
+    assert len(r.json["opt"]) == 2
+    list_assertion_helper(2, int, opt, r.json["opt"])
+    # Test that present bool input for required and optional yields [input values]
+    opt = [2, 3]
+    n_opt = ["c", "d"]
+    r = client.get(url, query_string={"opt": opt, "n_opt": n_opt})
+    assert "n_opt" in r.json
+    assert type(r.json["n_opt"]) is list
+    assert len(r.json["n_opt"]) == 2
+    list_assertion_helper(2, str, n_opt, r.json["n_opt"])
+    assert "opt" in r.json
+    assert type(r.json["opt"]) is list
+    assert len(r.json["opt"]) == 2
+    list_assertion_helper(2, int, opt, r.json["opt"])
+
+
+def test_list_default_async_decorator(client):
+    url = "/query/list/async_decorator/default"
     # Test that missing input for required and optional yields default values
     n_opt = ["a", "b"]
     opt = [0, 1]

@@ -17,6 +17,28 @@ def test_required_file(client):
     assert "error" in r.json
 
 
+def test_required_file_decorator(client):
+    url = "/file/decorator/required"
+    # Test that we receive a success response if a file is provided
+    r = client.post(url, data={"v": (resources / "test.json").open("rb")})
+    assert "success" in r.json
+    assert r.json["success"]
+    # Test that we receive an error if a file is not provided
+    r = client.post(url)
+    assert "error" in r.json
+
+
+def test_required_file_async_decorator(client):
+    url = "/file/async_decorator/required"
+    # Test that we receive a success response if a file is provided
+    r = client.post(url, data={"v": (resources / "test.json").open("rb")})
+    assert "success" in r.json
+    assert r.json["success"]
+    # Test that we receive an error if a file is not provided
+    r = client.post(url)
+    assert "error" in r.json
+
+
 def test_optional_file(client):
     url = "/file/optional"
     # Test that we receive a success response if a file is provided

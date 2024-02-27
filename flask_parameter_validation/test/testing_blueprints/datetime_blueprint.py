@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify
 
 from flask_parameter_validation import ValidateParameters, Route
 from flask_parameter_validation.parameter_types.parameter import Parameter
+from flask_parameter_validation.test.testing_blueprints.dummy_decorators import dummy_decorator, dummy_async_decorator
 
 
 def get_datetime_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) -> Blueprint:
@@ -19,6 +20,21 @@ def get_datetime_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: 
     def required(v: datetime.datetime = ParamType()):
         assert type(v) is datetime.datetime
         return jsonify({"v": v.isoformat()})
+
+    @decorator(path("/decorator/required", "/<v>"))
+    @dummy_decorator
+    @ValidateParameters()
+    def decorator_required(v: datetime.datetime = ParamType()):
+        assert type(v) is datetime.datetime
+        return jsonify({"v": v.isoformat()})
+    
+    @decorator(path("/async_decorator/required", "/<v>"))
+    @dummy_async_decorator
+    @ValidateParameters()
+    async def async_decorator_required(v: datetime.datetime = ParamType()):
+        assert type(v) is datetime.datetime
+        return jsonify({"v": v.isoformat()})
+
 
     @decorator("/optional")  # Route not supported by Optional
     @ValidateParameters()

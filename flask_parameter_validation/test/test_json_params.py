@@ -952,6 +952,54 @@ def test_dict_default(client):
     assert opt == r.json["opt"]
 
 
+def test_dict_default_decorator(client):
+    url = "/json/dict/decorator/default"
+    # Test that present dict yields input values
+    n_opt = {"e": "f"}
+    opt = {"g": "h"}
+    r = client.post(url, json={"n_opt": n_opt, "opt": opt})
+    assert "n_opt" in r.json
+    assert "opt" in r.json
+    assert type(r.json["n_opt"]) is dict
+    assert type(r.json["opt"]) is dict
+    assert n_opt == r.json["n_opt"]
+    assert opt == r.json["opt"]
+    # Test that missing dict yields default values
+    n_opt = {"a": "b"}
+    opt = {"c": "d"}
+    r = client.post(url)
+    assert "n_opt" in r.json
+    assert "opt" in r.json
+    assert type(r.json["n_opt"]) is dict
+    assert type(r.json["opt"]) is dict
+    assert n_opt == r.json["n_opt"]
+    assert opt == r.json["opt"]
+
+
+def test_dict_default_async_decorator(client):
+    url = "/json/dict/async_decorator/default"
+    # Test that present dict yields input values
+    n_opt = {"e": "f"}
+    opt = {"g": "h"}
+    r = client.post(url, json={"n_opt": n_opt, "opt": opt})
+    assert "n_opt" in r.json
+    assert "opt" in r.json
+    assert type(r.json["n_opt"]) is dict
+    assert type(r.json["opt"]) is dict
+    assert n_opt == r.json["n_opt"]
+    assert opt == r.json["opt"]
+    # Test that missing dict yields default values
+    n_opt = {"a": "b"}
+    opt = {"c": "d"}
+    r = client.post(url)
+    assert "n_opt" in r.json
+    assert "opt" in r.json
+    assert type(r.json["n_opt"]) is dict
+    assert type(r.json["opt"]) is dict
+    assert n_opt == r.json["n_opt"]
+    assert opt == r.json["opt"]
+
+
 def test_dict_func(client):
     url = "/json/dict/func"
     # Test that dict passing func yields input value
