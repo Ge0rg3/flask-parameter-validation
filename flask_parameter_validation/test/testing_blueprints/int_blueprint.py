@@ -4,6 +4,7 @@ from flask import Blueprint, jsonify
 
 from flask_parameter_validation import ValidateParameters, Route
 from flask_parameter_validation.parameter_types.parameter import Parameter
+from flask_parameter_validation.test.testing_blueprints.dummy_decorators import dummy_decorator, dummy_async_decorator
 
 
 def get_int_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) -> Blueprint:
@@ -16,6 +17,20 @@ def get_int_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
     @decorator(path("/required", "/<int:v>"))
     @ValidateParameters()
     def required(v: int = ParamType()):
+        assert type(v) is int
+        return jsonify({"v": v})
+
+    @decorator(path("/decorator/required", "/<int:v>"))
+    @dummy_decorator
+    @ValidateParameters()
+    def decorator_required(v: int = ParamType()):
+        assert type(v) is int
+        return jsonify({"v": v})
+    
+    @decorator(path("/async_decorator/required", "/<int:v>"))
+    @dummy_async_decorator
+    @ValidateParameters()
+    async def async_decorator_required(v: int = ParamType()):
         assert type(v) is int
         return jsonify({"v": v})
 

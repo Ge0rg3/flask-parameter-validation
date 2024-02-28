@@ -25,6 +25,28 @@ def test_required_str(client):
     assert "error" in r.json
 
 
+def test_required_str_decorator(client):
+    url = "/form/str/decorator/required"
+    # Test that present input yields input value
+    r = client.post(url, data={"v": "v"})
+    assert "v" in r.json
+    assert r.json["v"] == "v"
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+
+
+def test_required_str_async_decorator(client):
+    url = "/form/str/async_decorator/required"
+    # Test that present input yields input value
+    r = client.post(url, data={"v": "v"})
+    assert "v" in r.json
+    assert r.json["v"] == "v"
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+
+
 def test_optional_str(client):
     url = "/form/str/optional"
     # Test that missing input yields None

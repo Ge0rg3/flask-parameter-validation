@@ -6,6 +6,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from flask_parameter_validation import ValidateParameters, File
+from flask_parameter_validation.test.testing_blueprints.dummy_decorators import dummy_decorator, dummy_async_decorator
 
 resources = Path(__file__).parent.parent / 'uploads'
 
@@ -18,6 +19,21 @@ def get_file_blueprint(bp_name: str) -> Blueprint:
     def required(v: FileStorage = File()):
         assert type(v) is FileStorage
         return jsonify({"success": True})
+
+    @file_bp.post("/decorator/required")
+    @dummy_decorator
+    @ValidateParameters()
+    def decorator_required(v: FileStorage = File()):
+        assert type(v) is FileStorage
+        return jsonify({"success": True})
+    
+    @file_bp.post("/async_decorator/required")
+    @dummy_async_decorator
+    @ValidateParameters()
+    async def async_decorator_required(v: FileStorage = File()):
+        assert type(v) is FileStorage
+        return jsonify({"success": True})
+
 
     @file_bp.post("/optional")
     @ValidateParameters()

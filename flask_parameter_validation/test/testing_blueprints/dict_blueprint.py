@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify
 
 from flask_parameter_validation import ValidateParameters, Route
 from flask_parameter_validation.parameter_types.parameter import Parameter
+from flask_parameter_validation.test.testing_blueprints.dummy_decorators import dummy_decorator, dummy_async_decorator
 
 
 def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) -> Blueprint:
@@ -29,6 +30,30 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     @decorator("/default")
     @ValidateParameters()
     def default(
+            n_opt: dict = ParamType(default={"a": "b"}),
+            opt: dict = ParamType(default={"c": "d"})
+    ):
+        return jsonify({
+            "n_opt": n_opt,
+            "opt": opt
+        })
+
+    @decorator("/decorator/default")
+    @dummy_decorator
+    @ValidateParameters()
+    def decorator_default(
+            n_opt: dict = ParamType(default={"a": "b"}),
+            opt: dict = ParamType(default={"c": "d"})
+    ):
+        return jsonify({
+            "n_opt": n_opt,
+            "opt": opt
+        })
+    
+    @decorator("/async_decorator/default")
+    @dummy_async_decorator
+    @ValidateParameters()
+    async def async_decorator_default(
             n_opt: dict = ParamType(default={"a": "b"}),
             opt: dict = ParamType(default={"c": "d"})
     ):
