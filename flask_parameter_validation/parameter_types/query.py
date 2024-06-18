@@ -10,7 +10,8 @@ from .parameter import Parameter
 class Query(Parameter):
     name = "query"
 
-    def __init__(self, default=None, **kwargs):
+    def __init__(self, default=None, deprecated=False, **kwargs):
+        self.deprecated = deprecated
         super().__init__(default, **kwargs)
 
     def convert(self, value, allowed_types):

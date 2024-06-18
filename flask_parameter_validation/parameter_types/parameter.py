@@ -89,6 +89,7 @@ class Parameter:
                 except JSONSchemaValidationError as e:
                     raise ValueError(f"failed JSON Schema validation: {e.args[0]}")
         elif type(value) is dict:
+            # TODO: Make json_schema work for all parameters besides FileStorage and datetime.*? Or maybe even datetime.*?
             if self.json_schema is not None:
                 try:
                     jsonschema.validate(value, self.json_schema)
