@@ -51,6 +51,24 @@ The `@ValidateParameters()` decorator takes parameters that alter route validati
 | openapi_responses | `Optional[dict]`     | `None`  | The OpenAPI Responses Object for this route, as a `dict` to be used in any generated [API Documentation](#api-documentation) |
 | hide_from_docs    | `bool`               | `False` | Hide this Route from any generated [API Documentation](#api-documentation)                                                   |
 
+#### Overwriting Default Errors
+By default, the error messages are returned as a JSON response, with the detailed error in the "error" field. However, this can be edited by passing a custom error function into the `ValidateParameters()` decorator. For example:
+```py
+def error_handler(err):
+    error_name = type(err)
+    error_parameters = err.args
+    error_message = str(err)
+    return {
+        "error_name": type(err).__name__,
+        "error_parameters": err.args,
+        "error_message": str(err)
+    }, 400
+
+@ValidateParameters(error_handler)
+@app.route(...)
+def api(...)
+```
+
 ### Specify Parameter types and constraints with type hints and subclasses of Parameter
 #### Parameter Class
 The `Parameter` class provides a base for validation common among all input types, all location-specific classes extend `Parameter`. These subclasses are:
@@ -89,48 +107,45 @@ These can be used in tandem to describe a parameter to validate: `parameter_name
 ### Validation with arguments to Parameter
 Validation beyond type-checking can be done by passing arguments into the constructor of the `Parameter` subclass. The arguments available for use on each type hint are:
 
-| Parameter Name    | Type                                       | Effective On          | Description                                                                                                                                                        |
-|-------------------|--------------------------------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `default`         | `any`                                      | All                   | Specifies the default value for the field, makes non-Optional fields not required                                                                                  |
-| `min_str_length`  | `int`                                      | `str`                 | Specifies the minimum character length for a string input                                                                                                          |
-| `max_str_length`  | `int`                                      | `str`                 | Specifies the maximum character length for a string input                                                                                                          |
-| `min_list_length` | `int`                                      | `typing.List`         | Specifies the minimum number of elements in a list                                                                                                                 | 
-| `max_list_length` | `int`                                      | `typing.List`         | Specifies the maximum number of elements in a list                                                                                                                 | 
-| `min_int`         | `int`                                      | `int`                 | Specifies the minimum number for an integer input                                                                                                                  |
-| `max_int`         | `int`                                      | `int`                 | Specifies the maximum number for an integer input                                                                                                                  |
-| `whitelist`       | `str`                                      | `str`                 | A string containing allowed characters for the value                                                                                                               |
-| `blacklist`       | `str`                                      | `str`                 | A string containing forbidden characters for the value                                                                                                             |
-| `pattern`         | `str`                                      | `str`                 | A regex pattern to test for string matches                                                                                                                         |
-| `func`            | `Callable - Union[bool, tuple[bool, str]]` | All                   | A function containing a fully customized logic to validate the value                                                                                               |
-| `datetime_format` | `str`                                      | `datetime.datetime`   | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)) |
-| `comment`         | `str`                                      | All                   | A string to display as the argument description in any generated documentation                                                                                     |
-| `alias`           | `str`                                      | All but `FileStorage` | An expected parameter name to receive instead of the function name.                                                                                                |
-| `json_schema`     | `dict`                                     | All but `FileStorage` | An expected [JSON Schema](https://json-schema.org) which the dict input must conform to                                                                            |
-| `content_types`   | `list[str]`                                | `FileStorage`         | Allowed `Content-Type`s                                                                                                                                            |
-| `min_length`      | `int`                                      | `FileStorage`         | Minimum `Content-Length` for a file                                                                                                                                |
-| `max_length`      | `int`                                      | `FileStorage`         | Maximum `Content-Length` for a file                                                                                                                                |
+| Parameter Name    | Type of Parameter                           | Effective On Types    | Description                                                                                                                                                        |
+|-------------------|---------------------------------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `default`         | any                                         | All                   | Specifies the default value for the field, makes non-Optional fields not required                                                                                  |
+| `min_str_length`  | `int`                                       | `str`                 | Specifies the minimum character length for a string input                                                                                                          |
+| `max_str_length`  | `int`                                       | `str`                 | Specifies the maximum character length for a string input                                                                                                          |
+| `min_list_length` | `int`                                       | `typing.List`         | Specifies the minimum number of elements in a list                                                                                                                 | 
+| `max_list_length` | `int`                                       | `typing.List`         | Specifies the maximum number of elements in a list                                                                                                                 | 
+| `min_int`         | `int`                                       | `int`                 | Specifies the minimum number for an integer input                                                                                                                  |
+| `max_int`         | `int`                                       | `int`                 | Specifies the maximum number for an integer input                                                                                                                  |
+| `whitelist`       | `str`                                       | `str`                 | A string containing allowed characters for the value                                                                                                               |
+| `blacklist`       | `str`                                       | `str`                 | A string containing forbidden characters for the value                                                                                                             |
+| `pattern`         | `str`                                       | `str`                 | A regex pattern to test for string matches                                                                                                                         |
+| `func`            | `Callable -> Union[bool, tuple[bool, str]]` | All                   | A function containing a fully customized logic to validate the value. See the [custom validation function](#custom-validation-function) below for usage            |
+| `datetime_format` | `str`                                       | `datetime.datetime`   | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)) |
+| `comment`         | `str`                                       | All                   | A string to display as the argument description in any generated documentation                                                                                     |
+| `alias`           | `str`                                       | All but `FileStorage` | An expected parameter name to receive instead of the function name.                                                                                                |
+| `json_schema`     | `dict`                                      | All but `FileStorage` | An expected [JSON Schema](https://json-schema.org) which the dict input must conform to                                                                            |
+| `content_types`   | `list[str]`                                 | `FileStorage`         | Allowed `Content-Type`s                                                                                                                                            |
+| `min_length`      | `int`                                       | `FileStorage`         | Minimum `Content-Length` for a file                                                                                                                                |
+| `max_length`      | `int`                                       | `FileStorage`         | Maximum `Content-Length` for a file                                                                                                                                |
 
 These validators are passed into the `Parameter` subclass in the route function, such as:
 * `username: str = Json(default="defaultusername", min_length=5)`
 * `profile_picture: werkzeug.datastructures.FileStorage = File(content_types=["image/png", "image/jpeg"])`
 * `filter: str = Query()`
- 
 
-### Overwriting Default Errors
-By default, the error messages are returned as a JSON response, with the detailed error in the "error" field. However, this can be edited by passing a custom error function into the `ValidateParameters()` decorator. For example:
+#### Custom Validation Function
+
+Custom validation functions passed into the `func` property can be used to validate an input against custom logic and return customized error responses for that validation
+
+Example custom validation functions are below:
 ```py
-def error_handler(err):
-    error_name = type(err)
-    error_parameters = err.args
-    error_message = str(err)
-    return {
-        "error_name": type(err).__name__,
-        "error_parameters": err.args,
-        "error_message": str(err)
-    }, 400
+def is_even(val: int):
+    """Return a single bool, True if valid, False if invalid"""
+    return val % 2 == 0
 
-@ValidateParameters(error_handler)
-def api(...)
+def is_odd(val: int):
+    """Return a tuple with a bool, as above, and the error message if the bool is False"""
+    return val % 2 != 0, "val must be odd"
 ```
 
 ### API Documentation
@@ -281,7 +296,7 @@ def json_schema(data: dict = Json(json_schema=json_schema)):
 
 ## Contributions
 Many thanks to all those who have made contributions to the project:
-* [d3-steichman](https://github.com/d3-steichman): API documentation, custom error handling, datetime validation and bug fixes
+* [d3-steichman](https://github.com/d3-steichman)/[smt5541](https://github.com/smt5541): API documentation, custom error handling, datetime validation and bug fixes
 * [summersz](https://github.com/summersz): Parameter aliases, async support, form type conversion and list bug fixes
 * [Garcel](https://github.com/Garcel): Allow passing custom validator function
 * [iml1111](https://github.com/iml1111): Implement regex validation
