@@ -87,7 +87,7 @@ Using the `MultiSource` parameter type, parameters can be accepted from any comb
 @app.route("/<v>")  # If accepting parameters by Route and another type, a path with and without that Route parameter must be specified
 @ValidateParameters()
 def multi_source_example(
-        value: int = MultiSource([Route(), Query(), Json()])
+        value: int = MultiSource(Route, Query, Json, min_int=0)
 )
 ```
 

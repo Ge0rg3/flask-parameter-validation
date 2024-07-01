@@ -514,3 +514,41 @@ def test_multi_source_optional_union(client, source_a, source_b):
     # Test that missing input yields error
     r = client.get(url)
     assert r.json["v"] is None
+
+
+@pytest.mark.parametrize(*common_parameters)
+def test_multi_source_int(client, source_a, source_b):
+    if source_a == source_b:  # This shouldn't be something someone does, so we won't test for it
+        return
+    url = f"/ms_{source_a}_{source_b}/kwargs"
+    for source in [source_a, source_b]:
+        # Test that present input matching validation yields input value
+        r = None
+        i = 3
+        if source == "query":
+            r = client.get(url, query_string={"v": i})
+        elif source == "form":
+            r = client.get(url, data={"v": i})
+        elif source == "json":
+            r = client.get(url, json={"v": i})
+        elif source == "route":
+            r = client.get(f"{url}/{i}")
+        assert r is not None
+        assert "v" in r.json
+        assert r.json["v"] == i
+        # Test that present input failing validation yields error
+        r = None
+        i = -1
+        if source == "query":
+            r = client.get(url, query_string={"v": i})
+        elif source == "form":
+            r = client.get(url, data={"v": i})
+        elif source == "json":
+            r = client.get(url, json={"v": i})
+        elif source == "route":
+            r = client.get(f"{url}/{i}")
+        assert r is not None
+        assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
