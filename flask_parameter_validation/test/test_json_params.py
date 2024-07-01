@@ -1035,3 +1035,32 @@ def test_dict_json_schema(client):
     }
     r = client.post(url, json={"v": v})
     assert "error" in r.json
+
+
+def test_non_typing_list_str(client):
+    url = "/json/list/non_typing"
+    # Test that present list[str] input yields [input values]
+    v = ["x", "y"]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+
+
+def test_non_typing_optional_list_str(client):
+    url = "/json/list/optional_non_typing"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present list[str] input yields [input values]
+    v = ["two", "tests"]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
