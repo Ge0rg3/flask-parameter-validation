@@ -61,8 +61,8 @@ def error_handler(err):
         "error_message": str(err)
     }, 400
 
-@ValidateParameters(error_handler)
 @app.route(...)
+@ValidateParameters(error_handler)
 def api(...)
 ```
 
@@ -70,31 +70,46 @@ def api(...)
 #### Parameter Class
 The `Parameter` class provides a base for validation common among all input types, all location-specific classes extend `Parameter`. These subclasses are:
 
-| Subclass Name | Input Source                                                                                                           | Available For    |
-|---------------|------------------------------------------------------------------------------------------------------------------------|------------------|
-| Route         | Parameter passed in the pathname of the URL, such as `/users/<int:id>`                                                 | All HTTP Methods |
-| Form          | Parameter in an HTML form or a `FormData` object in the request body, often with `Content-Type: x-www-form-urlencoded` | POST Methods     |
-| Json          | Parameter in the JSON object in the request body, must have header `Content-Type: application/json`                    | POST Method      |
-| Query         | Parameter in the query of the URL, such as /news_article?id=55                                                         | All HTTP Methods |
-| File          | Parameter is a file uploaded in the request body                                                                       | POST Method      |
+| Subclass Name | Input Source                                                                                                           | Available For                   |
+|---------------|------------------------------------------------------------------------------------------------------------------------|---------------------------------|
+| Route         | Parameter passed in the pathname of the URL, such as `/users/<int:id>`                                                 | All HTTP Methods                |
+| Form          | Parameter in an HTML form or a `FormData` object in the request body, often with `Content-Type: x-www-form-urlencoded` | POST Methods                    |
+| Json          | Parameter in the JSON object in the request body, must have header `Content-Type: application/json`                    | POST Method                     |
+| Query         | Parameter in the query of the URL, such as /news_article?id=55                                                         | All HTTP Methods                |
+| File          | Parameter is a file uploaded in the request body                                                                       | POST Method                     |
+| MultiSource   | Parameter is in one of the locations provided to the constructor                                                       | Dependent on selected locations |
+
+##### MultiSource Parameters
+Using the `MultiSource` parameter type, parameters can be accepted from any combination of `Parameter` subclasses. Example usage is as follows:
+
+```py
+@app.route("/")
+@app.route("/<v>")  # If accepting parameters by Route and another type, a path with and without that Route parameter must be specified
+@ValidateParameters()
+def multi_source_example(
+        value: int = MultiSource([Route(), Query(), Json()])
+)
+```
+
+The above example will accept parameters passed to the route through Route, Query, and JSON Body. Validation options must be specified on each constructor in order to be processed.
 
 #### Type Hints and Accepted Input Types
 Type Hints allow for inline specification of the input type of a parameter. Some types are only available to certain `Parameter` subclasses.
 
-| Type Hint / Expected Python Type   | Notes                                                                                                                          | `Route` | `Form` | `Json` | `Query` | `File` |
-|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|---------|--------|--------|---------|--------|
-| `str`                              |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
-| `int`                              |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
-| `bool`                             |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
-| `float`                            |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
-| `typing.List` (must not be `list`) | For `Query` inputs, users can pass via either `value=1&value=2&value=3`, or `value=1,2,3`, both will be transformed to a `list`. | N       | Y      | Y      | Y       | N      |
-| `typing.Union`                     |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
-| `typing.Optional`                  |                                                                                                                                | Y       | Y      | Y      | Y       | Y      |
-| `datetime.datetime`                | received as a `str` in ISO-8601 date-time format                                                                               | Y       | Y      | Y      | Y       | N      |
-| `datetime.date`                    | received as a `str` in ISO-8601 full-date format                                                                               | Y       | Y      | Y      | Y       | N      |
-| `datetime.time`                    | received as a `str` in ISO-8601 partial-time format                                                                            | Y       | Y      | Y      | Y       | N      |
-| `dict`                             |                                                                                                                                | N       | N      | Y      | N       | N      |
-| `FileStorage`                      |                                                                                                                                | N       | N      | N      | N       | Y      |
+| Type Hint / Expected Python Type   | Notes                                                                                                                                       | `Route` | `Form` | `Json` | `Query` | `File` |
+|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|---------|--------|--------|---------|--------|
+| `str`                              |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
+| `int`                              |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
+| `bool`                             |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
+| `float`                            |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
+| `typing.List` (must not be `list`) | For `Query` and `Form` inputs, users can pass via either `value=1&value=2&value=3`, or `value=1,2,3`, both will be transformed to a `list`. | N       | Y      | Y      | Y       | N      |
+| `typing.Union`                     | Cannot be used inside of `typing.List`                                                                                                      | Y       | Y      | Y      | Y       | N      |
+| `typing.Optional`                  |                                                                                                                                             | Y       | Y      | Y      | Y       | Y      |
+| `datetime.datetime`                | Received as a `str` in ISO-8601 date-time format                                                                                            | Y       | Y      | Y      | Y       | N      |
+| `datetime.date`                    | Received as a `str` in ISO-8601 full-date format                                                                                            | Y       | Y      | Y      | Y       | N      |
+| `datetime.time`                    | Received as a `str` in ISO-8601 partial-time format                                                                                         | Y       | Y      | Y      | Y       | N      |
+| `dict`                             | For `Query` and `Form` inputs, users should pass the stringified JSON                                                                       | N       | N      | Y      | N       | N      |
+| `FileStorage`                      |                                                                                                                                             | N       | N      | N      | N       | Y      |
 
 These can be used in tandem to describe a parameter to validate: `parameter_name: type_hint = ParameterSubclass()`
 - `parameter_name`: The field name itself, such as username
@@ -102,7 +117,7 @@ These can be used in tandem to describe a parameter to validate: `parameter_name
 - `ParameterSubclass`: An instance of a subclass of `Parameter`
 
 ### Validation with arguments to Parameter
-Validation beyond type-checking can be done by passing arguments into the constructor of the `Parameter` subclass. The arguments available for use on each type hint are:
+Validation beyond type-checking can be done by passing arguments into the constructor of the `Parameter` subclass (with the exception of `MultiSource`). The arguments available for use on each type hint are:
 
 | Parameter Name    | Type of Parameter                           | Effective On Types    | Description                                                                                                                                                        |
 |-------------------|---------------------------------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
