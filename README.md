@@ -108,7 +108,7 @@ Type Hints allow for inline specification of the input type of a parameter. Some
 | `datetime.datetime`                | Received as a `str` in ISO-8601 date-time format                                                                                            | Y       | Y      | Y      | Y       | N      |
 | `datetime.date`                    | Received as a `str` in ISO-8601 full-date format                                                                                            | Y       | Y      | Y      | Y       | N      |
 | `datetime.time`                    | Received as a `str` in ISO-8601 partial-time format                                                                                         | Y       | Y      | Y      | Y       | N      |
-| `dict`                             | For `Query` and `Form` inputs, users should pass the stringified JSON                                                                       | N       | N      | Y      | N       | N      |
+| `dict`                             | For `Query` and `Form` inputs, users should pass the stringified JSON                                                                       | N       | Y      | Y      | Y       | N      |
 | `FileStorage`                      |                                                                                                                                             | N       | N      | N      | N       | Y      |
 
 These can be used in tandem to describe a parameter to validate: `parameter_name: type_hint = ParameterSubclass()`
@@ -117,7 +117,7 @@ These can be used in tandem to describe a parameter to validate: `parameter_name
 - `ParameterSubclass`: An instance of a subclass of `Parameter`
 
 ### Validation with arguments to Parameter
-Validation beyond type-checking can be done by passing arguments into the constructor of the `Parameter` subclass (with the exception of `MultiSource`). The arguments available for use on each type hint are:
+Validation beyond type-checking can be done by passing arguments into the constructor of the `Parameter` subclass. The arguments available for use on each type hint are:
 
 | Parameter Name    | Type of Parameter                           | Effective On Types    | Description                                                                                                                                                        |
 |-------------------|---------------------------------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
