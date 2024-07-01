@@ -91,7 +91,7 @@ def multi_source_example(
 )
 ```
 
-The above example will accept parameters passed to the route through Route, Query, and JSON Body. Validation options must be specified on each constructor in order to be processed.
+The above example will accept parameters passed to the route through Route, Query, and JSON Body.
 
 #### Type Hints and Accepted Input Types
 Type Hints allow for inline specification of the input type of a parameter. Some types are only available to certain `Parameter` subclasses.
