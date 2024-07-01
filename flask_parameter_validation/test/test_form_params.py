@@ -913,7 +913,6 @@ def test_required_str_enum(client):
     # Test that present str_enum input yields input value
     r = client.post(url, data={"v": Fruits.APPLE.value})
     assert "v" in r.json
-    print(r.json["v"])
     assert r.json["v"] == Fruits.APPLE.value
     # Test that missing input yields error
     r = client.post(url)

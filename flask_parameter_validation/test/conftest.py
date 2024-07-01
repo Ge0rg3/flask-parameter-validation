@@ -11,7 +11,6 @@ def app():
 
 @pytest.fixture()
 def client(app):
-    print(app.url_map)
     return app.test_client()
 
 
