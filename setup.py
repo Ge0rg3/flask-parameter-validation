@@ -32,7 +32,7 @@ setup(
         'python-dateutil',
         'jsonschema',
     ],
-    python_requires=">=3.9,<=3.12.*",
+    python_requires=">=3.9,<3.13",
     classifiers=[
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
