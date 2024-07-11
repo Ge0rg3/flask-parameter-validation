@@ -38,7 +38,7 @@ if __name__ == "__main__":
 ## Usage
 To validate parameters with flask-parameter-validation, two conditions must be met. 
 1. The `@ValidateParameters()` decorator must be applied to the function
-2. Type hints ([supported types](#type-hints-and-accepted-input-types)) and a default of a subclass of `Parameter` must be supplied per parameter flask-parameter-validation parameter
+2. Type hints ([supported types](#type-hints-and-accepted-input-types)) and a default of a subclass of `Parameter` must be supplied per parameter
 
 
 ### Enable and customize Validation for a Route with the @ValidateParameters decorator
@@ -108,20 +108,20 @@ Note: "**POST Methods**" refers to the HTTP methods that send data in the reques
 #### Type Hints and Accepted Input Types
 Type Hints allow for inline specification of the input type of a parameter. Some types are only available to certain `Parameter` subclasses.
 
-| Type Hint / Expected Python Type   | Notes                                                                                                                                       | `Route` | `Form` | `Json` | `Query` | `File` |
-|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|---------|--------|--------|---------|--------|
-| `str`                              |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
-| `int`                              |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
-| `bool`                             |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
-| `float`                            |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
-|`list`/`typing.List` (`typing.List` is [deprecated](https://docs.python.org/3/library/typing.html#typing.List)) | For `Query` and `Form` inputs, users can pass via either `value=1&value=2&value=3`, or `value=1,2,3`, both will be transformed to a `list`. | N       | Y      | Y      | Y       | N      |
-| `typing.Union`                     | Cannot be used inside of `typing.List`                                                                                                      | Y       | Y      | Y      | Y       | N      |
-| `typing.Optional`                  |                                                                                                                                             | Y       | Y      | Y      | Y       | Y      |
-| `datetime.datetime`                | Received as a `str` in ISO-8601 date-time format                                                                                            | Y       | Y      | Y      | Y       | N      |
-| `datetime.date`                    | Received as a `str` in ISO-8601 full-date format                                                                                            | Y       | Y      | Y      | Y       | N      |
-| `datetime.time`                    | Received as a `str` in ISO-8601 partial-time format                                                                                         | Y       | Y      | Y      | Y       | N      |
-| `dict`                             | For `Query` and `Form` inputs, users should pass the stringified JSON                                                                       | N       | Y      | Y      | Y       | N      |
-| `FileStorage`                      |                                                                                                                                             | N       | N      | N      | N       | Y      |
+| Type Hint / Expected Python Type   | Notes                                                                                                                                                                                                                   | `Route` | `Form` | `Json` | `Query` | `File` |
+|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|--------|--------|---------|--------|
+| `str`                              |                                                                                                                                                                                                                         | Y       | Y      | Y      | Y       | N      |
+| `int`                              |                                                                                                                                                                                                                         | Y       | Y      | Y      | Y       | N      |
+| `bool`                             |                                                                                                                                                                                                                         | Y       | Y      | Y      | Y       | N      |
+| `float`                            |                                                                                                                                                                                                                         | Y       | Y      | Y      | Y       | N      |
+| `list`/`typing.List` (`typing.List` is [deprecated](https://docs.python.org/3/library/typing.html#typing.List)) | For `Query` and `Form` inputs, users can pass via either `value=1&value=2&value=3`, or `value=1,2,3`, both will be transformed to a `list` | N       | Y      | Y      | Y       | N      |
+| `typing.Union`                     | Cannot be used inside of `typing.List`                                                                                                                                                                                  | Y       | Y      | Y      | Y       | N      |
+| `typing.Optional`                  |                                                                                                                                                                                                                         | Y       | Y      | Y      | Y       | Y      |
+| `datetime.datetime`                | Received as a `str` in ISO-8601 date-time format                                                                                                                                                                        | Y       | Y      | Y      | Y       | N      |
+| `datetime.date`                    | Received as a `str` in ISO-8601 full-date format                                                                                                                                                                        | Y       | Y      | Y      | Y       | N      |
+| `datetime.time`                    | Received as a `str` in ISO-8601 partial-time format                                                                                                                                                                     | Y       | Y      | Y      | Y       | N      |
+| `dict`                             | For `Query` and `Form` inputs, users should pass the stringified JSON                                                                                                                                                   | N       | Y      | Y      | Y       | N      |
+| `FileStorage`                      |                                                                                                                                                                                                                         | N       | N      | N      | N       | Y      |
 
 These can be used in tandem to describe a parameter to validate: `parameter_name: type_hint = ParameterSubclass()`
 - `parameter_name`: The field name itself, such as username
