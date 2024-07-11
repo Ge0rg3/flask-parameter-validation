@@ -7,8 +7,7 @@
   - `git clone https://github.com/Ge0rg3/flask-parameter-validation.git`
   - `python setup.py install`
 
-
-## Simple Usage
+## Usage Example
 ```py
 from flask import Flask
 from typing import List, Optional
@@ -16,7 +15,6 @@ from flask_parameter_validation import ValidateParameters, Route, Json, Query
 from datetime import datetime
 
 app = Flask(__name__)
-
 
 @app.route("/update/<int:id>", methods=["POST"])
 @ValidateParameters()
@@ -37,70 +35,28 @@ if __name__ == "__main__":
     app.run()
 ```
 
-## Detailed Usage
-1. We use the ValidateParameters decorator on all functions that this modules should be used in.
-2. The format for arguments is as follows:
-`parameter_name: parameter_type = Class()`
-In this example, `parameter_name` would be the field name itself, such as "username". `parameter_type` would be the expected python data type, such as str, int, List, Union etc. Finally, `Class()` is one of the class inputs, as detailed below:
+## Usage
+To validate parameters with flask-parameter-validation, two conditions must be met. 
+1. The `@ValidateParameters()` decorator must be applied to the function
+2. Type hints ([supported types](#type-hints-and-accepted-input-types)) and a default of a subclass of `Parameter` must be supplied per parameter flask-parameter-validation parameter
 
-### Classes
-1. Route()  
-This is the data passed through the URL, such as `/users/<int:id>`
-2. Form()  
-This is the data passed by a normal HTML form, often with x-www-form-urlencoded content-type.
-3. Json()  
-This is any JSON body sent -- request must have application/json content type for flask to read this.
-4. Query()  
-This covers query parameters (aka GET parameters), such as `/news/article?id=55`
-5. File()  
-The validation on files are different to the others, but file input can still be obtained here as their Flask FileStorage objects.
 
-### Input types
-* str
-* int
-* bool
-* float
-* typing.List (must use this, not just `list`)
-* typing.Union
-* typing.Optional
-* datetime.datetime
-* datetime.date
-* datetime.time
-* dict
+### Enable and customize Validation for a Route with the @ValidateParameters decorator
+The `@ValidateParameters()` decorator takes parameters that alter route validation behavior or provide documentation information:
 
-### Validation
-All parameters can have default values, and automatic validation.  
-`Route`, `Form`, `Json` and `Query` have the following options:
-* default: any, Specifies the default value for the field.
-* min_str_length: int, Specifies the minimum character length for a string input
-* max_str_length: int, Specifies the maximum character length for a string input
-* min_list_length: int, Specifies the minimum number of elements in a list
-* max_list_length: int, Specifies the maximum number of elements in a list
-* min_int: int, Specifies the minimum number for an int input
-* max_int: int, Specifies the maximum number for an int input
-* whitelist: str, A string containing allowed characters for the value
-* blacklist: str, A string containing forbidden characters for the value
-* pattern: str, A regex pattern to test for string matches
-* func: Callable -> Union[bool, tuple[bool, str]], A function containing a fully customized logic to validate the value
-* datetime_format: str, datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))
-* comment: str, A string to display as the argument description in generated documentation (if used)
-* alias: str, An expected parameter name instead of the function name. See `access_type` example for clarification.
-* json_schema: dict, An expected [JSON Schema](https://json-schema.org) which the dict input must conform to
+| Parameter         | Type                 | Default | Description                                                                                                                  |
+|-------------------|----------------------|---------|------------------------------------------------------------------------------------------------------------------------------|
+| error_handler     | `Optional[Response]` | `None`  | Overwrite the output format of generated errors, see [Overwriting Default Errors](#overwriting-default-errors) for more      |
 
-`File` has the following options:
-* content_types: array of strings, an array of allowed content types.
-* min_length: Minimum content-length for a file
-* max_length: Maximum content-length for a file
+#### Overwriting Default Errors
+By default, the error messages are returned as a JSON response, with the detailed error in the "error" field, eg:
+```json
+{
+    "error": "Parameter 'age' must be type 'int'"
+}
+```
 
-These validators are passed into the classes in the route function, such as:
-* `username: str = Json("defaultusername", min_length=5)`
-* `profile_picture: werkzeug.datastructures.FileStorage = File(content_types=["image/png", "image/jpeg"])`
-* `filter: str = Query()`
-
-Note: For `typing.List` Query inputs, users can pass via either `value=1&value=2&value=3`, or `value=1,2,3`. Both will be transformed to a list. 
-
-### Overwriting default errors
-By default, the error messages are returned as a JSON response, with the detailed error in the "error" field. However, this can be edited by passing a custom error function into the ValidateParameters decorator. For example:
+However, this can be edited by passing a custom error function into the `ValidateParameters()` decorator. For example:
 ```py
 def error_handler(err):
     error_name = type(err)
@@ -113,11 +69,96 @@ def error_handler(err):
     }, 400
 
 @ValidateParameters(error_handler)
+@app.route(...)
 def api(...)
 ```
 
+### Specify Parameter types and constraints with type hints and subclasses of Parameter
+#### Parameter Class
+The `Parameter` class provides a base for validation common among all input types, all location-specific classes extend `Parameter`. These subclasses are:
+
+| Subclass Name | Input Source                                                                                                           | Available For    |
+|---------------|------------------------------------------------------------------------------------------------------------------------|------------------|
+| Route         | Parameter passed in the pathname of the URL, such as `/users/<int:id>`                                                 | All HTTP Methods |
+| Form          | Parameter in an HTML form or a `FormData` object in the request body, often with `Content-Type: x-www-form-urlencoded` | POST Methods     |
+| Json          | Parameter in the JSON object in the request body, must have header `Content-Type: application/json`                    | POST Methods     |
+| Query         | Parameter in the query of the URL, such as /news_article?id=55                                                         | All HTTP Methods |
+| File          | Parameter is a file uploaded in the request body                                                                       | POST Method      |
+
+Note: "**POST Methods**" refers to the HTTP methods that send data in the request body, such as POST, PUT, PATCH and DELETE. Although sending data via some methods such as DELETE is not standard, it is supported by Flask and this library.
+
+#### Type Hints and Accepted Input Types
+Type Hints allow for inline specification of the input type of a parameter. Some types are only available to certain `Parameter` subclasses.
+
+| Type Hint / Expected Python Type   | Notes                                                                                                                          | `Route` | `Form` | `Json` | `Query` | `File` |
+|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|---------|--------|--------|---------|--------|
+| `str`                              |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
+| `int`                              |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
+| `bool`                             |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
+| `float`                            |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
+| `typing.List` (must not be `list`) | For `Query` inputs, users can pass via either `value=1&value=2&value=3`, or `value=1,2,3`, both will be transformed to a `list`. | N       | Y      | Y      | Y       | N      |
+| `typing.Union`                     |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
+| `typing.Optional`                  |                                                                                                                                | Y       | Y      | Y      | Y       | Y      |
+| `datetime.datetime`                | received as a `str` in ISO-8601 date-time format                                                                               | Y       | Y      | Y      | Y       | N      |
+| `datetime.date`                    | received as a `str` in ISO-8601 full-date format                                                                               | Y       | Y      | Y      | Y       | N      |
+| `datetime.time`                    | received as a `str` in ISO-8601 partial-time format                                                                            | Y       | Y      | Y      | Y       | N      |
+| `dict`                             |                                                                                                                                | N       | N      | Y      | N       | N      |
+| `FileStorage`                      |                                                                                                                                | N       | N      | N      | N       | Y      |
+
+These can be used in tandem to describe a parameter to validate: `parameter_name: type_hint = ParameterSubclass()`
+- `parameter_name`: The field name itself, such as username
+- `type_hint`: The expected Python data type
+- `ParameterSubclass`: An instance of a subclass of `Parameter`
+
+### Validation with arguments to Parameter
+Validation beyond type-checking can be done by passing arguments into the constructor of the `Parameter` subclass. The arguments available for use on each type hint are:
+
+| Parameter Name    | Type of Parameter                           | Effective On Types    | Description                                                                                                                                                        |
+|-------------------|---------------------------------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `default`         | any                                         | All                   | Specifies the default value for the field, makes non-Optional fields not required                                                                                  |
+| `min_str_length`  | `int`                                       | `str`                 | Specifies the minimum character length for a string input                                                                                                          |
+| `max_str_length`  | `int`                                       | `str`                 | Specifies the maximum character length for a string input                                                                                                          |
+| `min_list_length` | `int`                                       | `typing.List`         | Specifies the minimum number of elements in a list                                                                                                                 | 
+| `max_list_length` | `int`                                       | `typing.List`         | Specifies the maximum number of elements in a list                                                                                                                 | 
+| `min_int`         | `int`                                       | `int`                 | Specifies the minimum number for an integer input                                                                                                                  |
+| `max_int`         | `int`                                       | `int`                 | Specifies the maximum number for an integer input                                                                                                                  |
+| `whitelist`       | `str`                                       | `str`                 | A string containing allowed characters for the value                                                                                                               |
+| `blacklist`       | `str`                                       | `str`                 | A string containing forbidden characters for the value                                                                                                             |
+| `pattern`         | `str`                                       | `str`                 | A regex pattern to test for string matches                                                                                                                         |
+| `func`            | `Callable -> Union[bool, tuple[bool, str]]` | All                   | A function containing a fully customized logic to validate the value. See the [custom validation function](#custom-validation-function) below for usage            |
+| `datetime_format` | `str`                                       | `datetime.datetime`   | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)) |
+| `comment`         | `str`                                       | All                   | A string to display as the argument description in any generated documentation                                                                                     |
+| `alias`           | `str`                                       | All but `FileStorage` | An expected parameter name to receive instead of the function name.                                                                                                |
+| `json_schema`     | `dict`                                      | `dict`                | An expected [JSON Schema](https://json-schema.org) which the dict input must conform to                                                                            |
+| `content_types`   | `list[str]`                                 | `FileStorage`         | Allowed `Content-Type`s                                                                                                                                            |
+| `min_length`      | `int`                                       | `FileStorage`         | Minimum `Content-Length` for a file                                                                                                                                |
+| `max_length`      | `int`                                       | `FileStorage`         | Maximum `Content-Length` for a file                                                                                                                                |
+
+These validators are passed into the `Parameter` subclass in the route function, such as:
+* `username: str = Json(default="defaultusername", min_length=5)`
+* `profile_picture: werkzeug.datastructures.FileStorage = File(content_types=["image/png", "image/jpeg"])`
+* `filter: str = Query()`
+
+#### Custom Validation Function
+
+Custom validation functions passed into the `func` property can be used to validate an input against custom logic and return customized error responses for that validation
+
+Example custom validation functions are below:
+```py
+def is_even(val: int):
+    """Return a single bool, True if valid, False if invalid"""
+    return val % 2 == 0
+
+def is_odd(val: int):
+    """Return a tuple with a bool, as above, and the error message if the bool is False"""
+    return val % 2 != 0, "val must be odd"
+```
+
 ### API Documentation
-Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate an API Documentation page. To make this easy to use, it comes with a blueprint and the configuration options below:
+Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate API Documentation in various formats. 
+To make this easy to use, it comes with a `Blueprint` and the output and configuration options below:
+
+#### Format
 * `FPV_DOCS_SITE_NAME: str`: Your site's name, to be displayed in the page title, default: `Site`
 * `FPV_DOCS_CUSTOM_BLOCKS: array`: An array of dicts to display as cards at the top of your documentation, with the (optional) keys:
   * `title: Optional[str]`: The title of the card
@@ -135,14 +176,14 @@ app.register_blueprint(docs_blueprint)
 
 The default blueprint adds two `GET` routes:
 * `/`: HTML Page with Bootstrap CSS and toggleable light/dark mode
-* `/json`: JSON Representation of the generated documentation
+* `/json`: Non-standard Format JSON Representation of the generated documentation
 
 The `/json` route yields a response with the following format:
 ```json
 {
   "custom_blocks": "<array entered in the FPV_DOCS_CUSTOM_BLOCKS config option, default: []>",
   "default_theme": "<string entered in the FPV_DOCS_DEFAULT_THEME config option, default: 'light'>",
-  "docs": "<see get_docs_arr() return value format below>",
+  "docs": "<see get_route_docs() return value format below>",
   "site_name": "<string entered in the FPV_DOCS_SITE_NAME config option, default: 'Site'"
 }
 ```
@@ -188,15 +229,15 @@ Documentation Generated:
 
 ![](docs/api_documentation_example.png)
 
-#### Custom Blueprint
+##### Custom Blueprint
 If you would like to use your own blueprint, you can get the raw data from the following function:
 ```py
-from flask_parameter_validation.docs_blueprint import get_docs_arr
+from flask_parameter_validation.docs_blueprint import get_route_docs
 ...
-get_docs_arr()
+get_route_docs()
 ```
 
-##### get_docs_arr() return value format
+###### get_route_docs() return value format
 This method returns an object with the following structure:
 
 ```json
@@ -205,6 +246,7 @@ This method returns an object with the following structure:
     "rule": "/path/to/route",
     "methods": ["HTTPVerb"],
     "docstring": "String, unsanitized of HTML Tags",
+    "decorators": ["@decorator1", "@decorator2(param)"],
     "args": {
       "<Subclass of Parameter this route uses>": [
         {
@@ -219,9 +261,11 @@ This method returns an object with the following structure:
       "<Another Subclass of Parameter this route uses>": []
     }
   },
+  
   ...
 ]
 ```
+
 
 ### JSON Schema Validation
 An example of the [JSON Schema](https://json-schema.org) validation is provided below:
@@ -248,7 +292,7 @@ def json_schema(data: dict = Json(json_schema=json_schema)):
 
 ## Contributions
 Many thanks to all those who have made contributions to the project:
-* [d3-steichman](https://github.com/d3-steichman): API documentation, custom error handling, datetime validation and bug fixes
+* [d3-steichman](https://github.com/d3-steichman)/[smt5541](https://github.com/smt5541): API documentation, custom error handling, datetime validation and bug fixes
 * [summersz](https://github.com/summersz): Parameter aliases, async support, form type conversion and list bug fixes
 * [Garcel](https://github.com/Garcel): Allow passing custom validator function
 * [iml1111](https://github.com/iml1111): Implement regex validation
