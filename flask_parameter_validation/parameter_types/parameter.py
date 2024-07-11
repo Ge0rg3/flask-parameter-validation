@@ -4,6 +4,7 @@
 """
 import re
 from datetime import date, datetime, time
+
 import dateutil.parser as parser
 import jsonschema
 from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
@@ -149,8 +150,6 @@ class Parameter:
             # Callable (non-list)
             if self.func is not None and not original_value_type_list:
                 self.func_helper(value)
-
-
 
         return True
 

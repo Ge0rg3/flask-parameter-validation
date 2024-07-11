@@ -38,7 +38,7 @@ if __name__ == "__main__":
 ## Usage
 To validate parameters with flask-parameter-validation, two conditions must be met. 
 1. The `@ValidateParameters()` decorator must be applied to the function
-2. Type hints ([supported types](#type-hints-and-accepted-input-types)) and a default of a subclass of `Parameter` for the parameters you want to use flask-parameter-validation on 
+2. Type hints ([supported types](#type-hints-and-accepted-input-types)) and a default of a subclass of `Parameter` must be supplied per parameter flask-parameter-validation parameter
 
 
 ### Enable and customize Validation for a Route with the @ValidateParameters decorator
@@ -49,7 +49,14 @@ The `@ValidateParameters()` decorator takes parameters that alter route validati
 | error_handler     | `Optional[Response]` | `None`  | Overwrite the output format of generated errors, see [Overwriting Default Errors](#overwriting-default-errors) for more      |
 
 #### Overwriting Default Errors
-By default, the error messages are returned as a JSON response, with the detailed error in the "error" field. However, this can be edited by passing a custom error function into the `ValidateParameters()` decorator. For example:
+By default, the error messages are returned as a JSON response, with the detailed error in the "error" field, eg:
+```json
+{
+    "error": "Parameter 'age' must be type 'int'"
+}
+```
+
+However, this can be edited by passing a custom error function into the `ValidateParameters()` decorator. For example:
 ```py
 def error_handler(err):
     error_name = type(err)
@@ -70,14 +77,16 @@ def api(...)
 #### Parameter Class
 The `Parameter` class provides a base for validation common among all input types, all location-specific classes extend `Parameter`. These subclasses are:
 
-| Subclass Name | Input Source                                                                                                           | Available For                   |
-|---------------|------------------------------------------------------------------------------------------------------------------------|---------------------------------|
-| Route         | Parameter passed in the pathname of the URL, such as `/users/<int:id>`                                                 | All HTTP Methods                |
-| Form          | Parameter in an HTML form or a `FormData` object in the request body, often with `Content-Type: x-www-form-urlencoded` | POST Methods                    |
-| Json          | Parameter in the JSON object in the request body, must have header `Content-Type: application/json`                    | POST Method                     |
-| Query         | Parameter in the query of the URL, such as /news_article?id=55                                                         | All HTTP Methods                |
-| File          | Parameter is a file uploaded in the request body                                                                       | POST Method                     |
+| Subclass Name | Input Source                                                                                                           | Available For    |
+|---------------|------------------------------------------------------------------------------------------------------------------------|------------------|
+| Route         | Parameter passed in the pathname of the URL, such as `/users/<int:id>`                                                 | All HTTP Methods |
+| Form          | Parameter in an HTML form or a `FormData` object in the request body, often with `Content-Type: x-www-form-urlencoded` | POST Methods     |
+| Json          | Parameter in the JSON object in the request body, must have header `Content-Type: application/json`                    | POST Methods     |
+| Query         | Parameter in the query of the URL, such as /news_article?id=55                                                         | All HTTP Methods |
+| File          | Parameter is a file uploaded in the request body                                                                       | POST Method      |
 | MultiSource   | Parameter is in one of the locations provided to the constructor                                                       | Dependent on selected locations |
+
+Note: "**POST Methods**" refers to the HTTP methods that send data in the request body, such as POST, PUT, PATCH and DELETE. Although sending data via some methods such as DELETE is not standard, it is supported by Flask and this library.
 
 ##### MultiSource Parameters
 Using the `MultiSource` parameter type, parameters can be accepted from any combination of `Parameter` subclasses. Example usage is as follows:
@@ -92,6 +101,7 @@ def multi_source_example(
 ```
 
 The above example will accept parameters passed to the route through Route, Query, and JSON Body.
+
 
 #### Type Hints and Accepted Input Types
 Type Hints allow for inline specification of the input type of a parameter. Some types are only available to certain `Parameter` subclasses.
