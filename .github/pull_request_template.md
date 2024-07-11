@@ -25,5 +25,3 @@
 - [ ] Has the README been updated to reflect the changes introduced (if applicable)?
 
 ### 💬 Additional comments
-
-#### Feel free to add any further information below
