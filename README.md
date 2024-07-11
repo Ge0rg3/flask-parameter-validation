@@ -68,8 +68,8 @@ def error_handler(err):
         "error_message": str(err)
     }, 400
 
-@ValidateParameters(error_handler)
 @app.route(...)
+@ValidateParameters(error_handler)
 def api(...)
 ```
 
@@ -84,26 +84,44 @@ The `Parameter` class provides a base for validation common among all input type
 | Json          | Parameter in the JSON object in the request body, must have header `Content-Type: application/json`                    | POST Methods     |
 | Query         | Parameter in the query of the URL, such as /news_article?id=55                                                         | All HTTP Methods |
 | File          | Parameter is a file uploaded in the request body                                                                       | POST Method      |
+| MultiSource   | Parameter is in one of the locations provided to the constructor                                                       | Dependent on selected locations |
+
+Note: "**POST Methods**" refers to the HTTP methods that send data in the request body, such as POST, PUT, PATCH and DELETE. Although sending data via some methods such as DELETE is not standard, it is supported by Flask and this library.
+
+##### MultiSource Parameters
+Using the `MultiSource` parameter type, parameters can be accepted from any combination of `Parameter` subclasses. Example usage is as follows:
+
+```py
+@app.route("/")
+@app.route("/<v>")  # If accepting parameters by Route and another type, a path with and without that Route parameter must be specified
+@ValidateParameters()
+def multi_source_example(
+        value: int = MultiSource(Route, Query, Json, min_int=0)
+)
+```
+
+The above example will accept parameters passed to the route through Route, Query, and JSON Body.
+
 
 Note: "**POST Methods**" refers to the HTTP methods that send data in the request body, such as POST, PUT, PATCH and DELETE. Although sending data via some methods such as DELETE is not standard, it is supported by Flask and this library.
 
 #### Type Hints and Accepted Input Types
 Type Hints allow for inline specification of the input type of a parameter. Some types are only available to certain `Parameter` subclasses.
 
-| Type Hint / Expected Python Type   | Notes                                                                                                                          | `Route` | `Form` | `Json` | `Query` | `File` |
-|------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|---------|--------|--------|---------|--------|
-| `str`                              |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
-| `int`                              |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
-| `bool`                             |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
-| `float`                            |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
-| `typing.List` (must not be `list`) | For `Query` inputs, users can pass via either `value=1&value=2&value=3`, or `value=1,2,3`, both will be transformed to a `list`. | N       | Y      | Y      | Y       | N      |
-| `typing.Union`                     |                                                                                                                                | Y       | Y      | Y      | Y       | N      |
-| `typing.Optional`                  |                                                                                                                                | Y       | Y      | Y      | Y       | Y      |
-| `datetime.datetime`                | received as a `str` in ISO-8601 date-time format                                                                               | Y       | Y      | Y      | Y       | N      |
-| `datetime.date`                    | received as a `str` in ISO-8601 full-date format                                                                               | Y       | Y      | Y      | Y       | N      |
-| `datetime.time`                    | received as a `str` in ISO-8601 partial-time format                                                                            | Y       | Y      | Y      | Y       | N      |
-| `dict`                             |                                                                                                                                | N       | N      | Y      | N       | N      |
-| `FileStorage`                      |                                                                                                                                | N       | N      | N      | N       | Y      |
+| Type Hint / Expected Python Type   | Notes                                                                                                                                       | `Route` | `Form` | `Json` | `Query` | `File` |
+|------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|---------|--------|--------|---------|--------|
+| `str`                              |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
+| `int`                              |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
+| `bool`                             |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
+| `float`                            |                                                                                                                                             | Y       | Y      | Y      | Y       | N      |
+| `typing.List` (must not be `list`) | For `Query` and `Form` inputs, users can pass via either `value=1&value=2&value=3`, or `value=1,2,3`, both will be transformed to a `list`. | N       | Y      | Y      | Y       | N      |
+| `typing.Union`                     | Cannot be used inside of `typing.List`                                                                                                      | Y       | Y      | Y      | Y       | N      |
+| `typing.Optional`                  |                                                                                                                                             | Y       | Y      | Y      | Y       | Y      |
+| `datetime.datetime`                | Received as a `str` in ISO-8601 date-time format                                                                                            | Y       | Y      | Y      | Y       | N      |
+| `datetime.date`                    | Received as a `str` in ISO-8601 full-date format                                                                                            | Y       | Y      | Y      | Y       | N      |
+| `datetime.time`                    | Received as a `str` in ISO-8601 partial-time format                                                                                         | Y       | Y      | Y      | Y       | N      |
+| `dict`                             | For `Query` and `Form` inputs, users should pass the stringified JSON                                                                       | N       | Y      | Y      | Y       | N      |
+| `FileStorage`                      |                                                                                                                                             | N       | N      | N      | N       | Y      |
 
 These can be used in tandem to describe a parameter to validate: `parameter_name: type_hint = ParameterSubclass()`
 - `parameter_name`: The field name itself, such as username
