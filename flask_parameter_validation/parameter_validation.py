@@ -13,6 +13,7 @@ from .parameter_types.multi_source import MultiSource
 
 fn_list = dict()
 
+list_type_hints = ["typing.List", "typing.Optional[typing.List", "list", "typing.Optional[list"]
 
 class ValidateParameters:
     @classmethod
@@ -65,8 +66,7 @@ class ValidateParameters:
             # Step 3 - Extract list of parameters expected to be lists (otherwise all values are converted to lists)
             expected_list_params = []
             for name, param in expected_inputs.items():
-                if str(param.annotation).startswith("typing.List") or str(param.annotation).startswith(
-                        "typing.Optional[typing.List"):
+                if True in [str(param.annotation).startswith(list_hint) for list_hint in list_type_hints]:
                     expected_list_params.append(param.default.alias or name)
 
             # Step 4 - Convert request inputs to dicts
@@ -209,7 +209,7 @@ class ValidateParameters:
                 user_inputs = [user_input]
                 # If typing.List in union and user supplied valid list, convert remaining check only for list
                 for exp_type in expected_input_types:
-                    if str(exp_type).startswith("typing.List"):
+                    if any(str(exp_type).startswith(list_hint) for list_hint in list_type_hints):
                         if type(user_input) is list:
                             # Only convert if validation passes
                             if hasattr(exp_type, "__args__"):
@@ -219,7 +219,7 @@ class ValidateParameters:
                                     expected_input_type_str = str(exp_type)
                                     user_inputs = user_input
             # If list, expand inner typing items. Otherwise, convert to list to match anyway.
-            elif expected_input_type_str.startswith("typing.List"):
+            elif any(expected_input_type_str.startswith(list_hint) for list_hint in list_type_hints):
                 expected_input_types = expected_input_type.__args__
                 if type(user_input) is list:
                     user_inputs = user_input
@@ -244,7 +244,7 @@ class ValidateParameters:
             )
 
             # Validate that if lists are required, lists are given
-            if expected_input_type_str.startswith("typing.List"):
+            if any(expected_input_type_str.startswith(list_hint) for list_hint in list_type_hints):
                 if type(user_input) is not list:
                     validation_success = False
 
@@ -252,7 +252,7 @@ class ValidateParameters:
             if not validation_success:
                 if hasattr(
                         original_expected_input_type, "__name__"
-                ) and not original_expected_input_type_str.startswith("typing."):
+                ) and not (original_expected_input_type_str.startswith("typing.") or original_expected_input_type_str.startswith("list")):
                     type_name = original_expected_input_type.__name__
                 else:
                     type_name = original_expected_input_type_str
@@ -272,6 +272,6 @@ class ValidateParameters:
                 raise ValidationError(str(e), expected_name, expected_input_type)
 
             # Return input back to parent function
-            if expected_input_type_str.startswith("typing.List"):
+            if any(expected_input_type_str.startswith(list_hint) for list_hint in list_type_hints):
                 return user_inputs
             return user_inputs[0]
