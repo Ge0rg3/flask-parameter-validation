@@ -1600,6 +1600,49 @@ def test_max_list_length(client):
     assert "error" in r.json
 
 
+def test_non_typing_list_str(client):
+    url = "/query/list/non_typing"
+    # Test that present single str input yields [input value]
+    r = client.get(url, query_string={"v": "w"})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == "w"
+    # Test that present CSV str input yields [input values]
+    v = ["x", "y"]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+
+def test_non_typing_optional_list_str(client):
+    url = "/query/list/optional_non_typing"
+    # Test that missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+        # Test that present str input yields [input value]
+    r = client.get(url, query_string={"v": "test"})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == "test"
+    # Test that present CSV str input yields [input values]
+    v = ["two", "tests"]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+
+
 # Enum validation
 def test_required_str_enum(client):
     url = "/query/str_enum/required"
@@ -1617,10 +1660,6 @@ def test_required_str_enum(client):
 
 def test_optional_str_enum(client):
     url = "/query/str_enum/optional"
-    # Test that missing input yields None
-    r = client.get(url)
-    assert "v" in r.json
-    assert r.json["v"] is None
     # Test that present str_enum input yields input value
     r = client.get(url, query_string={"v": Fruits.ORANGE.value})
     assert "v" in r.json

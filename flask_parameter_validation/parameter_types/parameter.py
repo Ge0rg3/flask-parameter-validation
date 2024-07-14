@@ -5,7 +5,6 @@
 import re
 from datetime import date, datetime, time
 from enum import Enum
-
 import dateutil.parser as parser
 import jsonschema
 from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
