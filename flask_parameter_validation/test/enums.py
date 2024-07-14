@@ -1,11 +1,11 @@
-from enum import StrEnum, IntEnum
+from enum import Enum
 
 
-class Fruits(StrEnum):
+class Fruits(str, Enum):
     APPLE = "apple"
     ORANGE = "orange"
 
 
-class Binary(IntEnum):
+class Binary(int, Enum):
     ZERO = 0
     ONE = 1
