@@ -4,7 +4,7 @@
 """
 import re
 from datetime import date, datetime, time
-from enum import Enum, StrEnum, IntEnum
+from enum import Enum
 
 import dateutil.parser as parser
 import jsonschema
@@ -184,8 +184,8 @@ class Parameter:
                 return date.fromisoformat(str(value))
             except ValueError:
                 raise ValueError("date format does not match ISO 8601")
-        elif len(allowed_types) == 1 and (issubclass(allowed_types[0], StrEnum) or issubclass(allowed_types[0], IntEnum)):
-            if issubclass(allowed_types[0], IntEnum):
+        elif len(allowed_types) == 1 and (issubclass(allowed_types[0], str) or issubclass(allowed_types[0], int) and issubclass(allowed_types[0], Enum)):
+            if issubclass(allowed_types[0], int):
                 value = int(value)
             returning = allowed_types[0](value)
             return returning
