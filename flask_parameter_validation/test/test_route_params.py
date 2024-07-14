@@ -2,6 +2,8 @@
 import datetime
 from typing import Type, List, Optional
 
+from flask_parameter_validation.test.enums import Fruits, Binary
+
 
 def list_assertion_helper(length: int, list_children_type: Type, expected_list: List, tested_list,
                           expected_call: Optional[str] = None):
@@ -125,6 +127,7 @@ def test_str_func(client):
     # Test that input failing func yields error
     r = client.get(f"{url}/abc")
     assert "error" in r.json
+
 
 # Int Validation
 def test_required_int(client):
@@ -372,4 +375,55 @@ def test_union_func(client):
     assert "error" in r.json
     # Test that int input failing func yields error
     r = client.get(f"{url}/0")
+    assert "error" in r.json
+
+
+# Enum validation
+def test_required_str_enum(client):
+    url = "/route/str_enum/required"
+    # Test that present str_enum input yields input value
+    r = client.get(f"{url}/{Fruits.APPLE.value}")
+    assert "v" in r.json
+    assert r.json["v"] == Fruits.APPLE.value
+    # Test that missing input is 404
+    r = client.get(url)
+    assert r.status_code == 404
+    # Test that present non-str_enum input yields error
+    r = client.get(f"{url}/a")
+    assert "error" in r.json
+
+
+def test_str_enum_func(client):
+    url = "/route/str_enum/func"
+    # Test that input passing func yields input
+    r = client.get(f"{url}/{Fruits.ORANGE.value}")
+    assert "v" in r.json
+    assert r.json["v"] == Fruits.ORANGE.value
+    # Test that input failing func yields error
+    r = client.get(f"{url}/{Fruits.APPLE.value}")
+    assert "error" in r.json
+
+
+def test_required_int_enum(client):
+    url = "/route/int_enum/required"
+    # Test that present int_enum input yields input value
+    r = client.get(f"{url}/{Binary.ONE.value}")
+    assert "v" in r.json
+    assert r.json["v"] == Binary.ONE.value
+    # Test that missing input is 404
+    r = client.get(url)
+    assert r.status_code == 404
+    # Test that present non-int_enum input yields error
+    r = client.get(f"{url}/8")
+    assert "error" in r.json
+
+
+def test_int_enum_func(client):
+    url = "/route/int_enum/func"
+    # Test that input passing func yields input
+    r = client.get(f"{url}/{Binary.ZERO.value}")
+    assert "v" in r.json
+    assert r.json["v"] == Binary.ZERO.value
+    # Test that input failing func yields error
+    r = client.get(f"{url}/{Binary.ONE.value}")
     assert "error" in r.json
