@@ -2,6 +2,8 @@
 import datetime
 from typing import Type, List, Optional
 
+from flask_parameter_validation.test.enums import Fruits, Binary
+
 
 def list_assertion_helper(length: int, list_children_type: Type, expected_list: List, tested_list,
                           expected_call: Optional[str] = None):
@@ -945,3 +947,122 @@ def test_non_typing_optional_list_str(client):
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, str, v, r.json["v"])
+
+
+# Enum validation
+def test_required_str_enum(client):
+    url = "/form/str_enum/required"
+    # Test that present str_enum input yields input value
+    r = client.post(url, data={"v": Fruits.APPLE.value})
+    assert "v" in r.json
+    assert r.json["v"] == Fruits.APPLE.value
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+    # Test that present non-str_enum input yields error
+    r = client.post(url, data={"v": "a"})
+    assert "error" in r.json
+
+
+def test_optional_str_enum(client):
+    url = "/form/str_enum/optional"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present str_enum input yields input value
+    r = client.post(url, data={"v": Fruits.ORANGE.value})
+    assert "v" in r.json
+    assert r.json["v"] == Fruits.ORANGE.value
+    # Test that present non-str_enum input yields error
+    r = client.post(url, data={"v": "v"})
+    assert "error" in r.json
+
+
+def test_str_enum_default(client):
+    url = "/form/str_enum/default"
+    # Test that missing input for required and optional yields default values
+    r = client.post(url)
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == Fruits.APPLE.value
+    assert "opt" in r.json
+    assert r.json["opt"] == Fruits.ORANGE.value
+    # Test that present str_enum input for required and optional yields input values
+    r = client.post(url, data={"opt": Fruits.ORANGE.value, "n_opt": Fruits.APPLE.value})
+    assert "opt" in r.json
+    assert r.json["opt"] == Fruits.ORANGE.value
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == Fruits.APPLE.value
+    # Test that present non-str_enum input for required yields error
+    r = client.post(url, data={"opt": "a", "n_opt": "b"})
+    assert "error" in r.json
+
+
+def test_str_enum_func(client):
+    url = "/form/str_enum/func"
+    # Test that input passing func yields input
+    r = client.post(url, data={"v": Fruits.ORANGE.value})
+    assert "v" in r.json
+    assert r.json["v"] == Fruits.ORANGE.value
+    # Test that input failing func yields error
+    r = client.post(url, data={"v": Fruits.APPLE.value})
+    assert "error" in r.json
+
+
+def test_required_int_enum(client):
+    url = "/form/int_enum/required"
+    # Test that present int_enum input yields input value
+    r = client.post(url, data={"v": Binary.ONE.value})
+    assert "v" in r.json
+    assert r.json["v"] == Binary.ONE.value
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+    # Test that present non-int_enum input yields error
+    r = client.post(url, data={"v": 8})
+    assert "error" in r.json
+
+
+def test_optional_int_enum(client):
+    url = "/form/int_enum/optional"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present int_enum input yields input value
+    r = client.post(url, data={"v": Binary.ZERO.value})
+    assert "v" in r.json
+    assert r.json["v"] == Binary.ZERO.value
+    # Test that present non-int_enum input yields error
+    r = client.post(url, data={"v": 8})
+    assert "error" in r.json
+
+
+def test_int_enum_default(client):
+    url = "/form/int_enum/default"
+    # Test that missing input for required and optional yields default values
+    r = client.post(url)
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == Binary.ZERO.value
+    assert "opt" in r.json
+    assert r.json["opt"] == Binary.ONE.value
+    # Test that present int_enum input for required and optional yields input values
+    r = client.post(url, data={"opt": Binary.ONE.value, "n_opt": Binary.ZERO.value})
+    assert "opt" in r.json
+    assert r.json["opt"] == Binary.ONE.value
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == Binary.ZERO.value
+    # Test that present non-int_enum input for required yields error
+    r = client.post(url, data={"opt": "a", "n_opt": 9})
+    assert "error" in r.json
+
+
+def test_int_enum_func(client):
+    url = "/form/int_enum/func"
+    # Test that input passing func yields input
+    r = client.post(url, data={"v": Binary.ZERO.value})
+    assert "v" in r.json
+    assert r.json["v"] == Binary.ZERO.value
+    # Test that input failing func yields error
+    r = client.post(url, data={"v": Binary.ONE.value})
+    assert "error" in r.json

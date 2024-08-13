@@ -13,6 +13,15 @@ from flask import Flask
 from typing import Optional
 from flask_parameter_validation import ValidateParameters, Route, Json, Query
 from datetime import datetime
+from enum import Enum
+
+class AccountStatus(int, Enum):  # In Python 3.11 or later, subclass IntEnum from enum package instead of int, Enum
+  ACTIVE = 1
+  DISABLED = 0
+
+class UserType(str, Enum):  # In Python 3.11 or later, subclass StrEnum from enum package instead of str, Enum
+  USER = "user"
+  SERVICE = "service"
 
 app = Flask(__name__)
 
@@ -26,7 +35,8 @@ def hello(
         date_of_birth: datetime = Json(),
         password_expiry: Optional[int] = Json(5),
         is_admin: bool = Query(False),
-        user_type: str = Json(alias="type")
+        user_type: UserType = Json(alias="type"),
+        status: AccountStatus = Json()
      ):
     return "Hello World!"
 
@@ -36,7 +46,7 @@ if __name__ == "__main__":
 ```
 
 ## Usage
-To validate parameters with flask-parameter-validation, two conditions must be met. 
+To validate parameters with flask-parameter-validation, two conditions must be met.
 1. The `@ValidateParameters()` decorator must be applied to the function
 2. Type hints ([supported types](#type-hints-and-accepted-input-types)) and a default of a subclass of `Parameter` must be supplied per parameter
 
@@ -108,20 +118,21 @@ Note: "**POST Methods**" refers to the HTTP methods that send data in the reques
 #### Type Hints and Accepted Input Types
 Type Hints allow for inline specification of the input type of a parameter. Some types are only available to certain `Parameter` subclasses.
 
-| Type Hint / Expected Python Type   | Notes                                                                                                                                                                                                                   | `Route` | `Form` | `Json` | `Query` | `File` |
-|------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|--------|--------|---------|--------|
-| `str`                              |                                                                                                                                                                                                                         | Y       | Y      | Y      | Y       | N      |
-| `int`                              |                                                                                                                                                                                                                         | Y       | Y      | Y      | Y       | N      |
-| `bool`                             |                                                                                                                                                                                                                         | Y       | Y      | Y      | Y       | N      |
-| `float`                            |                                                                                                                                                                                                                         | Y       | Y      | Y      | Y       | N      |
-| `list`/`typing.List` (`typing.List` is [deprecated](https://docs.python.org/3/library/typing.html#typing.List)) | For `Query` and `Form` inputs, users can pass via either `value=1&value=2&value=3`, or `value=1,2,3`, both will be transformed to a `list` | N       | Y      | Y      | Y       | N      |
-| `typing.Union`                     | Cannot be used inside of `typing.List`                                                                                                                                                                                  | Y       | Y      | Y      | Y       | N      |
-| `typing.Optional`                  |                                                                                                                                                                                                                         | Y       | Y      | Y      | Y       | Y      |
-| `datetime.datetime`                | Received as a `str` in ISO-8601 date-time format                                                                                                                                                                        | Y       | Y      | Y      | Y       | N      |
-| `datetime.date`                    | Received as a `str` in ISO-8601 full-date format                                                                                                                                                                        | Y       | Y      | Y      | Y       | N      |
-| `datetime.time`                    | Received as a `str` in ISO-8601 partial-time format                                                                                                                                                                     | Y       | Y      | Y      | Y       | N      |
-| `dict`                             | For `Query` and `Form` inputs, users should pass the stringified JSON                                                                                                                                                   | N       | Y      | Y      | Y       | N      |
-| `FileStorage`                      |                                                                                                                                                                                                                         | N       | N      | N      | N       | Y      |
+| Type Hint / Expected Python Type                                                                                  | Notes                                                                                                                                                                                                                     | `Route` | `Form` | `Json` | `Query` | `File` |
+|-------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|--------|--------|---------|--------|
+| `str`                                                                                                             |                                                                                                                                                                                                                           | Y       | Y      | Y      | Y       | N      |
+| `int`                                                                                                             |                                                                                                                                                                                                                           | Y       | Y      | Y      | Y       | N      |
+| `bool`                                                                                                            |                                                                                                                                                                                                                           | Y       | Y      | Y      | Y       | N      |
+| `float`                                                                                                           |                                                                                                                                                                                                                           | Y       | Y      | Y      | Y       | N      |
+| `list`/`typing.List` (`typing.List` is [deprecated](https://docs.python.org/3/library/typing.html#typing.List))   | For `Query` and `Form` inputs, users can pass via either `value=1&value=2&value=3`, or `value=1,2,3`, both will be transformed to a `list`                                                                                | N       | Y      | Y      | Y       | N      |
+| `typing.Union`                                                                                                    | Cannot be used inside of `typing.List`                                                                                                                                                                                    | Y       | Y      | Y      | Y       | N      |
+| `typing.Optional`                                                                                                 | Not supported for `Route` inputs                                                                                                                                                                                          | Y       | Y      | Y      | Y       | Y      |
+| `datetime.datetime`                                                                                               | Received as a `str` in ISO-8601 date-time format                                                                                                                                                                          | Y       | Y      | Y      | Y       | N      |
+| `datetime.date`                                                                                                   | Received as a `str` in ISO-8601 full-date format                                                                                                                                                                          | Y       | Y      | Y      | Y       | N      |
+| `datetime.time`                                                                                                   | Received as a `str` in ISO-8601 partial-time format                                                                                                                                                                       | Y       | Y      | Y      | Y       | N      |
+| `dict`                                                                                                            | For `Query` and `Form` inputs, users should pass the stringified JSON                                                                                                                                                     | N       | Y      | Y      | Y       | N      |
+| `FileStorage`                                                                                                     |                                                                                                                                                                                                                           | N       | N      | N      | N       | Y      |
+| A subclass of `StrEnum` or `IntEnum`, or a subclass of `Enum` with `str` or `int` mixins prior to Python 3.11     |                                                                                                                                                                                                                           | Y       | Y      | Y      | Y       | N      |
 
 These can be used in tandem to describe a parameter to validate: `parameter_name: type_hint = ParameterSubclass()`
 - `parameter_name`: The field name itself, such as username
@@ -131,26 +142,26 @@ These can be used in tandem to describe a parameter to validate: `parameter_name
 ### Validation with arguments to Parameter
 Validation beyond type-checking can be done by passing arguments into the constructor of the `Parameter` subclass. The arguments available for use on each type hint are:
 
-| Parameter Name    | Type of Parameter                           | Effective On Types    | Description                                                                                                                                                        |
-|-------------------|---------------------------------------------|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `default`         | any                                         | All                   | Specifies the default value for the field, makes non-Optional fields not required                                                                                  |
-| `min_str_length`  | `int`                                       | `str`                 | Specifies the minimum character length for a string input                                                                                                          |
-| `max_str_length`  | `int`                                       | `str`                 | Specifies the maximum character length for a string input                                                                                                          |
-| `min_list_length` | `int`                                       | `list`                | Specifies the minimum number of elements in a list                                                                                                                 | 
-| `max_list_length` | `int`                                       | `list`                | Specifies the maximum number of elements in a list                                                                                                                 | 
-| `min_int`         | `int`                                       | `int`                 | Specifies the minimum number for an integer input                                                                                                                  |
-| `max_int`         | `int`                                       | `int`                 | Specifies the maximum number for an integer input                                                                                                                  |
-| `whitelist`       | `str`                                       | `str`                 | A string containing allowed characters for the value                                                                                                               |
-| `blacklist`       | `str`                                       | `str`                 | A string containing forbidden characters for the value                                                                                                             |
-| `pattern`         | `str`                                       | `str`                 | A regex pattern to test for string matches                                                                                                                         |
-| `func`            | `Callable -> Union[bool, tuple[bool, str]]` | All                   | A function containing a fully customized logic to validate the value. See the [custom validation function](#custom-validation-function) below for usage            |
-| `datetime_format` | `str`                                       | `datetime.datetime`   | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)) |
-| `comment`         | `str`                                       | All                   | A string to display as the argument description in any generated documentation                                                                                     |
-| `alias`           | `str`                                       | All but `FileStorage` | An expected parameter name to receive instead of the function name.                                                                                                |
-| `json_schema`     | `dict`                                      | `dict`                | An expected [JSON Schema](https://json-schema.org) which the dict input must conform to                                                                            |
-| `content_types`   | `list[str]`                                 | `FileStorage`         | Allowed `Content-Type`s                                                                                                                                            |
-| `min_length`      | `int`                                       | `FileStorage`         | Minimum `Content-Length` for a file                                                                                                                                |
-| `max_length`      | `int`                                       | `FileStorage`         | Maximum `Content-Length` for a file                                                                                                                                |
+| Parameter Name    | Type of Argument                                 | Effective On Types     | Description                                                                                                                                                        |
+|-------------------|--------------------------------------------------|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `default`         | any                                              | All, except in `Route` | Specifies the default value for the field, makes non-Optional fields not required                                                                                  |
+| `min_str_length`  | `int`                                            | `str`                  | Specifies the minimum character length for a string input                                                                                                          |
+| `max_str_length`  | `int`                                            | `str`                  | Specifies the maximum character length for a string input                                                                                                          |
+| `min_list_length` | `int`                                            | `list`                 | Specifies the minimum number of elements in a list                                                                                                                 |
+| `max_list_length` | `int`                                            | `list`                 | Specifies the maximum number of elements in a list                                                                                                                 |
+| `min_int`         | `int`                                            | `int`                  | Specifies the minimum number for an integer input                                                                                                                  |
+| `max_int`         | `int`                                            | `int`                  | Specifies the maximum number for an integer input                                                                                                                  |
+| `whitelist`       | `str`                                            | `str`                  | A string containing allowed characters for the value                                                                                                               |
+| `blacklist`       | `str`                                            | `str`                  | A string containing forbidden characters for the value                                                                                                             |
+| `pattern`         | `str`                                            | `str`                  | A regex pattern to test for string matches                                                                                                                         |
+| `func`            | `Callable[Any] -> Union[bool, tuple[bool, str]]` | All                    | A function containing a fully customized logic to validate the value. See the [custom validation function](#custom-validation-function) below for usage            |
+| `datetime_format` | `str`                                            | `datetime.datetime`    | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)) |
+| `comment`         | `str`                                            | All                    | A string to display as the argument description in any generated documentation                                                                                     |
+| `alias`           | `str`                                            | All but `FileStorage`  | An expected parameter name to receive instead of the function name.                                                                                                |
+| `json_schema`     | `dict`                                           | `dict`                 | An expected [JSON Schema](https://json-schema.org) which the dict input must conform to                                                                            |
+| `content_types`   | `list[str]`                                      | `FileStorage`          | Allowed `Content-Type`s                                                                                                                                            |
+| `min_length`      | `int`                                            | `FileStorage`          | Minimum `Content-Length` for a file                                                                                                                                |
+| `max_length`      | `int`                                            | `FileStorage`          | Maximum `Content-Length` for a file                                                                                                                                |
 
 These validators are passed into the `Parameter` subclass in the route function, such as:
 * `username: str = Json(default="defaultusername", min_length=5)`
@@ -173,7 +184,7 @@ def is_odd(val: int):
 ```
 
 ### API Documentation
-Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate API Documentation in various formats. 
+Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate API Documentation in various formats.
 To make this easy to use, it comes with a `Blueprint` and the output and configuration options below:
 
 #### Format
@@ -279,7 +290,7 @@ This method returns an object with the following structure:
       "<Another Subclass of Parameter this route uses>": []
     }
   },
-  
+
   ...
 ]
 ```
