@@ -15,11 +15,11 @@ from flask_parameter_validation import ValidateParameters, Route, Json, Query
 from datetime import datetime
 from enum import Enum
 
-class AccountStatus(int, Enum):
+class AccountStatus(int, Enum):  # In Python 3.11 or later, subclass IntEnum from enum package instead of int, Enum
   ACTIVE = 1
   DISABLED = 0
 
-class UserType(str, Enum):
+class UserType(str, Enum):  # In Python 3.11 or later, subclass StrEnum from enum package instead of str, Enum
   USER = "user"
   SERVICE = "service"
 
