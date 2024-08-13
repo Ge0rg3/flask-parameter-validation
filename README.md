@@ -13,6 +13,15 @@ from flask import Flask
 from typing import Optional
 from flask_parameter_validation import ValidateParameters, Route, Json, Query
 from datetime import datetime
+from enum import Enum
+
+class AccountStatus(int, Enum):
+  ACTIVE = 1
+  DISABLED = 0
+
+class UserType(str, Enum):
+  USER = "user"
+  SERVICE = "service"
 
 app = Flask(__name__)
 
@@ -26,7 +35,8 @@ def hello(
         date_of_birth: datetime = Json(),
         password_expiry: Optional[int] = Json(5),
         is_admin: bool = Query(False),
-        user_type: str = Json(alias="type")
+        user_type: UserType = Json(alias="type"),
+        status: AccountStatus = Json()
      ):
     return "Hello World!"
 
@@ -36,7 +46,7 @@ if __name__ == "__main__":
 ```
 
 ## Usage
-To validate parameters with flask-parameter-validation, two conditions must be met. 
+To validate parameters with flask-parameter-validation, two conditions must be met.
 1. The `@ValidateParameters()` decorator must be applied to the function
 2. Type hints ([supported types](#type-hints-and-accepted-input-types)) and a default of a subclass of `Parameter` must be supplied per parameter
 
@@ -137,8 +147,8 @@ Validation beyond type-checking can be done by passing arguments into the constr
 | `default`         | any                                              | All, except in `Route` | Specifies the default value for the field, makes non-Optional fields not required                                                                                  |
 | `min_str_length`  | `int`                                            | `str`                  | Specifies the minimum character length for a string input                                                                                                          |
 | `max_str_length`  | `int`                                            | `str`                  | Specifies the maximum character length for a string input                                                                                                          |
-| `min_list_length` | `int`                                            | `list`                 | Specifies the minimum number of elements in a list                                                                                                                 | 
-| `max_list_length` | `int`                                            | `list`                 | Specifies the maximum number of elements in a list                                                                                                                 | 
+| `min_list_length` | `int`                                            | `list`                 | Specifies the minimum number of elements in a list                                                                                                                 |
+| `max_list_length` | `int`                                            | `list`                 | Specifies the maximum number of elements in a list                                                                                                                 |
 | `min_int`         | `int`                                            | `int`                  | Specifies the minimum number for an integer input                                                                                                                  |
 | `max_int`         | `int`                                            | `int`                  | Specifies the maximum number for an integer input                                                                                                                  |
 | `whitelist`       | `str`                                            | `str`                  | A string containing allowed characters for the value                                                                                                               |
@@ -174,7 +184,7 @@ def is_odd(val: int):
 ```
 
 ### API Documentation
-Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate API Documentation in various formats. 
+Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate API Documentation in various formats.
 To make this easy to use, it comes with a `Blueprint` and the output and configuration options below:
 
 #### Format
@@ -280,7 +290,7 @@ This method returns an object with the following structure:
       "<Another Subclass of Parameter this route uses>": []
     }
   },
-  
+
   ...
 ]
 ```
