@@ -1,17 +1,16 @@
 import json
 import warnings
-from typing import Optional
-
+from enum import Enum
 import flask
 from flask import Blueprint, current_app, jsonify
 from flask_parameter_validation import ValidateParameters
-from flask_parameter_validation.exceptions.exceptions import ConfigurationError
 import re
+import copy
 
 docs_blueprint = Blueprint(
     "docs", __name__, url_prefix="/docs", template_folder="./templates"
 )
-
+# TODO: Replace prints with warnings where useful, else remove
 
 def get_route_docs():
     """
@@ -72,16 +71,29 @@ def extract_argument_details(fdocs):
             "loc": get_arg_location(fdocs, idx),
             "loc_args": get_arg_location_details(fdocs, idx),
         }
+        if arg_data["type"] in ["StrEnum", "IntEnum"]:
+            arg_data["enum_values"] = get_arg_enum_values(fdocs, arg_name)
         args_data.setdefault(arg_data["loc"], []).append(arg_data)
     return args_data
 
+def get_arg_enum_values(fdocs, arg_name):
+    """
+    Extract the Enum values for a specific argument.
+    """
+    arg_type = fdocs["argspec"].annotations[arg_name]
+    return list(map(lambda e: e.value, arg_type))
 
 def get_arg_type_hint(fdocs, arg_name):
     """
     Extract the type hint for a specific argument.
     """
     arg_type = fdocs["argspec"].annotations[arg_name]
-    if hasattr(arg_type, "__args__"):
+    if issubclass(arg_type, Enum) and (issubclass(arg_type, str) or issubclass(arg_type, int)):
+        if issubclass(arg_type, str):
+            return "StrEnum"
+        elif issubclass(arg_type, int):
+            return "IntEnum"
+    elif hasattr(arg_type, "__args__"):
         return (
             f"{arg_type.__name__}[{', '.join([a.__name__ for a in arg_type.__args__])}]"
         )
@@ -140,10 +152,18 @@ def docs_json():
     Provide the documentation as a JSON response.
     """
     config = flask.current_app.config
+    route_docs = get_route_docs()
+    for route in route_docs:
+        if "MultiSource" in route["args"]:
+            for arg in route["args"]["MultiSource"]:
+                sources = []
+                for source in arg["loc_args"]["sources"]:
+                    sources.append(source.__class__.__name__)
+                arg["loc_args"]["sources"] = sources
     return jsonify(
         {
             "site_name": config.get("FPV_DOCS_SITE_NAME", "Site"),
-            "docs": get_route_docs(),
+            "docs": route_docs,
             "custom_blocks": config.get("FPV_DOCS_CUSTOM_BLOCKS", []),
             "default_theme": config.get("FPV_DOCS_DEFAULT_THEME", "light"),
         }
@@ -184,7 +204,13 @@ def generate_json_schema_helper(param, param_type, parent_group=None):
                     subschema["minLength"] = param["loc_args"]["min_str_length"]
                 if "max_str_length" in param["loc_args"]:
                     subschema["maxLength"] = param["loc_args"]["max_str_length"]
-                # TODO: Is it possible to make this work with whitelist, blacklist and pattern simultaneously?
+                if "json_schema" in param["loc_args"]:
+                    # Without significant complexity, it is impossible to write a single regex to encompass
+                    # the FPV blacklist, whitelist and pattern arguments, so only pattern is considered.
+                    subschema["pattern"] = param["loc_args"]["json_schema"]
+                if "whitelist" in param["loc_args"] or "blacklist" in param["loc_args"]:
+                    warnings.warn("whitelist and blacklist cannot be translated to JSON Schema, please use pattern",
+                                  Warning, stacklevel=2)
             elif p == "int":
                 subschema["type"] = "integer"
                 if "min_int" in param["loc_args"]:
@@ -211,6 +237,12 @@ def generate_json_schema_helper(param, param_type, parent_group=None):
                 subschema["type"] = "object"
             elif p in ["None", "NoneType"]:
                 subschema["type"] = "null"
+            elif p in ["StrEnum", "IntEnum"]:
+                if p == "StrEnum":
+                    subschema["type"] = "string"
+                elif p == "IntEnum":
+                    subschema["type"] = "integer"
+                subschema["enum"] = param["enum_values"]
             else:
                 print(f"Unexpected type: {p}")
             schemas.append(subschema)
@@ -218,7 +250,7 @@ def generate_json_schema_helper(param, param_type, parent_group=None):
             return schemas[0]
         elif parent_group in ["Optional", "Union"]:
             return {"oneOf": schemas}
-        elif parent_group == "List":
+        elif parent_group in ["List", "list"]:
             schema = {"type": "array", "items": schemas[0]}
             if "min_list_length" in param["loc_args"]:
                 schema["minItems"] = param["loc_args"]["min_list_length"]
@@ -259,6 +291,18 @@ def generate_openapi_paths_object():
         oapi_operation = {}  # tags, summary, description, externalDocs, operationId, parameters, requestBody, responses, callbacks, deprecated, security, servers
         oapi_parameters = []
         oapi_request_body = {"content": {}}
+        if "MultiSource" in route["args"]:
+            for arg in route["args"]["MultiSource"]:
+                mod_arg = copy.deepcopy(arg)
+                mod_arg["loc_args"].pop("sources")
+                for source in arg["loc_args"]["sources"]:
+                    print(source)
+                    source_name = source.__class__.__name__
+                    if source_name in route["args"]:
+                        route["args"][source_name].append(mod_arg)
+                    else:
+                        route["args"][source_name] = [mod_arg]
+            route["args"].pop("MultiSource")
         for arg_loc in route["args"]:
             if arg_loc == "Form":
                 oapi_request_body["content"]["application/x-www-form-urlencoded"] = {
@@ -290,6 +334,9 @@ def generate_openapi_paths_object():
                         if "deprecated" in arg["loc_args"] and arg["loc_args"]["deprecated"]:
                             parameter["deprecated"] = arg["loc_args"]["deprecated"]
                         oapi_parameters.append(parameter)
+            else:
+                warnings.warn(f"generate_openapi_paths_object encountered unexpected location: {arg_loc}",
+                              Warning, stacklevel=2)
         if len(oapi_parameters) > 0:
             oapi_operation["parameters"] = oapi_parameters
         if len(oapi_request_body["content"].keys()) > 0:

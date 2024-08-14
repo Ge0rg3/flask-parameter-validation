@@ -69,10 +69,30 @@
                                         {% for arg in route.args[arg_loc] %}
     {#                                        <li>{{ arg }}</li>#}
                                             <li>{{ arg.name }}: {{ arg.type }}{% if "comment" in arg.loc_args %} {{ arg.loc_args.comment }}{% endif %}</li>
-                                            {% if ("comment" in arg.loc_args and arg.loc_args | length > 1) or ("comment" not in arg.loc_args and arg.loc_args | length > 0) %}
+                                            {% if "sources" in arg.loc_args %}
+                                                <ul>
+                                                    <li>Sources:</li>
+                                                    <ul>
+                                                        {% for source in arg.loc_args.sources %}
+                                                            <li>{{ source.__class__.__name__ }}</li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </ul>
+                                            {% endif %}
+                                            {% if "enum_values" in arg %}
+                                                <ul>
+                                                    <li>Enum Values:</li>
+                                                    <ul>
+                                                    {% for val in arg.enum_values %}
+                                                        <li>{{ val }}</li>
+                                                    {% endfor %}
+                                                    </ul>
+                                                </ul>
+                                            {% endif %}
+                                            {% if ("comment" in arg.loc_args and "sources" not in arg.loc_args and arg.loc_args | length > 1) or ("comment" not in arg.loc_args and "sources" in arg.loc_args and arg.loc_args | length > 1) or ("comment" not in arg.loc_args and "sources" not in arg.loc_args and arg.loc_args | length > 0) or ("comment" in arg.loc_args and "sources" in arg.loc_args and arg.loc_args | length > 2) %}
                                                 <ul>
                                                     {% for loc_arg in arg.loc_args %}
-                                                        {% if loc_arg != "comment" %}
+                                                        {% if loc_arg not in ["comment", "sources"] %}
                                                         <li>{{ loc_arg }} = {{ arg.loc_args[loc_arg] }}</li>
                                                         {% endif %}
                                                     {% endfor %}
