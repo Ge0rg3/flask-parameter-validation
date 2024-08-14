@@ -167,4 +167,16 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     def json_schema(v: list = ParamType(json_schema=json_schema)):
         return jsonify({"v": v})
 
+    @decorator("/non_typing")
+    @ValidateParameters()
+    def non_typing(v: list[str] = ParamType()):
+        assert type(v) is list
+        assert type(v[0]) is str
+        return jsonify({"v": v})
+
+    @decorator("/optional_non_typing")
+    @ValidateParameters()
+    def optional_non_typing(v: Optional[list[str]] = ParamType()):
+        return jsonify({"v": v})
+
     return list_bp
