@@ -69,4 +69,9 @@ def get_int_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
     def func(v: int = ParamType(func=is_even)):
         return jsonify({"v": v})
 
+    @decorator(path("/json_schema", "/<v>"))
+    @ValidateParameters()
+    def json_schema(v: int = ParamType(json_schema={"type": "number", "exclusiveMaximum": 100})):
+        return jsonify({"v": v})
+
     return int_bp

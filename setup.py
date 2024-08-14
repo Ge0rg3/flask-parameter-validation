@@ -30,6 +30,7 @@ setup(
         "flask[async]",
         "python-dateutil",
         "jsonschema",
+        "jsonschema[format]"
     ],
     python_requires=">=3.9,<3.13",
     classifiers=[

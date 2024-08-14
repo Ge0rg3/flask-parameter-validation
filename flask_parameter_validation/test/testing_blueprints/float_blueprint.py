@@ -60,4 +60,9 @@ def get_float_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str
     def func(v: float = ParamType(func=is_approx_pi)):
         return jsonify({"v": v})
 
+    @decorator(path("/json_schema", "/<v>"))
+    @ValidateParameters()
+    def json_schema(v: float = ParamType(json_schema={"type": "number", "multipleOf": 0.01})):
+        return jsonify({"v": v})
+
     return float_bp
