@@ -191,7 +191,8 @@ def is_odd(val: int):
 Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate API Documentation in various formats.
 To make this easy to use, it comes with a `Blueprint` and the output and configuration options below:
 #### OpenAPI 3.1.0
-* `FPV_OPENAPI_BASE: dict`: The base [OpenAPI Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#openapi-object) that will be populated with a generated [Paths Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#paths-object). Must be set to enable the blueprints. Alternatively, the standalone Paths Object can be retrieved anytime through the `generate_openapi_paths_object()` method.
+* `FPV_OPENAPI_ENABLE: bool = False`: Whether to enable OpenAPI Generation for this app, may generate warnings, as certain `Parameter` arguments are not able to be converted to OpenAPI/JSON Schema. 
+* `FPV_OPENAPI_BASE: dict = {"openapi": None}`: The base [OpenAPI Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#openapi-object) that will be populated with a generated [Paths Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#paths-object). Must be set to enable the blueprints. Alternatively, the standalone Paths Object can be retrieved anytime through the `generate_openapi_paths_object()` method.
 
 #### Non-standard Format
 * `FPV_DOCS_SITE_NAME: str`: Your site's name, to be displayed in the page title, default: `Site`
