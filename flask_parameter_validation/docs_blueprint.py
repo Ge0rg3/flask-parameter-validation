@@ -10,7 +10,6 @@ import copy
 docs_blueprint = Blueprint(
     "docs", __name__, url_prefix="/docs", template_folder="./templates"
 )
-# TODO: Replace prints with warnings where useful, else remove
 
 def get_route_docs():
     """
@@ -196,7 +195,6 @@ def generate_json_schema_helper(param, param_type, parent_group=None):
             if "," in param_type:
                 param_types = [p.strip() for p in param_type.split(",")]
         for p in param_types:
-            print(f"{param['name']}: {p}")
             subschema = {}
             if p == "str":
                 subschema["type"] = "string"
@@ -244,7 +242,8 @@ def generate_json_schema_helper(param, param_type, parent_group=None):
                     subschema["type"] = "integer"
                 subschema["enum"] = param["enum_values"]
             else:
-                print(f"Unexpected type: {p}")
+                warnings.warn(f"generate_json_schema_helper received an unexpected parameter type: {p}",
+                              Warning, stacklevel=2)
             schemas.append(subschema)
         if len(schemas) == 1 and parent_group is None:
             return schemas[0]
@@ -258,7 +257,8 @@ def generate_json_schema_helper(param, param_type, parent_group=None):
                 schema["maxItems"] = param["loc_args"]["max_list_length"]
             return schema
         else:
-            print(f"Unexpected situation: {param_type}, {parent_group}")
+            warnings.warn(f"generate_json_schema_helper encountered an unexpected type: {param_type} with parent: "
+                          f"{parent_group}", Warning, stacklevel=2)
 
 
 def generate_json_schema_for_parameter(param):
@@ -286,7 +286,6 @@ def generate_openapi_paths_object():
     for route in get_route_docs():
         oapi_path_route = re.sub(r'<(\w+):(\w+)>', r'{\2}', route['rule'])
         oapi_path_route = re.sub(r'<(\w+)>', r'{\1}', oapi_path_route)
-        print(f"Adding {route['rule']} to paths as {oapi_path_route}")
         oapi_path_item = {}
         oapi_operation = {}  # tags, summary, description, externalDocs, operationId, parameters, requestBody, responses, callbacks, deprecated, security, servers
         oapi_parameters = []
@@ -296,7 +295,6 @@ def generate_openapi_paths_object():
                 mod_arg = copy.deepcopy(arg)
                 mod_arg["loc_args"].pop("sources")
                 for source in arg["loc_args"]["sources"]:
-                    print(source)
                     source_name = source.__class__.__name__
                     if source_name in route["args"]:
                         route["args"][source_name].append(mod_arg)
@@ -341,7 +339,6 @@ def generate_openapi_paths_object():
             oapi_operation["parameters"] = oapi_parameters
         if len(oapi_request_body["content"].keys()) > 0:
             oapi_operation["requestBody"] = oapi_request_body
-        print(route["decorators"])
         for decorator in route["decorators"]:
             for partial_decorator in ["@warnings.deprecated", "@deprecated"]:  # Support for PEP 702 in Python 3.13
                 if partial_decorator in decorator:
