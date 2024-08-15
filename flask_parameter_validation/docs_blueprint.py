@@ -1,4 +1,4 @@
-import json
+import inspect
 import warnings
 from enum import Enum
 import flask
@@ -87,7 +87,8 @@ def get_arg_type_hint(fdocs, arg_name):
     Extract the type hint for a specific argument.
     """
     arg_type = fdocs["argspec"].annotations[arg_name]
-    if issubclass(arg_type, Enum) and (issubclass(arg_type, str) or issubclass(arg_type, int)):
+    if (inspect.isclass(arg_type) and issubclass(arg_type, Enum) and
+            (issubclass(arg_type, str) or issubclass(arg_type, int))):
         if issubclass(arg_type, str):
             return "StrEnum"
         elif issubclass(arg_type, int):
@@ -374,6 +375,6 @@ def docs_openapi():
     if "paths" in openapi_base:
         return fpv_error(f"Flask-Parameter-Validation will overwrite the paths value of FPV_OPENAPI_BASE")
     openapi_paths = generate_openapi_paths_object()
-    openapi_document = json.loads(json.dumps(openapi_base))
+    openapi_document = copy.deepcopy(openapi_base)
     openapi_document["paths"] = openapi_paths
     return jsonify(openapi_document)
