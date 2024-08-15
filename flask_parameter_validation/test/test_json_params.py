@@ -146,6 +146,17 @@ def test_str_alias(client):
     assert r.json["value"] == "abc"
 
 
+def test_str_json_schema(client):
+    url = "/json/str/json_schema"
+    # Test that input matching schema yields input
+    r = client.post(url, json={"v": "test@example.com"})
+    assert "v" in r.json
+    assert r.json["v"] == "test@example.com"
+    # Test that input failing schema yields error
+    r = client.post(url, json={"v": "not an email"})
+    assert "error" in r.json
+
+
 # Int Validation
 def test_required_int(client):
     url = "/json/int/required"
@@ -233,6 +244,17 @@ def test_int_func(client):
     assert r.json["v"] == 8
     # Test that input failing func yields error
     r = client.post(url, json={"v": 9})
+    assert "error" in r.json
+
+
+def test_int_json_schema(client):
+    url = "/json/int/json_schema"
+    # Test that input matching schema yields input
+    r = client.post(url, json={"v": 10})
+    assert "v" in r.json
+    assert r.json["v"] == 10
+    # Test that input failing schema yields error
+    r = client.post(url, json={"v": 100})
     assert "error" in r.json
 
 
@@ -357,6 +379,17 @@ def test_float_func(client):
     assert r.json["v"] == 3.141592
     # Test that input failing func yields error
     r = client.post(url, json={"v": 3.15})
+    assert "error" in r.json
+
+
+def test_float_json_schema(client):
+    url = "/json/float/json_schema"
+    # Test that input matching schema yields input
+    r = client.post(url, json={"v": 3.14})
+    assert "v" in r.json
+    assert r.json["v"] == 3.14
+    # Test that input failing schema yields error
+    r = client.post(url, json={"v": 3.141592})
     assert "error" in r.json
 
 

@@ -257,4 +257,9 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
     ):
         return jsonify({"value": value})
 
+    @decorator(path("/json_schema", "/<v>"))
+    @ValidateParameters()
+    def json_schema(v: str = ParamType(json_schema={"type": "string", "format": "email"})):
+        return jsonify({"v": v})
+
     return str_bp

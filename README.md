@@ -57,6 +57,9 @@ The `@ValidateParameters()` decorator takes parameters that alter route validati
 | Parameter         | Type                 | Default | Description                                                                                                                  |
 |-------------------|----------------------|---------|------------------------------------------------------------------------------------------------------------------------------|
 | error_handler     | `Optional[Response]` | `None`  | Overwrite the output format of generated errors, see [Overwriting Default Errors](#overwriting-default-errors) for more      |
+| route_deprecated  | `bool`               | `False` | Marks this Route as deprecated in any generated [API Documentation](#api-documentation)                                      | 
+| openapi_responses | `Optional[dict]`     | `None`  | The OpenAPI Responses Object for this route, as a `dict` to be used in any generated [API Documentation](#api-documentation) |
+| hide_from_docs    | `bool`               | `False` | Hide this Route from any generated [API Documentation](#api-documentation)                                                   |
 
 #### Overwriting Default Errors
 By default, the error messages are returned as a JSON response, with the detailed error in the "error" field, eg:
@@ -87,13 +90,13 @@ def api(...)
 #### Parameter Class
 The `Parameter` class provides a base for validation common among all input types, all location-specific classes extend `Parameter`. These subclasses are:
 
-| Subclass Name | Input Source                                                                                                           | Available For    |
-|---------------|------------------------------------------------------------------------------------------------------------------------|------------------|
-| Route         | Parameter passed in the pathname of the URL, such as `/users/<int:id>`                                                 | All HTTP Methods |
-| Form          | Parameter in an HTML form or a `FormData` object in the request body, often with `Content-Type: x-www-form-urlencoded` | POST Methods     |
-| Json          | Parameter in the JSON object in the request body, must have header `Content-Type: application/json`                    | POST Methods     |
-| Query         | Parameter in the query of the URL, such as /news_article?id=55                                                         | All HTTP Methods |
-| File          | Parameter is a file uploaded in the request body                                                                       | POST Method      |
+| Subclass Name | Input Source                                                                                                           | Available For                   |
+|---------------|------------------------------------------------------------------------------------------------------------------------|---------------------------------|
+| Route         | Parameter passed in the pathname of the URL, such as `/users/<int:id>`                                                 | All HTTP Methods                |
+| Form          | Parameter in an HTML form or a `FormData` object in the request body, often with `Content-Type: x-www-form-urlencoded` | POST Methods                    |
+| Json          | Parameter in the JSON object in the request body, must have header `Content-Type: application/json`                    | POST Methods                    |
+| Query         | Parameter in the query of the URL, such as /news_article?id=55                                                         | All HTTP Methods                |
+| File          | Parameter is a file uploaded in the request body                                                                       | POST Method                     |
 | MultiSource   | Parameter is in one of the locations provided to the constructor                                                       | Dependent on selected locations |
 
 Note: "**POST Methods**" refers to the HTTP methods that send data in the request body, such as POST, PUT, PATCH and DELETE. Although sending data via some methods such as DELETE is not standard, it is supported by Flask and this library.
@@ -142,26 +145,27 @@ These can be used in tandem to describe a parameter to validate: `parameter_name
 ### Validation with arguments to Parameter
 Validation beyond type-checking can be done by passing arguments into the constructor of the `Parameter` subclass. The arguments available for use on each type hint are:
 
-| Parameter Name    | Type of Argument                                 | Effective On Types     | Description                                                                                                                                                        |
-|-------------------|--------------------------------------------------|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `default`         | any                                              | All, except in `Route` | Specifies the default value for the field, makes non-Optional fields not required                                                                                  |
-| `min_str_length`  | `int`                                            | `str`                  | Specifies the minimum character length for a string input                                                                                                          |
-| `max_str_length`  | `int`                                            | `str`                  | Specifies the maximum character length for a string input                                                                                                          |
-| `min_list_length` | `int`                                            | `list`                 | Specifies the minimum number of elements in a list                                                                                                                 |
-| `max_list_length` | `int`                                            | `list`                 | Specifies the maximum number of elements in a list                                                                                                                 |
-| `min_int`         | `int`                                            | `int`                  | Specifies the minimum number for an integer input                                                                                                                  |
-| `max_int`         | `int`                                            | `int`                  | Specifies the maximum number for an integer input                                                                                                                  |
-| `whitelist`       | `str`                                            | `str`                  | A string containing allowed characters for the value                                                                                                               |
-| `blacklist`       | `str`                                            | `str`                  | A string containing forbidden characters for the value                                                                                                             |
-| `pattern`         | `str`                                            | `str`                  | A regex pattern to test for string matches                                                                                                                         |
-| `func`            | `Callable[Any] -> Union[bool, tuple[bool, str]]` | All                    | A function containing a fully customized logic to validate the value. See the [custom validation function](#custom-validation-function) below for usage            |
-| `datetime_format` | `str`                                            | `datetime.datetime`    | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes)) |
-| `comment`         | `str`                                            | All                    | A string to display as the argument description in any generated documentation                                                                                     |
-| `alias`           | `str`                                            | All but `FileStorage`  | An expected parameter name to receive instead of the function name.                                                                                                |
-| `json_schema`     | `dict`                                           | `dict`                 | An expected [JSON Schema](https://json-schema.org) which the dict input must conform to                                                                            |
-| `content_types`   | `list[str]`                                      | `FileStorage`          | Allowed `Content-Type`s                                                                                                                                            |
-| `min_length`      | `int`                                            | `FileStorage`          | Minimum `Content-Length` for a file                                                                                                                                |
-| `max_length`      | `int`                                            | `FileStorage`          | Maximum `Content-Length` for a file                                                                                                                                |
+| Parameter Name    | Type of Argument                                 | Effective On Types                                | Description                                                                                                                                                                                                                                      |
+|-------------------|--------------------------------------------------|---------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `default`         | any                                              | All, except in `Route`                            | Specifies the default value for the field, makes non-Optional fields not required                                                                                                                                                                |
+| `min_str_length`  | `int`                                            | `str`                                             | Specifies the minimum character length for a string input                                                                                                                                                                                        |
+| `max_str_length`  | `int`                                            | `str`                                             | Specifies the maximum character length for a string input                                                                                                                                                                                        |
+| `min_list_length` | `int`                                            | `list`                                            | Specifies the minimum number of elements in a list                                                                                                                                                                                               |
+| `max_list_length` | `int`                                            | `list`                                            | Specifies the maximum number of elements in a list                                                                                                                                                                                               |
+| `min_int`         | `int`                                            | `int`                                             | Specifies the minimum number for an integer input                                                                                                                                                                                                |
+| `max_int`         | `int`                                            | `int`                                             | Specifies the maximum number for an integer input                                                                                                                                                                                                |
+| `whitelist`       | `str`                                            | `str`                                             | A string containing allowed characters for the value                                                                                                                                                                                             |
+| `blacklist`       | `str`                                            | `str`                                             | A string containing forbidden characters for the value                                                                                                                                                                                           |
+| `pattern`         | `str`                                            | `str`                                             | A regex pattern to test for string matches                                                                                                                                                                                                       |
+| `func`            | `Callable[Any] -> Union[bool, tuple[bool, str]]` | All                                               | A function containing a fully customized logic to validate the value. See the [custom validation function](#custom-validation-function) below for usage                                                                                          |
+| `datetime_format` | `str`                                            | `datetime.datetime`                               | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))                                                                               |
+| `comment`         | `str`                                            | All                                               | A string to display as the argument description in any generated documentation                                                                                                                                                                   |
+| `alias`           | `str`                                            | All but `FileStorage`                             | An expected parameter name to receive instead of the function name.                                                                                                                                                                              |
+| `json_schema`     | `dict`                                           | `str`, `int`, `float`, `dict`, `list`<sub>1</sub> | An expected [JSON Schema](https://json-schema.org) which the input must conform to. See [python-jsonschema docs](https://python-jsonschema.readthedocs.io/en/latest/validate/#validating-formats) for information about string format validation |
+| `content_types`   | `list[str]`                                      | `FileStorage`                                     | Allowed `Content-Type`s                                                                                                                                                                                                                          |
+| `min_length`      | `int`                                            | `FileStorage`                                     | Minimum `Content-Length` for a file                                                                                                                                                                                                              |
+| `max_length`      | `int`                                            | `FileStorage`                                     | Maximum `Content-Length` for a file                                                                                                                                                                                                              |
+<sub>1</sub> `json_schema` is tested to work with `str`, `int`, `float`, `dict` and `list` - other types may work, but are redundant in use and testing (i.e. JSON Schema provides no further validation on booleans beyond checking that it is a boolean) 
 
 These validators are passed into the `Parameter` subclass in the route function, such as:
 * `username: str = Json(default="defaultusername", min_length=5)`
@@ -186,8 +190,11 @@ def is_odd(val: int):
 ### API Documentation
 Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate API Documentation in various formats.
 To make this easy to use, it comes with a `Blueprint` and the output and configuration options below:
+#### OpenAPI 3.1.0
+* `FPV_OPENAPI_ENABLE: bool = False`: Whether to enable OpenAPI Generation for this app, may generate warnings, as certain `Parameter` arguments are not able to be converted to OpenAPI/JSON Schema. 
+* `FPV_OPENAPI_BASE: dict = {"openapi": None}`: The base [OpenAPI Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#openapi-object) that will be populated with a generated [Paths Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#paths-object). Must be set to enable the blueprints. Alternatively, the standalone Paths Object can be retrieved anytime through the `generate_openapi_paths_object()` method.
 
-#### Format
+#### Non-standard Format
 * `FPV_DOCS_SITE_NAME: str`: Your site's name, to be displayed in the page title, default: `Site`
 * `FPV_DOCS_CUSTOM_BLOCKS: array`: An array of dicts to display as cards at the top of your documentation, with the (optional) keys:
   * `title: Optional[str]`: The title of the card
@@ -206,6 +213,7 @@ app.register_blueprint(docs_blueprint)
 The default blueprint adds two `GET` routes:
 * `/`: HTML Page with Bootstrap CSS and toggleable light/dark mode
 * `/json`: Non-standard Format JSON Representation of the generated documentation
+* `/openapi`: OpenAPI 3.1.0 (JSON) Representation of the generated documentation
 
 The `/json` route yields a response with the following format:
 ```json
@@ -262,8 +270,10 @@ Documentation Generated:
 If you would like to use your own blueprint, you can get the raw data from the following function:
 ```py
 from flask_parameter_validation.docs_blueprint import get_route_docs
+from flask_parameter_validation.docs_blueprint import generate_openapi_paths_object
 ...
 get_route_docs()
+generate_openapi_paths_object()
 ```
 
 ###### get_route_docs() return value format
@@ -276,6 +286,10 @@ This method returns an object with the following structure:
     "methods": ["HTTPVerb"],
     "docstring": "String, unsanitized of HTML Tags",
     "decorators": ["@decorator1", "@decorator2(param)"],
+    "responses": {
+      "openapi": "3.1.0",
+      "description": "See [OpenAPI Spec 3.1.0 Responses Object](https://swagger.io/specification/#response-object)"
+    },
     "args": {
       "<Subclass of Parameter this route uses>": [
         {
@@ -284,7 +298,8 @@ This method returns an object with the following structure:
           "loc_args": {
             "<Name of argument passed to Parameter Subclass>": "Value passed to Argument",
             "<Name of another argument passed to Parameter Subclass>": 0
-          }
+          },
+          "deprecated": "bool, whether this parameter is deprecated (only for Route and Query params)"
         }
       ],
       "<Another Subclass of Parameter this route uses>": []

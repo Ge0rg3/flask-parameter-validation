@@ -129,6 +129,17 @@ def test_str_func(client):
     assert "error" in r.json
 
 
+def test_str_json_schema(client):
+    url = "/route/str/json_schema"
+    # Test that input matching schema yields input
+    r = client.get(f"{url}/test@example.com")
+    assert "v" in r.json
+    assert r.json["v"] == "test@example.com"
+    # Test that input failing schema yields error
+    r = client.get(f"{url}/notanemail")
+    assert "error" in r.json
+
+
 # Int Validation
 def test_required_int(client):
     url = "/route/int/required"
@@ -185,6 +196,17 @@ def test_int_func(client):
     assert "error" in r.json
 
 
+def test_int_json_schema(client):
+    url = "/route/int/json_schema"
+    # Test that input matching schema yields input
+    r = client.get(f"{url}/10")
+    assert "v" in r.json
+    assert r.json["v"] == 10
+    # Test that input failing schema yields error
+    r = client.get(f"{url}/100")
+    assert "error" in r.json
+
+
 # Bool Validation
 def test_required_bool(client):
     url = "/route/bool/required"
@@ -238,6 +260,17 @@ def test_float_func(client):
     assert r.json["v"] == 3.141592
     # Test that input failing func yields error
     r = client.get(f"{url}/3.15")
+    assert "error" in r.json
+
+
+def test_float_json_schema(client):
+    url = "/route/float/json_schema"
+    # Test that input matching schema yields input
+    r = client.get(f"{url}/3.14")
+    assert "v" in r.json
+    assert r.json["v"] == 3.14
+    # Test that input failing schema yields error
+    r = client.get(f"{url}/3.141592")
     assert "error" in r.json
 
 

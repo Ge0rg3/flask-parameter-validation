@@ -8,6 +8,7 @@ from enum import Enum
 import dateutil.parser as parser
 import jsonschema
 from jsonschema.exceptions import ValidationError as JSONSchemaValidationError
+from jsonschema.validators import Draft202012Validator
 
 
 class Parameter:
@@ -69,6 +70,12 @@ class Parameter:
     # Validator
     def validate(self, value):
         original_value_type_list = type(value) is list
+        if self.json_schema is not None:
+            try:
+                # Uses JSON Schema 2020-12 as OpenAPI 3.1.0 is fully compatible with this draft
+                jsonschema.validate(value, self.json_schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
+            except JSONSchemaValidationError as e:
+                raise ValueError(f"failed JSON Schema validation: {e.args[0]}")
         if type(value) is list:
             values = value
             # Min list len
@@ -85,18 +92,6 @@ class Parameter:
                     )
             if self.func is not None:
                 self.func_helper(value)
-            if self.json_schema is not None:
-                try:
-                    jsonschema.validate(value, self.json_schema)
-                except JSONSchemaValidationError as e:
-                    raise ValueError(f"failed JSON Schema validation: {e.args[0]}")
-        elif type(value) is dict:
-            if self.json_schema is not None:
-                try:
-                    jsonschema.validate(value, self.json_schema)
-                except JSONSchemaValidationError as e:
-                    raise ValueError(f"failed JSON Schema validation: {e.args[0]}")
-            values = [value]
         else:
             values = [value]
 
