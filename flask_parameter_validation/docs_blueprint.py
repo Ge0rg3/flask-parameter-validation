@@ -36,7 +36,7 @@ def get_function_docs(func):
     """
     fn_list = ValidateParameters().get_fn_list()
     for fsig, fdocs in fn_list.items():
-        if fsig.endswith(func.__name__):
+        if fsig.split(".")[-1] == func.__name__:
             return {
                 "docstring": format_docstring(fdocs.get("docstring")),
                 "decorators": fdocs.get("decorators"),
