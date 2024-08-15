@@ -11,6 +11,7 @@ docs_blueprint = Blueprint(
     "docs", __name__, url_prefix="/docs", template_folder="./templates"
 )
 
+
 def get_route_docs():
     """
     Generate documentation for all Flask routes that use the ValidateParameters decorator.
@@ -75,12 +76,14 @@ def extract_argument_details(fdocs):
         args_data.setdefault(arg_data["loc"], []).append(arg_data)
     return args_data
 
+
 def get_arg_enum_values(fdocs, arg_name):
     """
     Extract the Enum values for a specific argument.
     """
     arg_type = fdocs["argspec"].annotations[arg_name]
     return list(map(lambda e: e.value, arg_type))
+
 
 def get_arg_type_hint(fdocs, arg_name):
     """
@@ -171,25 +174,29 @@ def docs_json():
 
 
 def fpv_error(message):
+    """ Error response helper for view functions """
     return jsonify({"error": message})
 
 
 def parameter_required(param):
+    """ Determine if a parameter is required, for OpenAPI Generation """
     if param["type"].startswith("Optional["):
         return False
     elif "default" in param["loc_args"]:
         return False
     return True
 
+
 def generate_json_schema_helper(param, param_type, parent_group=None):
-    match = re.match(r'(\w+)\[([\w\[\] ,.]+)]', param_type)
-    if match:
+    """ Helper function for generating JSON Schema for a parameter """
+    match = re.match(r'(\w+)\[([\w\[\] ,.]+)]', param_type)  # Check for type hints that take arguments (Union[])
+    if match:  # Break down the type into its parent (Union) and the arguments (int, float) and recurse with those args
         type_group = match.group(1)
         type_params = match.group(2)
         return generate_json_schema_helper(param, type_params, parent_group=type_group)
-    elif "|" in param_type and "[" not in param_type:  # Handle Union shorthand as Union
+    elif "|" in param_type and "[" not in param_type:  # Convert Union shorthand to Union, recurse with that as input
         return generate_json_schema_helper(param, f"Union[{param_type.replace('|', ',')}]", parent_group=parent_group)
-    else:
+    else:  # Input is basic types, generate JSON Schema
         schemas = []
         param_types = [param_type]
         if parent_group in ["Union", "Optional"]:
@@ -263,10 +270,12 @@ def generate_json_schema_helper(param, param_type, parent_group=None):
 
 
 def generate_json_schema_for_parameter(param):
+    """ Generate JSON Schema for a single parameter """
     return generate_json_schema_helper(param, param["type"])
 
 
 def generate_json_schema_for_parameters(params):
+    """ Generate JSON Schema for all parameters of a route"""
     schema = {
         "type": "object",
         "properties": {},
@@ -282,13 +291,16 @@ def generate_json_schema_for_parameters(params):
             schema["required"].append(schema_parameter_name)
     return schema
 
+
 def generate_openapi_paths_object():
+    """ Generate OpenAPI Paths Object """
     oapi_paths = {}
     for route in get_route_docs():
         oapi_path_route = re.sub(r'<(\w+):(\w+)>', r'{\2}', route['rule'])
         oapi_path_route = re.sub(r'<(\w+)>', r'{\1}', oapi_path_route)
         oapi_path_item = {}
-        oapi_operation = {}  # tags, summary, description, externalDocs, operationId, parameters, requestBody, responses, callbacks, deprecated, security, servers
+        oapi_operation = {}  # tags, summary, description, externalDocs, operationId, parameters, requestBody,
+        # responses, callbacks, deprecated, security, servers
         oapi_parameters = []
         oapi_request_body = {"content": {}}
         if "MultiSource" in route["args"]:
@@ -309,7 +321,8 @@ def generate_openapi_paths_object():
             elif arg_loc == "Json":
                 oapi_request_body["content"]["application/json"] = {
                     "schema": generate_json_schema_for_parameters(route["args"][arg_loc])}
-            elif arg_loc == "File":  # See https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#considerations-for-file-uploads
+            elif arg_loc == "File":
+                # https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#considerations-for-file-uploads
                 for arg in route["args"][arg_loc]:
                     if "content_types" in arg["loc_args"]:
                         for content_type in arg["loc_args"]["content_types"]:
@@ -358,7 +371,6 @@ def generate_openapi_paths_object():
     return oapi_paths
 
 
-
 @docs_blueprint.route("/openapi")
 def docs_openapi():
     """
@@ -371,7 +383,9 @@ def docs_openapi():
     supported_versions = ["3.1.0"]
     openapi_base = config.get("FPV_OPENAPI_BASE", {"openapi": None})
     if openapi_base["openapi"] not in supported_versions:
-        return fpv_error(f"Flask-Parameter-Validation only supports OpenAPI {', '.join(supported_versions)}, {openapi_base['openapi']} provided")
+        return fpv_error(
+            f"Flask-Parameter-Validation only supports OpenAPI {', '.join(supported_versions)}, "
+            f"{openapi_base['openapi']} provided")
     if "paths" in openapi_base:
         return fpv_error(f"Flask-Parameter-Validation will overwrite the paths value of FPV_OPENAPI_BASE")
     openapi_paths = generate_openapi_paths_object()
