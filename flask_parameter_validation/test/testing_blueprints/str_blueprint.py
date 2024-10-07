@@ -1,6 +1,6 @@
 from typing import Optional
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, current_app
 
 from flask_parameter_validation import ValidateParameters, Route
 from flask_parameter_validation.parameter_types.parameter import Parameter
@@ -89,21 +89,42 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
     ):
         return jsonify({"value": value})
 
+    @decorator("/blank_none/unset")  # Route not currently supported by blank_none
+    @ValidateParameters()
+    def blank_none_unset(
+            v: Optional[str] = ParamType()
+    ):
+        return jsonify({"v": v})
+
+    @decorator("/blank_none/true")  # Route not currently supported by blank_none
+    @ValidateParameters()
+    def blank_none_true(
+            v: Optional[str] = ParamType(blank_none=True)
+    ):
+        return jsonify({"v": v})
+
+    @decorator("/blank_none/false")  # Route not currently supported by blank_none
+    @ValidateParameters()
+    def blank_none_false(
+            v: Optional[str] = ParamType(blank_none=False)
+    ):
+        return jsonify({"v": v})
+
     # Test Parent Decorators
-    
+
     @decorator(path("/decorator/required", "/<v>"))
     @dummy_decorator
     @ValidateParameters()
     def decorator_required(v: str = ParamType()):
         assert type(v) is str
         return jsonify({"v": v})
-    
+
     @decorator("/decorator/optional")  # Route not currently supported by Optional
     @dummy_decorator
     @ValidateParameters()
     def decorator_optional(v: Optional[str] = ParamType()):
         return jsonify({"v": v})
-    
+
     @decorator("/decorator/default")  # Route not currently supported by default
     @dummy_decorator
     @ValidateParameters()
@@ -115,7 +136,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             "n_opt": n_opt,
             "opt": opt
         })
-    
+
     @decorator(path("/decorator/min_str_length", "/<v>"))
     @dummy_decorator
     @ValidateParameters()
@@ -123,7 +144,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             v: str = ParamType(min_str_length=2)
     ):
         return jsonify({"v": v})
-    
+
     @decorator(path("/decorator/max_str_length", "/<v>"))
     @dummy_decorator
     @ValidateParameters()
@@ -131,7 +152,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             v: str = ParamType(max_str_length=2)
     ):
         return jsonify({"v": v})
-    
+
     @decorator(path("/decorator/whitelist", "/<v>"))
     @dummy_decorator
     @ValidateParameters()
@@ -139,7 +160,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             v: str = ParamType(whitelist="ABC123")
     ):
         return jsonify({"v": v})
-    
+
     @decorator(path("/decorator/blacklist", "/<v>"))
     @dummy_decorator
     @ValidateParameters()
@@ -147,7 +168,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             v: str = ParamType(blacklist="ABC123")
     ):
         return jsonify({"v": v})
-    
+
     @decorator(path("/decorator/pattern", "/<v>"))
     @dummy_decorator
     @ValidateParameters()
@@ -155,7 +176,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             v: str = ParamType(pattern="\\w{3}\\d{3}")
     ):
         return jsonify({"v": v})
-    
+
     @decorator(path("/decorator/func", "/<v>"))
     @dummy_decorator
     @ValidateParameters()
@@ -164,7 +185,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
     ):
         assert type(v) is str
         return jsonify({"v": v})
-    
+
     @decorator("/decorator/alias")  # Route not currently supported by alias
     @dummy_decorator
     @ValidateParameters()
@@ -172,22 +193,22 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             value: str = ParamType(alias="v")
     ):
         return jsonify({"value": value})
-    
+
     # Test Parent Decorators Async
-    
+
     @decorator(path("/async_decorator/required", "/<v>"))
     @dummy_async_decorator
     @ValidateParameters()
     async def async_decorator_required(v: str = ParamType()):
         assert type(v) is str
         return jsonify({"v": v})
-    
+
     @decorator("/async_decorator/optional")  # Route not currently supported by Optional
     @dummy_async_decorator
     @ValidateParameters()
     async def async_decorator_optional(v: Optional[str] = ParamType()):
         return jsonify({"v": v})
-    
+
     @decorator("/async_decorator/default")  # Route not currently supported by default
     @dummy_async_decorator
     @ValidateParameters()
@@ -199,7 +220,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             "n_opt": n_opt,
             "opt": opt
         })
-    
+
     @decorator(path("/async_decorator/min_str_length", "/<v>"))
     @dummy_async_decorator
     @ValidateParameters()
@@ -207,7 +228,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             v: str = ParamType(min_str_length=2)
     ):
         return jsonify({"v": v})
-    
+
     @decorator(path("/async_decorator/max_str_length", "/<v>"))
     @dummy_async_decorator
     @ValidateParameters()
@@ -215,7 +236,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             v: str = ParamType(max_str_length=2)
     ):
         return jsonify({"v": v})
-    
+
     @decorator(path("/async_decorator/whitelist", "/<v>"))
     @dummy_async_decorator
     @ValidateParameters()
@@ -223,7 +244,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             v: str = ParamType(whitelist="ABC123")
     ):
         return jsonify({"v": v})
-    
+
     @decorator(path("/async_decorator/blacklist", "/<v>"))
     @dummy_async_decorator
     @ValidateParameters()
@@ -231,7 +252,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             v: str = ParamType(blacklist="ABC123")
     ):
         return jsonify({"v": v})
-    
+
     @decorator(path("/async_decorator/pattern", "/<v>"))
     @dummy_async_decorator
     @ValidateParameters()
@@ -239,7 +260,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
             v: str = ParamType(pattern="\\w{3}\\d{3}")
     ):
         return jsonify({"v": v})
-    
+
     @decorator(path("/async_decorator/func", "/<v>"))
     @dummy_async_decorator
     @ValidateParameters()
@@ -248,7 +269,7 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
     ):
         assert type(v) is str
         return jsonify({"v": v})
-    
+
     @decorator("/async_decorator/alias")  # Route not currently supported by alias
     @dummy_async_decorator
     @ValidateParameters()

@@ -45,7 +45,7 @@ class ValidateParameters:
         def nested_func_helper(**kwargs):
             """
             Validates the inputs of a Flask route or returns an error. Returns
-            are wrapped in a dictionary with a flag to let nested_func() know 
+            are wrapped in a dictionary with a flag to let nested_func() know
             if it should unpack the resulting dictionary of inputs as kwargs,
             or just return the error message.
             """
@@ -199,12 +199,26 @@ class ValidateParameters:
 
             # In python3.7+, typing.Optional is used instead of typing.Union[..., None]
             if expected_input_type_str.startswith("typing.Optional"):
-                new_type = expected_input_type.__args__[0]
-                expected_input_type = new_type
-                expected_input_type_str = str(new_type)
-
+                expected_input_types = expected_input_type.__args__
+                user_inputs = [user_input]
+                # If typing.List in optional and user supplied valid list, convert remaining check only for list
+                for exp_type in expected_input_types:
+                    if any(str(exp_type).startswith(list_hint) for list_hint in list_type_hints):
+                        if type(user_input) is list:
+                            if hasattr(exp_type, "__args__"):
+                                if all(type(inp) in exp_type.__args__ for inp in user_input):
+                                    expected_input_type = exp_type
+                                    expected_input_types = expected_input_type.__args__
+                                    expected_input_type_str = str(exp_type)
+                                    user_inputs = user_input
+                                elif int in exp_type.__args__:  # Ints from list[str] sources haven't been converted yet, so give it a typecast for good measure
+                                    if all(type(int(inp)) in exp_type.__args__ for inp in user_input):
+                                        expected_input_type = exp_type
+                                        expected_input_types = expected_input_type.__args__
+                                        expected_input_type_str = str(exp_type)
+                                        user_inputs = user_input
             # Prepare expected type checks for unions, lists and plain types
-            if expected_input_type_str.startswith("typing.Union"):
+            elif expected_input_type_str.startswith("typing.Union"):
                 expected_input_types = expected_input_type.__args__
                 user_inputs = [user_input]
                 # If typing.List in union and user supplied valid list, convert remaining check only for list

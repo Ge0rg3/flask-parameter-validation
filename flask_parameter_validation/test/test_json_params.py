@@ -39,6 +39,63 @@ def test_optional_str(client):
     assert r.json["v"] == "v"
 
 
+def test_optional_str_blank_none_unset(client, app):
+    url = "/json/str/blank_none/unset"
+    # Test that FPV_BLANK_NONE runs as False by default
+    app.config.update({"FPV_BLANK_NONE": None})
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
+    # Test that FPV_BLANK_NONE returns empty string when False
+    app.config.update({"FPV_BLANK_NONE": False})
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
+    # Test that FPV_BLANK_NONE returns None when True
+    app.config.update({"FPV_BLANK_NONE": True})
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] is None
+
+
+def test_optional_str_blank_none_true(client, app):
+    url = "/json/str/blank_none/true"
+    # Test that unset FPV_BLANK_NONE can be overridden to True per-route
+    app.config.update({"FPV_BLANK_NONE": None})
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that FPV_BLANK_NONE of False can be overridden to True per-route
+    app.config.update({"FPV_BLANK_NONE": False})
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that FPV_BLANK_NONE of True can be 'overridden' to True per-route
+    app.config.update({"FPV_BLANK_NONE": True})
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] is None
+
+
+def test_optional_str_blank_none_false(client, app):
+    url = "/json/str/blank_none/false"
+    # Test that unset FPV_BLANK_NONE can be 'overridden' to False per-route
+    app.config.update({"FPV_BLANK_NONE": None})
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
+    # Test that FPV_BLANK_NONE of False can be 'overridden' to False per-route
+    app.config.update({"FPV_BLANK_NONE": False})
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
+    # Test that FPV_BLANK_NONE of True can be overridden to False per-route
+    app.config.update({"FPV_BLANK_NONE": True})
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
+
+
 def test_str_default(client):
     url = "/json/str/default"
     # Test that missing input for required and optional yields default values
