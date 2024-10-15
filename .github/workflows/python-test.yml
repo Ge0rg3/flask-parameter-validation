@@ -5,7 +5,7 @@ name: Flask-Parameter-Validation Unit Tests
 
 on:
   push:
-    branches: [ "master", "github-ci" ]
+    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
 
