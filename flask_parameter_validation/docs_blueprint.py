@@ -34,7 +34,7 @@ def get_function_docs(func):
     """
     fn_list = ValidateParameters().get_fn_list()
     for fsig, fdocs in fn_list.items():
-        if fsig.endswith(func.__name__):
+        if hasattr(func, "__fpv_discriminated_sig__") and func.__fpv_discriminated_sig__ == fsig:
             return {
                 "docstring": format_docstring(fdocs.get("docstring")),
                 "decorators": fdocs.get("decorators"),
