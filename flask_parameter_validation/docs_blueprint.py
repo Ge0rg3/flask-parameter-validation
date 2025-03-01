@@ -1,3 +1,4 @@
+from enum import Enum
 import flask
 from flask import Blueprint, current_app, jsonify
 
@@ -74,11 +75,13 @@ def get_arg_type_hint(fdocs, arg_name):
     Extract the type hint for a specific argument.
     """
     arg_type = fdocs["argspec"].annotations[arg_name]
-    if hasattr(arg_type, "__args__"):
-        return (
-            f"{arg_type.__name__}[{', '.join([a.__name__ for a in arg_type.__args__])}]"
-        )
-    return arg_type.__name__
+    def recursively_resolve_type_hint(type_to_resolve):
+        if hasattr(type_to_resolve, "__args__"):
+            return (
+                f"{type_to_resolve.__name__}[{', '.join([recursively_resolve_type_hint(a) for a in type_to_resolve.__args__])}]"
+            )
+        return type_to_resolve.__name__
+    return recursively_resolve_type_hint(arg_type)
 
 
 def get_arg_location(fdocs, idx):
@@ -98,6 +101,18 @@ def get_arg_location_details(fdocs, idx):
         if value is not None:
             if callable(value):
                 loc_details[param] = f"{value.__module__}.{value.__name__}"
+            elif issubclass(type(value), Enum):
+                loc_details[param] = f"{type(value).__name__}.{value.name}: "
+                if issubclass(type(value), int):
+                    loc_details[param] += f"{value.value}"
+                elif issubclass(type(value), str):
+                    loc_details[param] += f"'{value.value}'"
+                else:
+                    loc_details[param] = f"FPV: Unsupported Enum type"
+            elif type(value).__name__ == 'time':
+                loc_details[param] = value.isoformat()
+            elif param == 'sources':
+                loc_details[param] = [type(source).__name__ for source in value]
             else:
                 loc_details[param] = value
     return loc_details
