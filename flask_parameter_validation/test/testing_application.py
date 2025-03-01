@@ -24,6 +24,8 @@ def create_app():
     app.register_blueprint(get_file_blueprint("file"))
     for source_a in multi_source_sources:
         for source_b in multi_source_sources:
-            combined_name = f"ms_{source_a['name']}_{source_b['name']}"
-            app.register_blueprint(get_multi_source_blueprint([source_a['class'], source_b['class']], combined_name))
+            if source_a["name"] != source_b["name"]:
+                # There's no reason to test multi-source with two of the same source
+                combined_name = f"ms_{source_a['name']}_{source_b['name']}"
+                app.register_blueprint(get_multi_source_blueprint([source_a['class'], source_b['class']], combined_name))
     return app
