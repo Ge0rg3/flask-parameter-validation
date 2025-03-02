@@ -76,11 +76,19 @@ def get_arg_type_hint(fdocs, arg_name):
     """
     arg_type = fdocs["argspec"].annotations[arg_name]
     def recursively_resolve_type_hint(type_to_resolve):
+        if hasattr(type_to_resolve, "__name__"):  # In Python 3.9, Optional and Union do not have __name__
+            type_base_name = type_to_resolve.__name__
+        elif hasattr(type_to_resolve, "_name") and type_to_resolve._name is not None:
+            # In Python 3.9, _name exists on list[whatever] and has a non-None value
+            type_base_name = type_to_resolve._name
+        else:
+            # But, in Python 3.9, Optional[whatever] has _name of None - but its __origin__ is Union
+            type_base_name = type_to_resolve.__origin__._name
         if hasattr(type_to_resolve, "__args__"):
             return (
-                f"{type_to_resolve.__name__}[{', '.join([recursively_resolve_type_hint(a) for a in type_to_resolve.__args__])}]"
+                f"{type_base_name}[{', '.join([recursively_resolve_type_hint(a) for a in type_to_resolve.__args__])}]"
             )
-        return type_to_resolve.__name__
+        return type_base_name
     return recursively_resolve_type_hint(arg_type)
 
 

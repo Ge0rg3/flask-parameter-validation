@@ -1,3 +1,4 @@
+import sys
 from flask_parameter_validation.docs_blueprint import get_route_docs
 
 def test_http_ok(client):
@@ -5,7 +6,7 @@ def test_http_ok(client):
     assert r.status_code == 200
     r = client.get("/docs/json")
     assert r.status_code == 200
-
+import sys
 def test_routes_added(app):
     routes = []
     for rule in app.url_map.iter_rules():
@@ -20,18 +21,19 @@ def test_doc_types_of_default(app):
         "query": "Query",
         "route": "Route"
     }
+    optional_as_str = "Optional" if sys.version_info >= (3,10) else "Union"
     types = {
-        "bool": {"opt": "Optional[bool, NoneType]", "n_opt": "bool"},
-        "date": {"opt": "Optional[date, NoneType]", "n_opt": "date"},
-        "datetime": {"opt": "Optional[datetime, NoneType]", "n_opt": "datetime"},
-        "dict": {"opt": "Optional[dict, NoneType]", "n_opt": "dict"},
-        "float": {"opt": "Optional[float, NoneType]", "n_opt": "float"},
-        "int": {"opt": "Optional[int, NoneType]", "n_opt": "int"},
-        "int_enum": {"opt": "Optional[Binary, NoneType]", "n_opt": "Binary"},
-        "list": {"opt": "Optional[List[int], NoneType]", "n_opt": "List[str]"},
-        "str": {"opt": "Optional[str, NoneType]", "n_opt": "str"},
-        "str_enum": {"opt": "Optional[Fruits, NoneType]", "n_opt": "Fruits"},
-        "time": {"opt": "Optional[time, NoneType]", "n_opt": "time"},
+        "bool": {"opt": f"{optional_as_str}[bool, NoneType]", "n_opt": "bool"},
+        "date": {"opt": f"{optional_as_str}[date, NoneType]", "n_opt": "date"},
+        "datetime": {"opt": f"{optional_as_str}[datetime, NoneType]", "n_opt": "datetime"},
+        "dict": {"opt": f"{optional_as_str}[dict, NoneType]", "n_opt": "dict"},
+        "float": {"opt": f"{optional_as_str}[float, NoneType]", "n_opt": "float"},
+        "int": {"opt": f"{optional_as_str}[int, NoneType]", "n_opt": "int"},
+        "int_enum": {"opt": f"{optional_as_str}[Binary, NoneType]", "n_opt": "Binary"},
+        "list": {"opt": f"{optional_as_str}[List[int], NoneType]", "n_opt": "List[str]"},
+        "str": {"opt": f"{optional_as_str}[str, NoneType]", "n_opt": "str"},
+        "str_enum": {"opt": f"{optional_as_str}[Fruits, NoneType]", "n_opt": "Fruits"},
+        "time": {"opt": f"{optional_as_str}[time, NoneType]", "n_opt": "time"},
         "union": {"opt": "Union[bool, int, NoneType]", "n_opt": "Union[bool, int]"}
     }
     route_unsupported_types = ["dict", "list"]
