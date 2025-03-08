@@ -17,7 +17,10 @@ multi_source_sources = [
 
 def create_app():
     app = Flask(__name__)
-
+    app.config["FPV_OPENAPI_ENABLE"] = True
+    app.config["FPV_OPENAPI_BASE"] = {
+        "openapi": "3.1.0"
+    }
     app.register_blueprint(get_parameter_blueprint(Query, "query", "query", "get"))
     app.register_blueprint(get_parameter_blueprint(Json, "json", "json", "post"))
     app.register_blueprint(get_parameter_blueprint(Form, "form", "form", "post"))
