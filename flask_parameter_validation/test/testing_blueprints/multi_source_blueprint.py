@@ -1,4 +1,5 @@
 import datetime
+import uuid
 from typing import Optional, List, Union
 
 from flask import Blueprint, jsonify
@@ -147,6 +148,19 @@ def get_multi_source_blueprint(sources, name):
     @param_bp.route("/kwargs/<v>", methods=["GET", "POST"])
     @ValidateParameters()
     def multi_source_kwargs(v: int = MultiSource(sources[0], sources[1], min_int=0)):
+        return jsonify({"v": v})
+
+    @param_bp.route("/required_uuid", methods=["GET", "POST"])
+    @param_bp.route("/required_uuid/<v>", methods=["GET", "POST"])
+    @ValidateParameters()
+    def multi_source_uuid(v: uuid.UUID = MultiSource(sources[0], sources[1])):
+        print(v)
+        return jsonify({"v": v})
+
+    @param_bp.route("/optional_uuid", methods=["GET", "POST"])
+    @param_bp.route("/optional_uuid/<v>", methods=["GET", "POST"])
+    @ValidateParameters()
+    def multi_source_optional_uuid(v: Optional[uuid.UUID] = MultiSource(sources[0], sources[1])):
         return jsonify({"v": v})
 
     return param_bp

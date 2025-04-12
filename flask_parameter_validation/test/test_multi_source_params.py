@@ -517,7 +517,7 @@ def test_multi_source_optional_union(client, source_a, source_b):
 
 
 @pytest.mark.parametrize(*common_parameters)
-def test_multi_source_int(client, source_a, source_b):
+def test_multi_source_kwargs(client, source_a, source_b):
     if source_a == source_b:  # This shouldn't be something someone does, so we won't test for it
         return
     url = f"/ms_{source_a}_{source_b}/kwargs"
@@ -552,3 +552,51 @@ def test_multi_source_int(client, source_a, source_b):
     # Test that missing input yields error
     r = client.get(url)
     assert "error" in r.json
+
+@pytest.mark.parametrize(*common_parameters)
+def test_multi_source_uuid(client, source_a, source_b):
+    if source_a == source_b:  # This shouldn't be something someone does, so we won't test for it
+        return
+    url = f"/ms_{source_a}_{source_b}/required_uuid"
+    for source in [source_a, source_b]:
+        # Test that present input yields input value
+        r = None
+        b = "926aaf11-57f1-4ba6-90ba-91333de13e6d"
+        if source == "query":
+            r = client.get(url, query_string={"v": b})
+        elif source == "form":
+            r = client.get(url, data={"v": b})
+        elif source == "json":
+            r = client.get(url, json={"v": b})
+        elif source == "route":
+            r = client.get(f"{url}/{b}")
+        assert r is not None
+        assert "v" in r.json
+        assert r.json["v"] == b
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+@pytest.mark.parametrize(*common_parameters)
+def test_multi_source_optional_uuid(client, source_a, source_b):
+    if source_a == source_b:  # This shouldn't be something someone does, so we won't test for it
+        return
+    url = f"/ms_{source_a}_{source_b}/optional_uuid"
+    for source in [source_a, source_b]:
+        # Test that present input yields input value
+        r = None
+        b = "28124cee-c074-448d-be63-6490ff5c89c0"
+        if source == "query":
+            r = client.get(url, query_string={"v": b})
+        elif source == "form":
+            r = client.get(url, data={"v": b})
+        elif source == "json":
+            r = client.get(url, json={"v": b})
+        elif source == "route":
+            r = client.get(f"{url}/{b}")
+        assert r is not None
+        assert "v" in r.json
+        assert r.json["v"] == "28124cee-c074-448d-be63-6490ff5c89c0"
+    # Test that missing input yields error
+    r = client.get(url)
+    assert r.json["v"] is None

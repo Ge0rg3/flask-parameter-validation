@@ -1,5 +1,6 @@
 # String Validation
 import datetime
+import uuid
 from typing import Type, List, Optional
 
 from flask_parameter_validation.test.enums import Fruits, Binary
@@ -1122,4 +1123,98 @@ def test_int_enum_func(client):
     assert r.json["v"] == Binary.ZERO.value
     # Test that input failing func yields error
     r = client.post(url, data={"v": Binary.ONE.value})
+    assert "error" in r.json
+
+# UUID Validation
+def test_required_uuid(client):
+    url = "/form/uuid/required"
+    # Test that present UUID input yields input value
+    u = uuid.uuid4()
+    r = client.post(url, data={"v": u})
+    assert "v" in r.json
+    assert uuid.UUID(r.json["v"]) == u
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+    # Test that present non-UUID input yields error
+    r = client.post(url, data={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_uuid_decorator(client):
+    url = "/form/uuid/decorator/required"
+    # Test that present UUID input yields input value
+    u = uuid.uuid4()
+    r = client.post(url, data={"v": u})
+    assert "v" in r.json
+    assert uuid.UUID(r.json["v"]) == u
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+    # Test that present non-UUID input yields error
+    r = client.post(url, data={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_uuid_async_decorator(client):
+    url = "/form/uuid/async_decorator/required"
+    # Test that present UUID input yields input value
+    u = uuid.uuid4()
+    r = client.post(url, data={"v": u})
+    assert "v" in r.json
+    assert uuid.UUID(r.json["v"]) == u
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+    # Test that present non-UUID input yields error
+    r = client.post(url, data={"v": "a"})
+    assert "error" in r.json
+
+
+def test_optional_uuid(client):
+    url = "/form/uuid/optional"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present UUID input yields input value
+    u = uuid.uuid4()
+    r = client.post(url, data={"v": u})
+    assert "v" in r.json
+    assert uuid.UUID(r.json["v"]) == u
+    # Test that present non-UUID input yields error
+    r = client.post(url, data={"v": "a"})
+    assert "error" in r.json
+
+def test_uuid_default(client):
+    url = "/form/uuid/default"
+    # Test that missing input for required and optional yields default values
+    r = client.post(url)
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == "9ba0c75f-1574-4464-bd7d-760262e3ea41"
+    assert "opt" in r.json
+    assert r.json["opt"] == "2f01faa3-29a2-4b36-b406-2ad288fb4969"
+    # Test that present UUID input for required and optional yields input values
+    r = client.post(url, data={
+        "opt": "f2b1e5a0-e050-4618-83b8-f303b887b75d",
+        "n_opt": "48c0d213-a889-4ba6-9722-70f6e6a1afca"
+    })
+    assert "opt" in r.json
+    assert r.json["opt"] == "f2b1e5a0-e050-4618-83b8-f303b887b75d"
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == "48c0d213-a889-4ba6-9722-70f6e6a1afca"
+    # Test that present non-UUID input for required yields error
+    r = client.post(url, data={"opt": "a", "n_opt": "b"})
+    assert "error" in r.json
+
+
+def test_uuid_func(client):
+    url = "/form/uuid/func"
+    # Test that input passing func yields input
+    u = "b662e5f5-7e82-4ac7-8844-4efea3afa171"
+    r = client.post(url, data={"v": u})
+    assert "v" in r.json
+    assert r.json["v"] == u
+    # Test that input failing func yields error
+    r = client.post(url, data={"v": "492c6dfc-1730-11f0-9cd2-0242ac120002"})
     assert "error" in r.json
