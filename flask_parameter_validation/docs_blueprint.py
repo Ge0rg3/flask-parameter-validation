@@ -1,5 +1,6 @@
 import datetime
 import json
+import uuid
 import warnings
 from copy import deepcopy
 from typing import Optional, Union
@@ -235,7 +236,9 @@ def generate_json_schema_helper(param: dict, param_type: str, raw_type):
         # Use oneOf:[{const}] instead of enum by recommendation https://github.com/OAI/OpenAPI-Specification/issues/348#issuecomment-336194030
         options = [{"title": opt.name, "const": opt.value} for opt in raw_type]
         schema["oneOf"] = options
-
+    elif raw_type is uuid.UUID:
+        schema["type"] = "string"
+        schema["format"] = "uuid"
     else:
         match = re.match(r'(\w+)\[([\w\[\] ,.]+)]', param_type)
         if not match:
