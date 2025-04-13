@@ -34,7 +34,8 @@ def test_doc_types_of_default(app):
         "str": {"opt": f"{optional_as_str}[str, NoneType]", "n_opt": "str"},
         "str_enum": {"opt": f"{optional_as_str}[Fruits, NoneType]", "n_opt": "Fruits"},
         "time": {"opt": f"{optional_as_str}[time, NoneType]", "n_opt": "time"},
-        "union": {"opt": "Union[bool, int, NoneType]", "n_opt": "Union[bool, int]"}
+        "union": {"opt": "Union[bool, int, NoneType]", "n_opt": "Union[bool, int]"},
+        "uuid": {"opt": f"{optional_as_str}[UUID, NoneType]", "n_opt": "UUID"}
     }
     route_unsupported_types = ["dict", "list"]
     route_docs = get_route_docs()
