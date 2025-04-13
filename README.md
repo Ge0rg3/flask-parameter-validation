@@ -14,6 +14,7 @@ from typing import Optional
 from flask_parameter_validation import ValidateParameters, Route, Json, Query
 from datetime import datetime
 from enum import Enum
+from uuid import UUID
 
 class AccountStatus(int, Enum):  # In Python 3.11 or later, subclass IntEnum from enum package instead of int, Enum
   ACTIVE = 1
@@ -36,7 +37,8 @@ def hello(
         password_expiry: Optional[int] = Json(5),
         is_admin: bool = Query(False),
         user_type: UserType = Json(alias="type"),
-        status: AccountStatus = Json()
+        status: AccountStatus = Json(),
+        unique: UUID = Json()
      ):
     return "Hello World!"
 
