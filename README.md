@@ -14,6 +14,7 @@ from typing import Optional, TypedDict, NotRequired
 from flask_parameter_validation import ValidateParameters, Route, Json, Query
 from datetime import datetime
 from enum import Enum
+from uuid import UUID
 
 class AccountStatus(int, Enum):  # In Python 3.11 or later, subclass IntEnum from enum package instead of int, Enum
   ACTIVE = 1
@@ -42,6 +43,7 @@ def hello(
         is_admin: bool = Query(False),
         user_type: UserType = Json(alias="type"),
         status: AccountStatus = Json(),
+        unique: UUID = Json(),
         permissions: dict[str, str] = Query(list_disable_query_csv=True),
         socials: list[SocialLink] = Json()
      ):
