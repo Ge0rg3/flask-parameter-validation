@@ -2,6 +2,7 @@ import asyncio
 import functools
 import inspect
 import re
+import uuid
 from inspect import signature
 from flask import request, Response
 from werkzeug.datastructures import ImmutableMultiDict
@@ -28,6 +29,11 @@ class ValidateParameters:
         Parent flow for validating each required parameter
         """
         fsig = f.__module__ + "." + f.__name__
+        # Add a discriminator to the function signature, store it in the properties of the function
+        # This is used in documentation generation to associate the info gathered from inspecting the
+        # function with the properties passed to the ValidateParameters decorator
+        f.__fpv_discriminated_sig__ = f"{uuid.uuid4()}_{fsig}"
+        fsig = f.__fpv_discriminated_sig__
         argspec = inspect.getfullargspec(f)
         source = inspect.getsource(f)
         index = source.find("def ")

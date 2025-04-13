@@ -31,7 +31,7 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     @ValidateParameters()
     def default(
             n_opt: dict = ParamType(default={"a": "b"}),
-            opt: dict = ParamType(default={"c": "d"})
+            opt: Optional[dict] = ParamType(default={"c": "d"})
     ):
         return jsonify({
             "n_opt": n_opt,
@@ -43,7 +43,7 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     @ValidateParameters()
     def decorator_default(
             n_opt: dict = ParamType(default={"a": "b"}),
-            opt: dict = ParamType(default={"c": "d"})
+            opt: Optional[dict] = ParamType(default={"c": "d"})
     ):
         return jsonify({
             "n_opt": n_opt,
@@ -55,7 +55,7 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     @ValidateParameters()
     async def async_decorator_default(
             n_opt: dict = ParamType(default={"a": "b"}),
-            opt: dict = ParamType(default={"c": "d"})
+            opt: Optional[dict] = ParamType(default={"c": "d"})
     ):
         return jsonify({
             "n_opt": n_opt,

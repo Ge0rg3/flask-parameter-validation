@@ -6,7 +6,8 @@ from .testing_application import create_app
 def app():
     app = create_app()
     app.config.update({"TESTING": True})
-    yield app
+    with app.app_context():
+        yield app
 
 
 @pytest.fixture()
