@@ -3,6 +3,7 @@
     Should only be used as child class for other params.
 """
 import re
+import uuid
 from datetime import date, datetime, time
 from enum import Enum
 import dateutil.parser as parser
@@ -199,4 +200,11 @@ class Parameter:
                         value = int(value)
                     returning = allowed_types[0](value)
                     return returning
+        elif uuid.UUID in allowed_types:
+            try:
+                if type(value) == uuid.UUID:  # Handle default of type UUID
+                    return value
+                return uuid.UUID(value)
+            except AttributeError:
+                raise ValueError("UUID format is incorrect")
         return value
