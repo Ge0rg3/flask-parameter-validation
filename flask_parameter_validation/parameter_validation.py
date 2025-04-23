@@ -185,7 +185,7 @@ class ValidateParameters:
                 if any(str(exp_type).startswith(list_hint) for list_hint in list_type_hints):
                     print(f"type(user_input): {type(user_input)}")
                     if type(user_input) is list:
-                        print(f"hasattr(exp_type.__args__): {hasattr(exp_type, "__args__")}")
+                        print(f"hasattr(exp_type.__args__): {hasattr(exp_type, '__args__')}")
                         if hasattr(exp_type, "__args__"):
                             print(f"exp_type.__args__: {exp_type.__args__}")
                             sub_expected_input_types = exp_type.__args__
