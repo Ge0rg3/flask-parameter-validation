@@ -1,5 +1,6 @@
 # String Validation
 import datetime
+import json
 import uuid
 from typing import Type, List, Optional
 
@@ -88,11 +89,6 @@ def test_optional_str_async_decorator(client):
 
 def test_optional_str_blank_none_unset(client, app):
     url = "/query/str/blank_none/unset"
-    # Test that FPV_BLANK_NONE runs as False by default
-    app.config.update({"FPV_BLANK_NONE": None})
-    r = client.get(f"{url}", query_string={"v": ""})
-    assert "v" in r.json
-    assert r.json["v"] == ""
     # Test that FPV_BLANK_NONE returns empty string when False
     app.config.update({"FPV_BLANK_NONE": False})
     r = client.get(f"{url}", query_string={"v": ""})
@@ -103,15 +99,15 @@ def test_optional_str_blank_none_unset(client, app):
     r = client.get(f"{url}", query_string={"v": ""})
     assert "v" in r.json
     assert r.json["v"] is None
+    # Test that FPV_BLANK_NONE runs as False by default
+    app.config.pop("FPV_BLANK_NONE", None)
+    r = client.get(f"{url}", query_string={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
 
 
 def test_optional_str_blank_none_true(client, app):
     url = "/query/str/blank_none/true"
-    # Test that unset FPV_BLANK_NONE can be overridden to True per-route
-    app.config.update({"FPV_BLANK_NONE": None})
-    r = client.get(f"{url}", query_string={"v": ""})
-    assert "v" in r.json
-    assert r.json["v"] is None
     # Test that FPV_BLANK_NONE of False can be overridden to True per-route
     app.config.update({"FPV_BLANK_NONE": False})
     r = client.get(f"{url}", query_string={"v": ""})
@@ -122,15 +118,15 @@ def test_optional_str_blank_none_true(client, app):
     r = client.get(f"{url}", query_string={"v": ""})
     assert "v" in r.json
     assert r.json["v"] is None
+    # Test that unset FPV_BLANK_NONE can be overridden to True per-route
+    app.config.pop("FPV_BLANK_NONE", None)
+    r = client.get(f"{url}", query_string={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] is None
 
 
 def test_optional_str_blank_none_false(client, app):
     url = "/query/str/blank_none/false"
-    # Test that unset FPV_BLANK_NONE can be 'overridden' to False per-route
-    app.config.update({"FPV_BLANK_NONE": None})
-    r = client.get(f"{url}", query_string={"v": ""})
-    assert "v" in r.json
-    assert r.json["v"] == ""
     # Test that FPV_BLANK_NONE of False can be 'overridden' to False per-route
     app.config.update({"FPV_BLANK_NONE": False})
     r = client.get(f"{url}", query_string={"v": ""})
@@ -138,6 +134,11 @@ def test_optional_str_blank_none_false(client, app):
     assert r.json["v"] == ""
     # Test that FPV_BLANK_NONE of True can be overridden to False per-route
     app.config.update({"FPV_BLANK_NONE": True})
+    r = client.get(f"{url}", query_string={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
+    # Test that unset FPV_BLANK_NONE can be 'overridden' to False per-route
+    app.config.pop("FPV_BLANK_NONE", None)
     r = client.get(f"{url}", query_string={"v": ""})
     assert "v" in r.json
     assert r.json["v"] == ""
@@ -1213,8 +1214,13 @@ def test_union_func(client):
 
 
 # List Validation
-def test_required_list_str(client):
+def test_required_list_str(client, app):
     url = "/query/list/req_str"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present single str input yields [input value]
     r = client.get(url, query_string={"v": "w"})
     assert "v" in r.json
@@ -1224,7 +1230,26 @@ def test_required_list_str(client):
     assert r.json["v"][0] == "w"
     # Test that present CSV str input yields [input values]
     v = ["x", "y"]
-    r = client.get(url, query_string={"v": v})
+    r = client.get(url, query_string={"v": ','.join(v)})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present list with 2 CSV empty strings yields two empty strings
+    r = client.get(url, query_string={"v": ","})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    # Test that present str input in multiple of the same query param yields [input values]
+    v = ["z", "a"]
+    r = client.get(f"{url}", query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present empty str input in multiple of the same query param yields [input values]
+    v = ["", ""]
+    r = client.get(f"{url}", query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
@@ -1236,6 +1261,11 @@ def test_required_list_str(client):
 
 def test_required_list_str_decorator(client):
     url = "/query/list/decorator/req_str"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present single str input yields [input value]
     r = client.get(url, query_string={"v": "w"})
     assert "v" in r.json
@@ -1245,7 +1275,26 @@ def test_required_list_str_decorator(client):
     assert r.json["v"][0] == "w"
     # Test that present CSV str input yields [input values]
     v = ["x", "y"]
-    r = client.get(url, query_string={"v": v})
+    r = client.get(url, query_string={"v": ','.join(v)})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present list with 2 CSV empty strings yields two empty strings
+    r = client.get(url, query_string={"v": ","})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    # Test that present str input in multiple of the same query param yields [input values]
+    v = ["z", "a"]
+    r = client.get(f"{url}", query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present empty str input in multiple of the same query param yields [input values]
+    v = ["", ""]
+    r = client.get(f"{url}", query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
@@ -1257,6 +1306,11 @@ def test_required_list_str_decorator(client):
 
 def test_required_list_str_async_decorator(client):
     url = "/query/list/async_decorator/req_str"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present single str input yields [input value]
     r = client.get(url, query_string={"v": "w"})
     assert "v" in r.json
@@ -1266,7 +1320,26 @@ def test_required_list_str_async_decorator(client):
     assert r.json["v"][0] == "w"
     # Test that present CSV str input yields [input values]
     v = ["x", "y"]
-    r = client.get(url, query_string={"v": v})
+    r = client.get(url, query_string={"v": ','.join(v)})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present list with 2 CSV empty strings yields two empty strings
+    r = client.get(url, query_string={"v": ","})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    # Test that present str input in multiple of the same query param yields [input values]
+    v = ["z", "a"]
+    r = client.get(f"{url}", query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present empty str input in multiple of the same query param yields [input values]
+    v = ["", ""]
+    r = client.get(f"{url}", query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
@@ -1276,71 +1349,147 @@ def test_required_list_str_async_decorator(client):
     assert "error" in r.json
 
 
-def test_required_list_str_multiple_params(client):
-    url = "/query/list/req_str"
+def test_required_list_str_disable_query_csv_unset(client, app):
+    url = "/query/list/disable_query_csv/unset"
+    # Test that FPV_LIST_DISABLE_QUERY_CSV returns array of two strings when False
+    app.config.update({"FPV_LIST_DISABLE_QUERY_CSV": False})
+    v = ["b", "c"]
+    r = client.get(f"{url}", query_string={"v": ",".join(v)})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that FPV_LIST_DISABLE_QUERY_CSV returns array of single string when True
+    app.config.update({"FPV_LIST_DISABLE_QUERY_CSV": True})
+    v = "d,e"
+    r = client.get(f"{url}", query_string={"v": v})
+    assert "v" in r.json
+    print(r.json["v"])
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    list_assertion_helper(1, str, [v], r.json["v"])
+    # Test that FPV_LIST_DISABLE_QUERY_CSV runs as False by default
+    app.config.pop("FPV_LIST_DISABLE_QUERY_CSV", None)
+    v = ["f", "g"]
+    r = client.get(f"{url}", query_string={"v": ",".join(v)})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+
+
+def test_required_list_str_disable_query_csv_true(client, app):
+    url = "/query/list/disable_query_csv/true"
+    # Test that FPV_LIST_DISABLE_QUERY_CSV of False can be overridden to True per-route
+    app.config.update({"FPV_LIST_DISABLE_QUERY_CSV": False})
+    v = "h,i"
+    r = client.get(f"{url}", query_string={"v": v})
+    assert "v" in r.json
+    print(r.json["v"])
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    list_assertion_helper(1, str, [v], r.json["v"])
+    # Test that FPV_LIST_DISABLE_QUERY_CSV of True can be 'overridden' to True per-route
+    app.config.update({"FPV_LIST_DISABLE_QUERY_CSV": True})
+    v = "j,k"
+    r = client.get(f"{url}", query_string={"v": v})
+    assert "v" in r.json
+    print(r.json["v"])
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    list_assertion_helper(1, str, [v], r.json["v"])
+    # Test that unset FPV_LIST_DISABLE_QUERY_CSV can be overridden to True per-route
+    app.config.pop("FPV_LIST_DISABLE_QUERY_CSV", None)
+    v = "l,m"
+    r = client.get(f"{url}", query_string={"v": v})
+    assert "v" in r.json
+    print(r.json["v"])
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    list_assertion_helper(1, str, [v], r.json["v"])
+
+
+def test_required_list_str_disable_query_csv_false(client, app):
+    url = "/query/list/disable_query_csv/false"
+    # Test that FPV_LIST_DISABLE_QUERY_CSV of False can be 'overridden' to False per-route
+    app.config.update({"FPV_LIST_DISABLE_QUERY_CSV": False})
+    v = ["n", "o"]
+    r = client.get(f"{url}", query_string={"v": ",".join(v)})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that FPV_LIST_DISABLE_QUERY_CSV of True can be overridden to False per-route
+    app.config.update({"FPV_LIST_DISABLE_QUERY_CSV": True})
+    v = ["p", "q"]
+    r = client.get(f"{url}", query_string={"v": ",".join(v)})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that unset FPV_LIST_DISABLE_QUERY_CSV can be 'overridden' to False per-route
+    app.config.pop("FPV_LIST_DISABLE_QUERY_CSV", None)
+    v = ["r", "s"]
+    r = client.get(f"{url}", query_string={"v": ",".join(v)})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+
+
+def test_optional_list_str(client):
+    url = "/query/list/opt_str"
+    # Test that missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present single str input yields [input value]
-    r = client.get(url, query_string={"v": "w"})
+    r = client.get(url, query_string={"v": "t"})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     assert type(r.json["v"][0]) is str
-    assert r.json["v"][0] == "w"
-    # Test that present multiple separate str inputs yields [input values]
-    v = ["x", "y"]
-    r = client.get(f"{url}?v=x&v=y")
+    assert r.json["v"][0] == "t"
+    # Test that present CSV str input yields [input values]
+    v = ["u", "v"]
+    r = client.get(url, query_string={"v": ','.join(v)})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, str, v, r.json["v"])
-    # Test that missing input yields error
-    r = client.get(url)
-    assert "error" in r.json
-
-
-def test_required_list_str_multiple_params_decorator(client):
-    url = "/query/list/decorator/req_str"
-    # Test that present single str input yields [input value]
-    r = client.get(url, query_string={"v": "w"})
+    # Test that present list with 2 CSV empty strings yields two empty strings
+    r = client.get(url, query_string={"v": ","})
     assert "v" in r.json
     assert type(r.json["v"]) is list
-    assert len(r.json["v"]) == 1
-    assert type(r.json["v"][0]) is str
-    assert r.json["v"][0] == "w"
-    # Test that present multiple separate str inputs yields [input values]
-    v = ["x", "y"]
-    r = client.get(f"{url}?v=x&v=y")
+    assert len(r.json["v"]) == 2
+    # Test that present str input in multiple of the same query param yields [input values]
+    v = ["w", "x"]
+    r = client.get(f"{url}", query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, str, v, r.json["v"])
-    # Test that missing input yields error
-    r = client.get(url)
-    assert "error" in r.json
-
-
-def test_required_list_str_multiple_params_async_decorator(client):
-    url = "/query/list/async_decorator/req_str"
-    # Test that present single str input yields [input value]
-    r = client.get(url, query_string={"v": "w"})
-    assert "v" in r.json
-    assert type(r.json["v"]) is list
-    assert len(r.json["v"]) == 1
-    assert type(r.json["v"][0]) is str
-    assert r.json["v"][0] == "w"
-    # Test that present multiple separate str inputs yields [input values]
-    v = ["x", "y"]
-    r = client.get(f"{url}?v=x&v=y")
+    # Test that present empty str input in multiple of the same query param yields [input values]
+    v = ["", ""]
+    r = client.get(f"{url}", query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, str, v, r.json["v"])
-    # Test that missing input yields error
-    r = client.get(url)
-    assert "error" in r.json
 
 
 def test_required_list_int(client):
     url = "/query/list/req_int"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present single int input yields [input value]
     r = client.get(url, query_string={"v": -1})
     assert "v" in r.json
@@ -1350,6 +1499,13 @@ def test_required_list_int(client):
     assert r.json["v"][0] == -1
     # Test that present CSV int input yields [input values]
     v = [0, 1]
+    r = client.get(url, query_string={"v": ','.join([str(i) for i in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, int, v, r.json["v"])
+    # Test that present int input in multiple of the same param yields [input values]
+    v = [2, 3]
     r = client.get(url, query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
@@ -1363,8 +1519,49 @@ def test_required_list_int(client):
     assert "error" in r.json
 
 
+def test_optional_list_int(client):
+    url = "/query/list/opt_int"
+    # Test the missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single int input yields [input value]
+    r = client.get(url, query_string={"v": -1})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is int
+    assert r.json["v"][0] == -1
+    # Test that present CSV int input yields [input values]
+    v = [0, 1]
+    r = client.get(url, query_string={"v": ','.join([str(i) for i in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, int, v, r.json["v"])
+    # Test that present int input in multiple of the same param yields [input values]
+    v = [2, 3]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, int, v, r.json["v"])
+    # Test that present non-int list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
 def test_required_list_bool(client):
     url = "/query/list/req_bool"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present single bool input yields [input value]
     r = client.get(url, query_string={"v": True})
     assert "v" in r.json
@@ -1379,6 +1576,13 @@ def test_required_list_bool(client):
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, bool, v, r.json["v"])
+    # Test that present bool input in multiple of the same param yields [input values]
+    v = [True, False]
+    r = client.get(url, query_string={"v": ','.join([str(b) for b in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, bool, v, r.json["v"])
     # Test that present non-bool list items yields error
     r = client.get(url, query_string={"v": "a"})
     assert "error" in r.json
@@ -1387,42 +1591,213 @@ def test_required_list_bool(client):
     assert "error" in r.json
 
 
-# List[Union[]] not currently supported
-# def test_required_list_union(client):
-#     url = "/query/list/req_union"
-#     # Test that present single int input yields [input value]
-#     r = client.get(f"{url}?v=2")
-#     assert "v" in r.json
-#     assert type(r.json["v"]) is list
-#     assert len(r.json["v"]) == 1
-#     assert type(r.json["v"][0]) is int
-#     assert r.json["v"][0] == 2
-#     # Test that present single float input yields [input value]
-#     r = client.get(f"{url}?v=3.14")
-#     assert "v" in r.json
-#     assert type(r.json["v"]) is list
-#     assert len(r.json["v"]) == 1
-#     assert type(r.json["v"][0]) is float
-#     assert r.json["v"][0] == 3.14
-#     # Test that present CSV int/float input yields [input values]
-#     r = client.get(f"{url}?v=4,5.62")
-#     assert "v" in r.json
-#     assert type(r.json["v"]) is list
-#     assert len(r.json["v"]) == 2
-#     assert type(r.json["v"][0]) is int
-#     assert type(r.json["v"][1]) is float
-#     assert r.json["v"][0] == 4
-#     assert r.json["v"][1] == 5.62
-#     # Test that present non-int/float list items yields error
-#     r = client.get(f"{url}?v=a")
-#     assert "error" in r.json
-#     # Test that missing input yields error
-#     r = client.get(url)
-#     assert "error" in r.json
+def test_optional_list_bool(client):
+    url = "/query/list/opt_bool"
+    # Test the missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single bool input yields [input value]
+    r = client.get(url, query_string={"v": True})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is bool
+    assert r.json["v"][0] is True
+    # Test that present CSV bool input yields [input values]
+    v = [False, True]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, bool, v, r.json["v"])
+    # Test that present bool input in multiple of the same param yields [input values]
+    v = [True, False]
+    r = client.get(url, query_string={"v": ','.join([str(b) for b in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, bool, v, r.json["v"])
+    # Test that present non-bool list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
 
+
+def test_required_list_float(client):
+    url = "/query/list/req_float"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single float input yields [input value]
+    r = client.get(url, query_string={"v": 7.39})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is float
+    assert r.json["v"][0] == 7.39
+    # Test that present CSV int input yields [input values]
+    v = [1.2, 3.4]
+    r = client.get(url, query_string={"v": ','.join([str(i) for i in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, float, v, r.json["v"])
+    # Test that present int input in multiple of the same param yields [input values]
+    v = [5.6, 7.8]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, float, v, r.json["v"])
+    # Test that present non-int list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+
+def test_optional_list_float(client):
+    url = "/query/list/opt_float"
+    # Test the missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single float input yields [input value]
+    r = client.get(url, query_string={"v": 7.39})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is float
+    assert r.json["v"][0] == 7.39
+    # Test that present CSV int input yields [input values]
+    v = [1.2, 3.4]
+    r = client.get(url, query_string={"v": ','.join([str(i) for i in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, float, v, r.json["v"])
+    # Test that present int input in multiple of the same param yields [input values]
+    v = [5.6, 7.8]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, float, v, r.json["v"])
+    # Test that present non-int list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_list_union(client):
+    url = "/query/list/req_union"
+    # Test that present single int input yields [input value]
+    r = client.get(f"{url}?v=2")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is int
+    assert r.json["v"][0] == 2
+    # Test that present single float input yields [input value]
+    r = client.get(f"{url}?v=3.14")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is float
+    assert r.json["v"][0] == 3.14
+    # Test that present CSV int/float input yields [input values]
+    r = client.get(f"{url}?v=4,5.62")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is int
+    assert type(r.json["v"][1]) is float
+    assert r.json["v"][0] == 4
+    assert r.json["v"][1] == 5.62
+    # Test that present non-int/float list items yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+def test_required_list_union_everything(client):
+    url = "/query/list/req_union_everything"
+    v = [
+        "testing",
+        5,
+        True,
+        3.14,
+        datetime.datetime(2025, 4, 20, 15, 13, 32).isoformat(),
+        datetime.date(2025, 4, 20).isoformat(),
+        datetime.time(15, 14, 22).isoformat(),
+        json.dumps({"i": "am", "a": "dictionary"}),
+        Fruits.APPLE.value,
+        Binary.ONE.value,
+        str(uuid.uuid4())
+    ]
+    r = client.get(f"{url}", query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(v) == len(r.json["v"])
+    for i in range(len(v)):
+        if i == 7:
+            assert r.json["v"][i] == json.loads(v[i])
+        else:
+            assert r.json["v"][i] == v[i]
+
+def test_optional_list_union(client):
+    url = "/query/list/opt_union"
+    # Test the missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single int input yields [input value]
+    r = client.get(f"{url}?v=2")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is int
+    assert r.json["v"][0] == 2
+    # Test that present single bool input yields [input value]
+    r = client.get(f"{url}?v=true")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is bool
+    assert r.json["v"][0] == True
+    # Test that present CSV int/bool input yields [input values]
+    r = client.get(f"{url}?v=4,false")
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is int
+    assert type(r.json["v"][1]) is bool
+    assert r.json["v"][0] == 4
+    assert r.json["v"][1] == False
+    # Test that present non-int/bool list items yields error
+    r = client.get(f"{url}?v=a")
+    assert "error" in r.json
 
 def test_required_list_datetime(client):
     url = "/query/list/req_datetime"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present single datetime input yields [input value]
     v0 = datetime.datetime(2024, 2, 10, 14, 31, 47)
     r = client.get(url, query_string={"v": v0.isoformat()})
@@ -1434,6 +1809,14 @@ def test_required_list_datetime(client):
     # Test that present CSV datetime input yields [input values]
     v = [datetime.datetime(2024, 2, 10, 14, 32, 38),
          datetime.datetime(2024, 2, 10, 14, 32, 53)]
+    r = client.get(url, query_string={"v": ','.join([d.isoformat() for d in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that present datetime input in multiple of the same query param yields [input values]
+    v = [datetime.datetime(2025, 4, 18, 16, 58, 19),
+         datetime.datetime(2025, 4, 18, 16, 58, 39)]
     r = client.get(url, query_string={"v": [d.isoformat() for d in v]})
     assert "v" in r.json
     assert type(r.json["v"]) is list
@@ -1447,8 +1830,53 @@ def test_required_list_datetime(client):
     assert "error" in r.json
 
 
+def test_optional_list_datetime(client):
+    url = "/query/list/opt_datetime"
+    # Test the missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single datetime input yields [input value]
+    v0 = datetime.datetime(2024, 2, 10, 14, 31, 47)
+    r = client.get(url, query_string={"v": v0.isoformat()})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == v0.isoformat()
+    # Test that present CSV datetime input yields [input values]
+    v = [datetime.datetime(2024, 2, 10, 14, 32, 38),
+         datetime.datetime(2024, 2, 10, 14, 32, 53)]
+    r = client.get(url, query_string={"v": ','.join([d.isoformat() for d in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that present datetime input in multiple of the same query param yields [input values]
+    v = [datetime.datetime(2025, 4, 18, 16, 58, 19),
+         datetime.datetime(2025, 4, 18, 16, 58, 39)]
+    r = client.get(url, query_string={"v": [d.isoformat() for d in v]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that present non-datetime list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
 def test_required_list_date(client):
     url = "/query/list/req_date"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present single date input yields [input value]
     v0 = datetime.date(2024, 2, 9)
     r = client.get(url, query_string={"v": v0.isoformat()})
@@ -1459,6 +1887,13 @@ def test_required_list_date(client):
     assert r.json["v"][0] == v0.isoformat()
     # Test that present CSV date input yields [input values]
     v = [datetime.date(2024, 2, 10), datetime.date(2024, 2, 11)]
+    r = client.get(url, query_string={"v": ','.join([d.isoformat() for d in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that present date input in multiple of the same query param yields [input values]
+    v = [datetime.date(2025, 2, 18), datetime.date(2025, 2, 19)]
     r = client.get(url, query_string={"v": [d.isoformat() for d in v]})
     assert "v" in r.json
     assert type(r.json["v"]) is list
@@ -1472,8 +1907,51 @@ def test_required_list_date(client):
     assert "error" in r.json
 
 
+def test_optional_list_date(client):
+    url = "/query/list/opt_date"
+    # Test the missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single date input yields [input value]
+    v0 = datetime.date(2024, 2, 9)
+    r = client.get(url, query_string={"v": v0.isoformat()})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == v0.isoformat()
+    # Test that present CSV date input yields [input values]
+    v = [datetime.date(2024, 2, 10), datetime.date(2024, 2, 11)]
+    r = client.get(url, query_string={"v": ','.join([d.isoformat() for d in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that present date input in multiple of the same query param yields [input values]
+    v = [datetime.date(2025, 2, 18), datetime.date(2025, 2, 19)]
+    r = client.get(url, query_string={"v": [d.isoformat() for d in v]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that present non-date list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
 def test_required_list_time(client):
     url = "/query/list/req_time"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present single time input yields [input value]
     v0 = datetime.time(14, 37, 2)
     r = client.get(url, query_string={"v": v0.isoformat()})
@@ -1484,6 +1962,13 @@ def test_required_list_time(client):
     assert r.json["v"][0] == v0.isoformat()
     # Test that present CSV time input yields [input values]
     v = [datetime.time(14, 37, 34), datetime.time(14, 37, 45)]
+    r = client.get(url, query_string={"v": ','.join([d.isoformat() for d in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that present time input in multiple of the same query param yields [input values]
+    v = [datetime.time(17, 2, 45), datetime.time(17, 2, 55)]
     r = client.get(url, query_string={"v": [d.isoformat() for d in v]})
     assert "v" in r.json
     assert type(r.json["v"]) is list
@@ -1497,26 +1982,332 @@ def test_required_list_time(client):
     assert "error" in r.json
 
 
-def test_optional_list(client):
-    url = "/query/list/optional"
-    # Test that missing input yields None
+def test_optional_list_time(client):
+    url = "/query/list/opt_time"
+    # Test the missing input yields None
     r = client.get(url)
     assert "v" in r.json
     assert r.json["v"] is None
-    # Test that present str input yields [input value]
-    r = client.get(url, query_string={"v": "test"})
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single time input yields [input value]
+    v0 = datetime.time(14, 37, 2)
+    r = client.get(url, query_string={"v": v0.isoformat()})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     assert type(r.json["v"][0]) is str
-    assert r.json["v"][0] == "test"
-    # Test that present CSV str input yields [input values]
-    v = ["two", "tests"]
+    assert r.json["v"][0] == v0.isoformat()
+    # Test that present CSV time input yields [input values]
+    v = [datetime.time(14, 37, 34), datetime.time(14, 37, 45)]
+    r = client.get(url, query_string={"v": ','.join([d.isoformat() for d in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that present time input in multiple of the same query param yields [input values]
+    v = [datetime.time(17, 2, 45), datetime.time(17, 2, 55)]
+    r = client.get(url, query_string={"v": [d.isoformat() for d in v]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that present non-time list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+# list[dict] is not supported for Query unless query_list_disable_csv is set
+def test_required_list_dict(client):
+    url = "/query/list/req_dict"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single dict input yields [input value]
+    v = {"hello": "world"}
+    r = client.get(url, query_string={"v": json.dumps(v)})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is dict
+    assert r.json["v"][0] == v
+    # Test that present dict input in multiple of the same query param yields [input values]
+    v = [{"one": "dict"}, {"two": "dict", "red": "dict"}, {"blue": "dict"}]
+    r = client.get(url, query_string={"v": [json.dumps(d) for d in v]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 3
+    list_assertion_helper(2, dict, v, r.json["v"])
+    # Test that present non-dict list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+
+def test_optional_list_dict(client):
+    url = "/query/list/opt_dict"
+    # Test the missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single dict input yields [input value]
+    v = {"hello": "world"}
+    r = client.get(url, query_string={"v": json.dumps(v)})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is dict
+    assert r.json["v"][0] == v
+    # Test that present dict input in multiple of the same query param yields [input values]
+    v = [{"one": "dict"}, {"two": "dict", "red": "dict"}, {"blue": "dict"}]
+    r = client.get(url, query_string={"v": [json.dumps(d) for d in v]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 3
+    list_assertion_helper(3, dict, v, r.json["v"])
+    # Test that present non-dict list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_list_str_enum(client):
+    url = "/query/list/req_str_enum"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single Fruits input yields [input value]
+    v = Fruits.APPLE
+    r = client.get(url, query_string={"v": v.value})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == v.value
+    # Test that present CSV Fruits input yields [input values]
+    v = [Fruits.APPLE.value, Fruits.ORANGE.value]
+    r = client.get(url, query_string={"v": ','.join([e for e in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present Fruits input in multiple of the same query param yields [input values]
+    v = [Fruits.APPLE.value, Fruits.ORANGE.value]
     r = client.get(url, query_string={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present non-Fruits list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+
+def test_optional_list_str_enum(client):
+    url = "/query/list/opt_str_enum"
+    # Test the missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single Fruits input yields [input value]
+    v = Fruits.APPLE
+    r = client.get(url, query_string={"v": v.value})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == v.value
+    # Test that present CSV Fruits input yields [input values]
+    v = [Fruits.ORANGE.value, Fruits.APPLE.value]
+    r = client.get(url, query_string={"v": ','.join([e for e in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present Fruits input in multiple of the same query param yields [input values]
+    v = [Fruits.APPLE.value, Fruits.ORANGE.value]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present non-Fruits list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+
+
+def test_required_list_int_enum(client):
+    url = "/query/list/req_int_enum"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single Binary input yields [input value]
+    v = Binary.ZERO
+    r = client.get(url, query_string={"v": v.value})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is int
+    assert r.json["v"][0] == v.value
+    # Test that present CSV Binary input yields [input values]
+    v = [Binary.ONE.value, Binary.ONE.value]
+    r = client.get(url, query_string={"v": ','.join([str(e) for e in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, int, v, r.json["v"])
+    # Test that present Binary input in multiple of the same query param yields [input values]
+    v = [
+        Binary.ONE.value, Binary.ZERO.value, Binary.ZERO.value,
+        Binary.ONE.value, Binary.ONE.value
+    ]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 5
+    list_assertion_helper(5, int, v, r.json["v"])
+    # Test that present non-Binary list items yields error
+    r = client.get(url, query_string={"v": "crying zeros and I'm hearing"})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+
+def test_optional_list_int_enum(client):
+    url = "/query/list/opt_int_enum"
+    # Test the missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single Binary input yields [input value]
+    v = Binary.ONE
+    r = client.get(url, query_string={"v": v.value})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is int
+    assert r.json["v"][0] == v.value
+    # Test that present CSV Binary input yields [input values]
+    v = [Binary.ONE.value]*2
+    r = client.get(url, query_string={"v": ','.join([str(e) for e in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, int, v, r.json["v"])
+    # Test that present Binary input in multiple of the same query param yields [input values]
+    v = [Binary.ONE.value]*2
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, int, v, r.json["v"])
+    # Test that present non-Binary list items yields error
+    r = client.get(url, query_string={"v": "Cut my somersaults, sign my backflip"})
+    assert "error" in r.json
+
+
+def test_required_list_uuid(client):
+    url = "/query/list/req_uuid"
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single UUID input yields [input value]
+    v = str(uuid.uuid4())
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == v
+    # Test that present CSV UUID input yields [input values]
+    v = [str(uuid.uuid4()), str(uuid.uuid4())]
+    r = client.get(url, query_string={"v": ','.join([u for u in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present UUID input in multiple of the same query param yields [input values]
+    v = [str(uuid.uuid4()), str(uuid.uuid4())]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present non-UUID list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+
+def test_optional_list_uuid(client):
+    url = "/query/list/opt_uuid"
+    # Test the missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty string input yields empty list
+    r = client.get(url, query_string={"v": ""})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single UUID input yields [input value]
+    v = str(uuid.uuid4())
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == v
+    # Test that present CSV UUID input yields [input values]
+    v = [str(uuid.uuid4()), str(uuid.uuid4())]
+    r = client.get(url, query_string={"v": ','.join([u for u in v])})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present UUID input in multiple of the same query param yields [input values]
+    v = [str(uuid.uuid4()), str(uuid.uuid4())]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present non-UUID list items yields error
+    r = client.get(url, query_string={"v": "a"})
+    assert "error" in r.json
 
 
 def test_list_default(client):
@@ -1718,6 +2509,10 @@ def test_required_str_enum(client):
 
 def test_optional_str_enum(client):
     url = "/query/str_enum/optional"
+    # Test that missing input yields None
+    r = client.get(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
     # Test that present str_enum input yields input value
     r = client.get(url, query_string={"v": Fruits.ORANGE.value})
     assert "v" in r.json

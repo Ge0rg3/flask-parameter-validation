@@ -1,10 +1,12 @@
 import datetime
+import uuid
 from typing import Optional, List, Union
 
 from flask import Blueprint, jsonify
 
 from flask_parameter_validation import ValidateParameters, Route
 from flask_parameter_validation.parameter_types.parameter import Parameter
+from flask_parameter_validation.test.enums import Binary, Fruits
 from flask_parameter_validation.test.testing_blueprints.dummy_decorators import dummy_decorator, dummy_async_decorator
 
 
@@ -20,7 +22,8 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     @ValidateParameters()
     def req_str(v: List[str] = ParamType()):
         assert type(v) is list
-        assert type(v[0]) is str
+        if len(v) > 0:
+            assert type(v[0]) is str
         return jsonify({"v": v})
     
     @decorator("/decorator/req_str")
@@ -28,7 +31,8 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     @ValidateParameters()
     def decorator_req_str(v: List[str] = ParamType()):
         assert type(v) is list
-        assert type(v[0]) is str
+        if len(v) > 0:
+            assert type(v[0]) is str
         return jsonify({"v": v})
     
     @decorator("/async_decorator/req_str")
@@ -36,59 +40,240 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     @ValidateParameters()
     async def async_decorator_req_str(v: List[str] = ParamType()):
         assert type(v) is list
-        assert type(v[0]) is str
+        if len(v) > 0:
+            assert type(v[0]) is str
+        return jsonify({"v": v})
+
+    @decorator("/opt_str")
+    @ValidateParameters()
+    def opt_str(v: Optional[List[str]] = ParamType()):
+        assert type(v) is list or v is None
+        if v and len(v) > 0:
+            assert type(v[0]) is str
+        return jsonify({"v": v})
+
+    @decorator("/disable_query_csv/unset")
+    @ValidateParameters()
+    def disable_query_csv_unset(v: List[str] = ParamType()):
+        return jsonify({"v": v})
+
+    @decorator("/disable_query_csv/true")
+    @ValidateParameters()
+    def disable_query_csv_true(v: List[str] = ParamType(list_disable_query_csv=True)):
+        return jsonify({"v": v})
+
+    @decorator("/disable_query_csv/false")
+    @ValidateParameters()
+    def disable_query_csv_false(v: List[str] = ParamType(list_disable_query_csv=False)):
         return jsonify({"v": v})
 
     @decorator("/req_int")
     @ValidateParameters()
     def req_int(v: List[int] = ParamType()):
         assert type(v) is list
-        assert type(v[0]) is int
+        if len(v) > 0:
+            assert type(v[0]) is int
+        return jsonify({"v": v})
+
+    @decorator("/opt_int")
+    @ValidateParameters()
+    def opt_int(v: Optional[List[int]] = ParamType()):
+        assert type(v) is list or v is None
+        if v and len(v) > 0:
+            assert type(v[0]) is int
         return jsonify({"v": v})
 
     @decorator("/req_bool")
     @ValidateParameters()
     def req_bool(v: List[bool] = ParamType()):
         assert type(v) is list
-        assert type(v[0]) is bool
+        if len(v) > 0:
+            assert type(v[0]) is bool
         return jsonify({"v": v})
 
-    # List[Union[]] not currently supported
-    # @decorator("/req_union")
-    # @ValidateParameters()
-    # def req_union(v: List[Union[int, float]] = ParamType()):
-    #     assert type(v) is list
-    #     assert type(v[0]) is int
-    #     assert type(v[1]) is float
-    #     return jsonify({"v": v})
+    @decorator("/opt_bool")
+    @ValidateParameters()
+    def opt_bool(v: Optional[List[bool]] = ParamType()):
+        assert type(v) is list or v is None
+        if v and len(v) > 0:
+            assert type(v[0]) is bool
+        return jsonify({"v": v})
+
+    @decorator("/req_float")
+    @ValidateParameters()
+    def req_float(v: List[float] = ParamType()):
+        assert type(v) is list
+        if len(v) > 0:
+            assert type(v[0]) is float
+        return jsonify({"v": v})
+
+    @decorator("/opt_float")
+    @ValidateParameters()
+    def opt_float(v: Optional[List[float]] = ParamType()):
+        assert type(v) is list or v is None
+        if v and len(v) > 0:
+            assert type(v[0]) is float
+        return jsonify({"v": v})
+
+    @decorator("/req_union")
+    @ValidateParameters()
+    def req_union(v: List[Union[int, float]] = ParamType()):
+        assert type(v) is list
+        for i in v:
+            assert type(i) is int or type(i) is float
+        return jsonify({"v": v})
+
+    @decorator("/req_union_everything")
+    @ValidateParameters()
+    def req_union_everything(v: List[Union[str, int, bool, float, datetime.datetime, datetime.date, datetime.time, dict, Fruits, Binary, uuid.UUID]] = ParamType(list_disable_query_csv=True)):
+        assert type(v) is list
+        assert len(v) > 0
+        assert type(v[0]) is str
+        assert type(v[1]) is int
+        assert type(v[2]) is bool
+        assert type(v[3]) is float
+        assert type(v[4]) is datetime.datetime
+        assert type(v[5]) is datetime.date
+        assert type(v[6]) is datetime.time
+        assert type(v[7]) is dict
+        assert type(v[8]) is Fruits
+        assert type(v[9]) is Binary
+        assert type(v[10]) is uuid.UUID
+        return jsonify({"v": [
+            v[0], v[1], v[2], v[3],
+            v[4].isoformat(),
+            v[5].isoformat(),
+            v[6].isoformat(),
+            v[7], v[8], v[9], v[10]
+        ]})
+
+    @decorator("/opt_union")
+    @ValidateParameters()
+    def opt_union(v: Optional[List[Union[int, bool]]] = ParamType()):
+        assert type(v) is list or v is None
+        if v:
+            for i in v:
+                assert type(i) is int or type(i) is bool
+        return jsonify({"v": v})
 
     @decorator("/req_datetime")
     @ValidateParameters()
     def req_datetime(v: List[datetime.datetime] = ParamType()):
         assert type(v) is list
-        assert type(v[0]) is datetime.datetime
-        v = [t.isoformat() for t in v]
+        if len(v) > 0:
+            assert type(v[0]) is datetime.datetime
+            v = [t.isoformat() for t in v]
+        return jsonify({"v": v})
+
+    @decorator("/opt_datetime")
+    @ValidateParameters()
+    def opt_datetime(v: Optional[List[datetime.datetime]] = ParamType()):
+        assert type(v) is list or v is None
+        if v and len(v) > 0:
+            assert type(v[0]) is datetime.datetime
+            v = [t.isoformat() for t in v]
         return jsonify({"v": v})
 
     @decorator("/req_date")
     @ValidateParameters()
     def req_date(v: List[datetime.date] = ParamType()):
         assert type(v) is list
-        assert type(v[0]) is datetime.date
-        v = [t.isoformat() for t in v]
+        if len(v) > 0:
+            assert type(v[0]) is datetime.date
+            v = [t.isoformat() for t in v]
+        return jsonify({"v": v})
+
+    @decorator("/opt_date")
+    @ValidateParameters()
+    def opt_date(v: Optional[List[datetime.date]] = ParamType()):
+        assert type(v) is list or v is None
+        if v and len(v) > 0:
+            assert type(v[0]) is datetime.date
+            v = [t.isoformat() for t in v]
         return jsonify({"v": v})
 
     @decorator("/req_time")
     @ValidateParameters()
     def req_time(v: List[datetime.time] = ParamType()):
         assert type(v) is list
-        assert type(v[0]) is datetime.time
-        v = [t.isoformat() for t in v]
+        if len(v) > 0:
+            assert type(v[0]) is datetime.time
+            v = [t.isoformat() for t in v]
         return jsonify({"v": v})
 
-    @decorator("/optional")
+    @decorator("/opt_time")
     @ValidateParameters()
-    def optional(v: Optional[List[str]] = ParamType()):
+    def opt_time(v: Optional[List[datetime.time]] = ParamType()):
+        assert type(v) is list or v is None
+        if v and len(v) > 0:
+            assert type(v[0]) is datetime.time
+            v = [t.isoformat() for t in v]
+        return jsonify({"v": v})
+
+    @decorator("/req_dict")
+    @ValidateParameters()
+    def req_dict(v: List[dict] = ParamType(list_disable_query_csv=True)):
+        assert type(v) is list
+        if len(v) > 0:
+            assert type(v[0]) is dict
+        return jsonify({"v": v})
+
+    @decorator("/opt_dict")
+    @ValidateParameters()
+    def opt_dict(v: Optional[List[dict]] = ParamType(list_disable_query_csv=True)):
+        assert type(v) is list or v is None
+        if v and len(v) > 0:
+            assert type(v[0]) is dict
+        return jsonify({"v": v})
+
+    @decorator("/req_str_enum")
+    @ValidateParameters()
+    def req_str_enum(v: List[Fruits] = ParamType()):
+        assert type(v) is list
+        if len(v) > 0:
+            assert type(v[0]) is Fruits
+        return jsonify({"v": v})
+
+    @decorator("/opt_str_enum")
+    @ValidateParameters()
+    def opt_str_enum(v: Optional[List[Fruits]] = ParamType()):
+        assert type(v) is list or v is None
+        if v and len(v) > 0:
+            assert type(v[0]) is Fruits
+        return jsonify({"v": v})
+
+    @decorator("/req_int_enum")
+    @ValidateParameters()
+    def req_int_enum(v: List[Binary] = ParamType()):
+        assert type(v) is list
+        if len(v) > 0:
+            assert type(v[0]) is Binary
+        return jsonify({"v": v})
+
+    @decorator("/opt_int_enum")
+    @ValidateParameters()
+    def opt_int_enum(v: Optional[List[Binary]] = ParamType()):
+        assert type(v) is list or v is None
+        if v and len(v) > 0:
+            assert type(v[0]) is Binary
+        return jsonify({"v": v})
+
+    @decorator("/req_uuid")
+    @ValidateParameters()
+    def req_uuid(v: List[uuid.UUID] = ParamType()):
+        assert type(v) is list
+        if len(v) > 0:
+            assert type(v[0]) is uuid.UUID
+            v = [str(u) for u in v]
+        return jsonify({"v": v})
+
+    @decorator("/opt_uuid")
+    @ValidateParameters()
+    def opt_uuid(v: Optional[List[uuid.UUID]] = ParamType()):
+        assert type(v) is list or v is None
+        if v and len(v) > 0:
+            assert type(v[0]) is uuid.UUID
+            v = [str(u) for u in v]
         return jsonify({"v": v})
 
     @decorator("/default")
