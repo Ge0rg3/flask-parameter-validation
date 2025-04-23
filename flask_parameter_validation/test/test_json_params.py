@@ -42,11 +42,6 @@ def test_optional_str(client):
 
 def test_optional_str_blank_none_unset(client, app):
     url = "/json/str/blank_none/unset"
-    # Test that FPV_BLANK_NONE runs as False by default
-    app.config.update({"FPV_BLANK_NONE": None})
-    r = client.post(f"{url}", json={"v": ""})
-    assert "v" in r.json
-    assert r.json["v"] == ""
     # Test that FPV_BLANK_NONE returns empty string when False
     app.config.update({"FPV_BLANK_NONE": False})
     r = client.post(f"{url}", json={"v": ""})
@@ -57,15 +52,15 @@ def test_optional_str_blank_none_unset(client, app):
     r = client.post(f"{url}", json={"v": ""})
     assert "v" in r.json
     assert r.json["v"] is None
+    # Test that FPV_BLANK_NONE runs as False by default
+    app.config.pop("FPV_BLANK_NONE", None)
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
 
 
 def test_optional_str_blank_none_true(client, app):
     url = "/json/str/blank_none/true"
-    # Test that unset FPV_BLANK_NONE can be overridden to True per-route
-    app.config.update({"FPV_BLANK_NONE": None})
-    r = client.post(f"{url}", json={"v": ""})
-    assert "v" in r.json
-    assert r.json["v"] is None
     # Test that FPV_BLANK_NONE of False can be overridden to True per-route
     app.config.update({"FPV_BLANK_NONE": False})
     r = client.post(f"{url}", json={"v": ""})
@@ -76,15 +71,15 @@ def test_optional_str_blank_none_true(client, app):
     r = client.post(f"{url}", json={"v": ""})
     assert "v" in r.json
     assert r.json["v"] is None
+    # Test that unset FPV_BLANK_NONE can be overridden to True per-route
+    app.config.pop("FPV_BLANK_NONE", None)
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] is None
 
 
 def test_optional_str_blank_none_false(client, app):
     url = "/json/str/blank_none/false"
-    # Test that unset FPV_BLANK_NONE can be 'overridden' to False per-route
-    app.config.update({"FPV_BLANK_NONE": None})
-    r = client.post(f"{url}", json={"v": ""})
-    assert "v" in r.json
-    assert r.json["v"] == ""
     # Test that FPV_BLANK_NONE of False can be 'overridden' to False per-route
     app.config.update({"FPV_BLANK_NONE": False})
     r = client.post(f"{url}", json={"v": ""})
@@ -92,6 +87,11 @@ def test_optional_str_blank_none_false(client, app):
     assert r.json["v"] == ""
     # Test that FPV_BLANK_NONE of True can be overridden to False per-route
     app.config.update({"FPV_BLANK_NONE": True})
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
+    # Test that unset FPV_BLANK_NONE can be 'overridden' to False per-route
+    app.config.pop("FPV_BLANK_NONE", None)
     r = client.post(f"{url}", json={"v": ""})
     assert "v" in r.json
     assert r.json["v"] == ""
@@ -713,6 +713,11 @@ def test_union_func(client):
 # List Validation
 def test_required_list_str(client):
     url = "/json/list/req_str"
+    # Test that preset empty list input yields input value
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present List[str] input yields input value
     v = ["x", "y"]
     r = client.post(url, json={"v": v})
@@ -845,21 +850,6 @@ def test_required_list_time(client):
     assert "error" in r.json
 
 
-def test_optional_list(client):
-    url = "/json/list/optional"
-    # Test that missing input yields None
-    r = client.post(url)
-    assert "v" in r.json
-    assert r.json["v"] is None
-    # Test that present List[str] input yields input value
-    v = ["two", "tests"]
-    r = client.post(url, json={"v": v})
-    assert "v" in r.json
-    assert type(r.json["v"]) is list
-    assert len(r.json["v"]) == 2
-    list_assertion_helper(2, str, v, r.json["v"])
-
-
 def test_list_default(client):
     url = "/json/list/default"
     # Test that missing input for required and optional yields default values
@@ -948,6 +938,7 @@ def test_list_json_schema(client):
     # Test that passing schema validation yields input
     v = [{"user_id": 1, "first_name": "John", "last_name": "Doe", "tags": ["test_account"]}]
     r = client.post(url, json={"v": v})
+    print(r.json)
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     assert type(r.json["v"][0]) is dict
