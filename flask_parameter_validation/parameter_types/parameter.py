@@ -34,6 +34,7 @@ class Parameter:
             alias=None,  # str: alias for parameter name
             json_schema=None,  # dict: JSON Schema to check received dicts or lists against
             blank_none=None,  # bool: Whether blank strings should be converted to None when validating a type of Optional[str]
+            list_disable_query_csv=None,  # bool: Whether query strings should be split by `,` when validating a type of list
     ):
         self.default = default
         self.min_list_length = min_list_length
@@ -51,6 +52,8 @@ class Parameter:
         self.alias = alias
         self.json_schema = json_schema
         self.blank_none = blank_none
+        self.list_disable_query_csv = list_disable_query_csv
+
 
     def func_helper(self, v):
         func_result = self.func(v)
@@ -158,53 +161,66 @@ class Parameter:
 
         return True
 
-    def convert(self, value, allowed_types):
+    def convert(self, value, allowed_types, current_error=None):
         """Some parameter types require manual type conversion (see Query)"""
+        print(f"Converting '{value}' ({type(value)}) to '{allowed_types}'")
         blank_none = self.blank_none
         if blank_none is None:  # Default blank_none to False if not provided or set in app config
             blank_none = False if "FPV_BLANK_NONE" not in flask.current_app.config else flask.current_app.config["FPV_BLANK_NONE"]
 
+        error = None
         # Datetime conversion
         if None in allowed_types and value is None:
             return value
+        if date in allowed_types:
+            try:
+                return date.fromisoformat(str(value))
+            except ValueError:
+                error = ValueError("date format does not match ISO 8601")
+        if time in allowed_types:
+            try:
+                return time.fromisoformat(str(value))
+            except ValueError:
+                error = ValueError("time format does not match ISO 8601")
         if datetime in allowed_types:
             if self.datetime_format is None:
                 try:
-                    return parser.parse(str(value))
-                except parser._parser.ParserError:
-                    pass
+                    return datetime.fromisoformat(str(value))
+                except ValueError:
+                    error = ValueError("datetime format does not match ISO 8601")
             else:
                 try:
                     return datetime.strptime(str(value), self.datetime_format)
                 except ValueError:
-                    raise ValueError(
-                        f"datetime format does not match: {self.datetime_format}"
-                    )
-                pass
-        elif time in allowed_types:
-            try:
-                return time.fromisoformat(str(value))
-            except ValueError:
-                raise ValueError("time format does not match ISO 8601")
-        elif date in allowed_types:
-            try:
-                return date.fromisoformat(str(value))
-            except ValueError:
-                raise ValueError("date format does not match ISO 8601")
-        elif blank_none and type(None) in allowed_types and str in allowed_types and type(value) is str and len(value) == 0:
+                    error = ValueError(f"datetime format does not match: {self.datetime_format}")
+        if blank_none and type(None) in allowed_types and str in allowed_types and type(value) is str and len(value) == 0:
             return None
-        elif any(isclass(allowed_type) and (issubclass(allowed_type, str) or issubclass(allowed_type, int) and issubclass(allowed_type, Enum)) for allowed_type in allowed_types):
+        if any(isclass(allowed_type) and (issubclass(allowed_type, str) or issubclass(allowed_type, int) and issubclass(allowed_type, Enum)) for allowed_type in allowed_types):
+            print("Enums allowed")
             for allowed_type in allowed_types:
                 if issubclass(allowed_type, Enum):
-                    if issubclass(allowed_types[0], int):
-                        value = int(value)
-                    returning = allowed_types[0](value)
-                    return returning
-        elif uuid.UUID in allowed_types:
+                    try:
+                        if issubclass(allowed_type, int):
+                            value = int(value)
+                        returning = allowed_type(value)
+                        print(f"type(returning): {type(returning)}")
+                        return returning
+                    except ValueError as e:
+                        error = e
+        if uuid.UUID in allowed_types:
             try:
                 if type(value) == uuid.UUID:  # Handle default of type UUID
                     return value
-                return uuid.UUID(value)
+                try:
+                    return uuid.UUID(value)
+                except ValueError as e:
+                    error = e
             except AttributeError:
-                raise ValueError("UUID format is incorrect")
+                error = ValueError("UUID format is incorrect")
+        if str in allowed_types:
+            return value
+        print(value)
+        print(type(value))
+        if error and type(value) is str:
+            raise error
         return value
