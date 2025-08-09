@@ -1449,7 +1449,6 @@ def test_list_json_schema(client):
     # Test that passing schema validation yields input
     v = [{"user_id": 1, "first_name": "John", "last_name": "Doe", "tags": ["test_account"]}]
     r = client.post(url, json={"v": v})
-    print(r.json)
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     assert type(r.json["v"][0]) is dict

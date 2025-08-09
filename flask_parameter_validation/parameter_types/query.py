@@ -16,7 +16,6 @@ class Query(Parameter):
 
     def convert(self, value, allowed_types, current_error=None):
         """Convert query parameters to corresponding types."""
-        print(f"value: {value}, type: {type(value)}")
         original_value = value
         error = None
         if type(value) is str:

@@ -31,7 +31,6 @@ class ValidateParameters:
         """
         Parent flow for validating each required parameter
         """
-        print("__call__")
         fsig = f.__module__ + "." + f.__name__
         # Add a discriminator to the function signature, store it in the properties of the function
         # This is used in documentation generation to associate the info gathered from inspecting the
@@ -59,7 +58,6 @@ class ValidateParameters:
             if it should unpack the resulting dictionary of inputs as kwargs,
             or just return the error message.
             """
-            print("nested_func_helper")
             # Step 1 - Get expected input details as dict
             expected_inputs = signature(f).parameters
 
@@ -96,21 +94,16 @@ class ValidateParameters:
             # Step 5 - Validate each expected input
             validated_inputs = {}
             for expected in expected_inputs.values():
-                if Query in request_inputs:
-                    print(f"Checking {expected} and {request_inputs[Query]}")
                 if self.custom_error_handler is None:
                     try:
                         new_input = self.validate(expected, request_inputs)
-                        print(f"new_input 1: {new_input}")
                     except (MissingInputError, ValidationError) as e:
-                        print(f"caught error: {e}")
                         return {"error": ({"error": str(e)}, 400), "validated": False}
                 else:
                     try:
                         new_input = self.validate(expected, request_inputs)
                     except Exception as e:
                         return {"error": self.custom_error_handler(e), "validated": False}
-                print(f"new_input 2: {new_input}")
                 validated_inputs[expected.name] = new_input
 
             return {"inputs": validated_inputs, "validated": True}
@@ -127,7 +120,6 @@ class ValidateParameters:
             # If the view function is not async, return a function
             @functools.wraps(f)
             def nested_func(**kwargs):
-                print(f"nested_func called with {kwargs}")
                 validated_inputs = nested_func_helper(**kwargs)
                 if validated_inputs["validated"]:
                     return f(**validated_inputs["inputs"])
@@ -161,7 +153,6 @@ class ValidateParameters:
         """
         Perform recursive validation of generic types (Optional, Union, and List/list)
         """
-        print(f"_gtvh({expected_name}, {expected_input_type}, '{expected_input_type_str}', {user_input}, {source})")
         # In python3.7+, typing.Optional is used instead of typing.Union[..., None]
         if expected_input_type_str.startswith("typing.Optional"):
             sub_expected_input_types = expected_input_type
@@ -173,7 +164,6 @@ class ValidateParameters:
             else:
                 sub_expected_input_types = expected_input_type.__args__
             sub_expected_input_type_str = expected_input_type_str[expected_input_type_str.index("[") + 1:-1]
-            print(sub_expected_input_types)
             if type(user_input) is list:
                 user_inputs = user_input
             else:
@@ -181,21 +171,15 @@ class ValidateParameters:
             user_inputs, sub_expected_input_types = self._generic_types_validation_helper(expected_name, sub_expected_input_types, sub_expected_input_type_str, user_inputs, source)
             # If typing.List in optional and user supplied valid list, convert remaining check only for list
             for exp_type in sub_expected_input_types:
-                print(f"str(exp_type): {str(exp_type)}")
                 if any(str(exp_type).startswith(list_hint) for list_hint in list_type_hints):
-                    print(f"type(user_input): {type(user_input)}")
                     if type(user_input) is list:
-                        print(f"hasattr(exp_type.__args__): {hasattr(exp_type, '__args__')}")
                         if hasattr(exp_type, "__args__"):
-                            print(f"exp_type.__args__: {exp_type.__args__}")
                             sub_expected_input_types = exp_type.__args__
                             if len(sub_expected_input_types) == 1:
                                 sub_expected_input_types = sub_expected_input_types[0]
-                            print(f"sub_expected_input_types: {sub_expected_input_types}")
                             sub_expected_input_type_str = str(sub_expected_input_types)
                             user_inputs = user_input
                             user_inputs, sub_expected_input_types = self._generic_types_validation_helper(expected_name, sub_expected_input_types, sub_expected_input_type_str, user_inputs, source)
-            print(f"user_inputs after union branch: {user_inputs}")
         # If list, expand inner typing items. Otherwise, convert to list to match anyway.
         elif any(expected_input_type_str.startswith(list_hint) for list_hint in list_type_hints):
             if hasattr(expected_input_type, "__args__"):
@@ -207,19 +191,14 @@ class ValidateParameters:
                 user_inputs = user_input
             else:
                 user_inputs = [user_input]
-            print(f"user_inputs mid list branch: {user_inputs}")
             user_inputs, sub_expected_input_types = self._generic_types_validation_helper(expected_name, sub_expected_input_types, sub_expected_input_type_str, user_inputs, source)
-            print(f"user_inputs after list branch: {user_inputs}")
         else:
             if type(user_input) is list:
                 user_inputs = user_input
             else:
                 user_inputs = [user_input]
-            print(f"user_inputs mid else: {user_inputs}")
-            print(f"expected_input_type: {expected_input_type} ({type(expected_input_type)})")
             if type(expected_input_type) is list or type(expected_input_type) is tuple:
                 sub_expected_input_types = expected_input_type
-                print(f"expected_input_type: {expected_input_type}; first member: {f'{user_inputs[0]} ({type(user_inputs[0])})' if len(user_inputs) > 0 else 'empty list'}")
             elif type(expected_input_type) is list and len(expected_input_type) > 0 and hasattr(expected_input_type[0], "__len__"):
                 sub_expected_input_types = expected_input_type[0]
             elif expected_input_type is list and not hasattr(expected_input_type, "__args__"):
@@ -228,12 +207,10 @@ class ValidateParameters:
                 sub_expected_input_types = [expected_input_type]
             for count, value in enumerate(user_inputs):
                 try:
-                    print(f"Trying convert {value} ({type(value)})")
                     user_inputs[count] = source.convert(
                         value, sub_expected_input_types
                     )
                 except ValueError as e:
-                    print("ValueError")
                     raise ValidationError(str(e), expected_name, expected_input_type)
         return user_inputs, sub_expected_input_types
 
@@ -301,32 +278,25 @@ class ValidateParameters:
                 return user_input
 
             user_inputs, expected_input_types = self._generic_types_validation_helper(expected_name, expected_input_type, expected_input_type_str, user_input, source)
-            print(f"_gtvh final return: {user_inputs}, {expected_input_types}")
 
             # Validate that user type(s) match expected type(s)
             validation_success = all(
                 type(inp) in expected_input_types for inp in user_inputs
             )
-            for inp in user_inputs:
-                print(f"type(inp): {type(inp)}, expected_input_types: {expected_input_types}")
-            print(f"validation_success 1: {validation_success}")
 
             # Validate that if lists are required, lists are given
             if any(expected_input_type_str.startswith(list_hint) for list_hint in list_type_hints):
                 if type(user_input) is not list:
                     validation_success = False
-            print(f"validation_success 2: {validation_success}")
 
             # Error if types don't match
             if not validation_success:
-                print(f"Validation Failed: {user_input}")
                 if hasattr(
                         original_expected_input_type, "__name__"
                 ) and not (original_expected_input_type_str.startswith("typing.") or original_expected_input_type_str.startswith("list")):
                     type_name = original_expected_input_type.__name__
                 else:
                     type_name = original_expected_input_type_str
-                print("Raising ValidationError")
                 raise ValidationError(
                     f"must be type '{type_name}'",
                     expected_name,

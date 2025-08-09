@@ -1364,7 +1364,6 @@ def test_required_list_str_disable_query_csv_unset(client, app):
     v = "d,e"
     r = client.get(f"{url}", query_string={"v": v})
     assert "v" in r.json
-    print(r.json["v"])
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     list_assertion_helper(1, str, [v], r.json["v"])
@@ -1385,7 +1384,6 @@ def test_required_list_str_disable_query_csv_true(client, app):
     v = "h,i"
     r = client.get(f"{url}", query_string={"v": v})
     assert "v" in r.json
-    print(r.json["v"])
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     list_assertion_helper(1, str, [v], r.json["v"])
@@ -1394,7 +1392,6 @@ def test_required_list_str_disable_query_csv_true(client, app):
     v = "j,k"
     r = client.get(f"{url}", query_string={"v": v})
     assert "v" in r.json
-    print(r.json["v"])
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     list_assertion_helper(1, str, [v], r.json["v"])
@@ -1403,7 +1400,6 @@ def test_required_list_str_disable_query_csv_true(client, app):
     v = "l,m"
     r = client.get(f"{url}", query_string={"v": v})
     assert "v" in r.json
-    print(r.json["v"])
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 1
     list_assertion_helper(1, str, [v], r.json["v"])

@@ -163,7 +163,6 @@ class Parameter:
 
     def convert(self, value, allowed_types, current_error=None):
         """Some parameter types require manual type conversion (see Query)"""
-        print(f"Converting '{value}' ({type(value)}) to '{allowed_types}'")
         blank_none = self.blank_none
         if blank_none is None:  # Default blank_none to False if not provided or set in app config
             blank_none = False if "FPV_BLANK_NONE" not in flask.current_app.config else flask.current_app.config["FPV_BLANK_NONE"]
@@ -198,14 +197,12 @@ class Parameter:
         if blank_none and type(None) in allowed_types and str in allowed_types and type(value) is str and len(value) == 0:
             return None
         if any(isclass(allowed_type) and (issubclass(allowed_type, str) or issubclass(allowed_type, int) and issubclass(allowed_type, Enum)) for allowed_type in allowed_types):
-            print("Enums allowed")
             for allowed_type in allowed_types:
                 if issubclass(allowed_type, Enum):
                     try:
                         if issubclass(allowed_type, int):
                             value = int(value)
                         returning = allowed_type(value)
-                        print(f"type(returning): {type(returning)}")
                         return returning
                     except ValueError as e:
                         error = e
@@ -221,8 +218,6 @@ class Parameter:
                 error = ValueError("UUID format is incorrect")
         if str in allowed_types:
             return value
-        print(value)
-        print(type(value))
         if error and type(value) is str:
             raise error
         return value
