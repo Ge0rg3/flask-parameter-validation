@@ -184,7 +184,7 @@ def fpv_error(message):
 
 
 def parameter_required(param):
-    if param["type"].startswith("Optional[") or re.match("Union\[.*None.*", param["type"]):
+    if param["type"].startswith("Optional[") or re.match("Union\\[.*None.*", param["type"]):
         return False
     elif "default" in param["loc_args"]:
         return False
