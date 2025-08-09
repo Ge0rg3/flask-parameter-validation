@@ -147,6 +147,15 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
             v[7], v[8], v[9], v[10]
         ]})
 
+    @decorator("/req_optional")
+    @ValidateParameters()
+    def req_optional(v: List[Optional[str]] = ParamType()):
+        assert type(v) is list
+        assert len(v) > 0
+        for i in v:
+            assert type(i) is str or i is None
+        return jsonify({"v": v})
+
     @decorator("/opt_union")
     @ValidateParameters()
     def opt_union(v: Optional[List[Union[int, bool]]] = ParamType()):

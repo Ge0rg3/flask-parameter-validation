@@ -1735,6 +1735,7 @@ def test_required_list_union(client):
 
 def test_required_list_union_everything(client):
     url = "/query/list/req_union_everything"
+    # Test that list input yields input
     v = [
         "testing",
         5,
@@ -1757,6 +1758,9 @@ def test_required_list_union_everything(client):
             assert r.json["v"][i] == json.loads(v[i])
         else:
             assert r.json["v"][i] == v[i]
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
 
 def test_optional_list_union(client):
     url = "/query/list/opt_union"

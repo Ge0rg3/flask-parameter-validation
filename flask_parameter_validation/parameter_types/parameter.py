@@ -172,6 +172,8 @@ class Parameter:
         # Datetime conversion
         if None in allowed_types and value is None:
             return value
+        if type(value) in allowed_types and type(value) is not str and type(value) is not int:  # Return values that have already been converted by a subclass, but not str or int, as that would be premature
+            return value
         if date in allowed_types:
             try:
                 return date.fromisoformat(str(value))
