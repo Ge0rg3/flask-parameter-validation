@@ -154,7 +154,6 @@ def get_multi_source_blueprint(sources, name):
     @param_bp.route("/required_uuid/<v>", methods=["GET", "POST"])
     @ValidateParameters()
     def multi_source_uuid(v: uuid.UUID = MultiSource(sources[0], sources[1])):
-        print(v)
         return jsonify({"v": v})
 
     @param_bp.route("/optional_uuid", methods=["GET", "POST"])

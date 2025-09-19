@@ -42,11 +42,6 @@ def test_optional_str(client):
 
 def test_optional_str_blank_none_unset(client, app):
     url = "/json/str/blank_none/unset"
-    # Test that FPV_BLANK_NONE runs as False by default
-    app.config.update({"FPV_BLANK_NONE": None})
-    r = client.post(f"{url}", json={"v": ""})
-    assert "v" in r.json
-    assert r.json["v"] == ""
     # Test that FPV_BLANK_NONE returns empty string when False
     app.config.update({"FPV_BLANK_NONE": False})
     r = client.post(f"{url}", json={"v": ""})
@@ -57,15 +52,15 @@ def test_optional_str_blank_none_unset(client, app):
     r = client.post(f"{url}", json={"v": ""})
     assert "v" in r.json
     assert r.json["v"] is None
+    # Test that FPV_BLANK_NONE runs as False by default
+    app.config.pop("FPV_BLANK_NONE", None)
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
 
 
 def test_optional_str_blank_none_true(client, app):
     url = "/json/str/blank_none/true"
-    # Test that unset FPV_BLANK_NONE can be overridden to True per-route
-    app.config.update({"FPV_BLANK_NONE": None})
-    r = client.post(f"{url}", json={"v": ""})
-    assert "v" in r.json
-    assert r.json["v"] is None
     # Test that FPV_BLANK_NONE of False can be overridden to True per-route
     app.config.update({"FPV_BLANK_NONE": False})
     r = client.post(f"{url}", json={"v": ""})
@@ -76,15 +71,15 @@ def test_optional_str_blank_none_true(client, app):
     r = client.post(f"{url}", json={"v": ""})
     assert "v" in r.json
     assert r.json["v"] is None
+    # Test that unset FPV_BLANK_NONE can be overridden to True per-route
+    app.config.pop("FPV_BLANK_NONE", None)
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] is None
 
 
 def test_optional_str_blank_none_false(client, app):
     url = "/json/str/blank_none/false"
-    # Test that unset FPV_BLANK_NONE can be 'overridden' to False per-route
-    app.config.update({"FPV_BLANK_NONE": None})
-    r = client.post(f"{url}", json={"v": ""})
-    assert "v" in r.json
-    assert r.json["v"] == ""
     # Test that FPV_BLANK_NONE of False can be 'overridden' to False per-route
     app.config.update({"FPV_BLANK_NONE": False})
     r = client.post(f"{url}", json={"v": ""})
@@ -92,6 +87,11 @@ def test_optional_str_blank_none_false(client, app):
     assert r.json["v"] == ""
     # Test that FPV_BLANK_NONE of True can be overridden to False per-route
     app.config.update({"FPV_BLANK_NONE": True})
+    r = client.post(f"{url}", json={"v": ""})
+    assert "v" in r.json
+    assert r.json["v"] == ""
+    # Test that unset FPV_BLANK_NONE can be 'overridden' to False per-route
+    app.config.pop("FPV_BLANK_NONE", None)
     r = client.post(f"{url}", json={"v": ""})
     assert "v" in r.json
     assert r.json["v"] == ""
@@ -713,6 +713,11 @@ def test_union_func(client):
 # List Validation
 def test_required_list_str(client):
     url = "/json/list/req_str"
+    # Test that preset empty list input yields input value
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present List[str] input yields input value
     v = ["x", "y"]
     r = client.post(url, json={"v": v})
@@ -723,10 +728,47 @@ def test_required_list_str(client):
     # Test that missing input yields error
     r = client.post(url)
     assert "error" in r.json
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": "v"})
+    assert "error" in r.json
+    # Test that non-str list items yield error
+    r = client.post(url, json={"v": [0, 1]})
+    assert "error" in r.json
+
+
+def test_optional_list_str(client):
+    url = "/json/list/opt_str"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present empty list yields input value
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present list[str] yields input value
+    v = ["z", "a"]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": "v"})
+    assert "error" in r.json
+    # Test that non-str list items yield error
+    r = client.post(url, json={"v": [0]})
+    assert "error" in r.json
 
 
 def test_required_list_int(client):
     url = "/json/list/req_int"
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present List[int] input yields input value
     v = [0, 1]
     r = client.post(url, json={"v": v})
@@ -734,16 +776,50 @@ def test_required_list_int(client):
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, int, v, r.json["v"])
-    # Test that present non-int list items yields error
-    r = client.post(url, json={"v": "a"})
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": 0})
+    assert "error" in r.json
+    # Test that present non-int list items yield error
+    r = client.post(url, json={"v": ["a"]})
     assert "error" in r.json
     # Test that missing input yields error
     r = client.post(url)
     assert "error" in r.json
 
 
+def test_optional_list_int(client):
+    url = "/json/list/opt_int"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present list[int] input yields input value
+    v = [0, 1]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, int, v, r.json["v"])
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": 0})
+    assert "error" in r.json
+    # Test that present non-int list items yields error
+    r = client.post(url, json={"v": ["a"]})
+    assert "error" in r.json
+
+
 def test_required_list_bool(client):
     url = "/json/list/req_bool"
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present List[bool] input yields input value
     v = [False, True]
     r = client.post(url, json={"v": v})
@@ -751,50 +827,189 @@ def test_required_list_bool(client):
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, bool, v, r.json["v"])
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": False})
+    assert "error" in r.json
     # Test that present non-bool list items yields error
-    r = client.post(url, json={"v": "a"})
+    r = client.post(url, json={"v": ["a"]})
     assert "error" in r.json
     # Test that missing input yields error
     r = client.post(url)
     assert "error" in r.json
 
 
-# List[Union[]] not currently supported
-# def test_required_list_union(client):
-#     url = "/json/list/req_union"
-#     # Test that present single int input yields [input value]
-#     r = client.post(f"{url}?v=2")
-#     assert "v" in r.json
-#     assert type(r.json["v"]) is list
-#     assert len(r.json["v"]) == 1
-#     assert type(r.json["v"][0]) is int
-#     assert r.json["v"][0] == 2
-#     # Test that present single float input yields [input value]
-#     r = client.post(f"{url}?v=3.14")
-#     assert "v" in r.json
-#     assert type(r.json["v"]) is list
-#     assert len(r.json["v"]) == 1
-#     assert type(r.json["v"][0]) is float
-#     assert r.json["v"][0] == 3.14
-#     # Test that present CSV int/float input yields [input values]
-#     r = client.post(f"{url}?v=4,5.62")
-#     assert "v" in r.json
-#     assert type(r.json["v"]) is list
-#     assert len(r.json["v"]) == 2
-#     assert type(r.json["v"][0]) is int
-#     assert type(r.json["v"][1]) is float
-#     assert r.json["v"][0] == 4
-#     assert r.json["v"][1] == 5.62
-#     # Test that present non-int/float list items yields error
-#     r = client.post(f"{url}?v=a")
-#     assert "error" in r.json
-#     # Test that missing input yields error
-#     r = client.post(url)
-#     assert "error" in r.json
+def test_optional_list_bool(client):
+    url = "/json/list/opt_bool"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present List[bool] input yields input value
+    v = [False, True]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, bool, v, r.json["v"])
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": True})
+    assert "error" in r.json
+    # Test that present non-bool list items yields error
+    r = client.post(url, json={"v": ["a"]})
+    assert "error" in r.json
 
+
+def test_required_list_float(client):
+    url = "/json/list/req_float"
+    # Test that present empty list yields input
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present list[float] yields input
+    v = [1.2, 3.4]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, float, v, r.json["v"])
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": 0.1})
+    assert "error" in r.json
+    # Test that present non-float list items yield error
+    r = client.post(url, json={"v": [2]})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+
+
+def test_optional_list_float(client):
+    url = "/json/list/opt_float"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present empty list yields input
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present list[float] yields input
+    v = [1.2, 3.4]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, float, v, r.json["v"])
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": 0.3})
+    assert "error" in r.json
+    # Test that present non-float list items yield error
+    r = client.post(url, json={"v": [4]})
+    assert "error" in r.json
+
+
+def test_required_list_union(client):
+    url = "/json/list/req_union"
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single int list input yields [input value]
+    r = client.post(f"{url}", json={"v": [2]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is int
+    assert r.json["v"][0] == 2
+    # Test that present single float list input yields [input value]
+    r = client.post(f"{url}", json={"v": [3.14]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is float
+    assert r.json["v"][0] == 3.14
+    # Test that present int/float list input yields [input values]
+    r = client.post(f"{url}", json={"v": [4, 5.62]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    assert type(r.json["v"][0]) is int
+    assert type(r.json["v"][1]) is float
+    assert r.json["v"][0] == 4
+    assert r.json["v"][1] == 5.62
+    # Test that present non-int/float list items yields error
+    r = client.post(f"{url}", data={"v": ["a"]})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+
+
+def test_required_list_union_everything(client):
+    url = "/json/list/req_union_everything"
+    # Test that list input yields input
+    v = [
+        "testing",
+        5,
+        True,
+        3.14,
+        datetime.datetime(2025, 4, 24, 20, 41, 22).isoformat(),
+        datetime.date(2025, 4, 24).isoformat(),
+        datetime.time(20, 42, 53).isoformat(),
+        {"i": "am", "a": "dictionary"},
+        Fruits.APPLE.value,
+        Binary.ONE.value,
+        str(uuid.uuid4())
+    ]
+    r = client.post(f"{url}", json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(v) == len(r.json["v"])
+    for i in range(len(v)):
+        assert r.json["v"][i] == v[i]
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": "Not a list :)"})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+
+
+def test_required_list_optional_str(client):
+    url = "/json/list/req_optional"
+    v = [None, "None"]
+    r = client.post(url, json={"v": v})
+    # Test that list[Optional[str]] input yields input
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    for i in range(len(v)):
+        assert r.json["v"][i] == v[i]
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": "None"})
+    assert "error" in r.json
+    # Test that non-Optional[str] list items yield error
+    r = client.post(url, json={"v": [0]})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
 
 def test_required_list_datetime(client):
     url = "/json/list/req_datetime"
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present List[datetime] input yields input value
     v = [datetime.datetime(2024, 2, 10, 14, 32, 38),
          datetime.datetime(2024, 2, 10, 14, 32, 53)]
@@ -803,16 +1018,51 @@ def test_required_list_datetime(client):
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": "2025-08-08T21:17:22"})
+    assert "error" in r.json
     # Test that present non-datetime list items yields error
-    r = client.post(url, json={"v": "a"})
+    r = client.post(url, json={"v": ["a"]})
     assert "error" in r.json
     # Test that missing input yields error
     r = client.post(url)
     assert "error" in r.json
 
 
+def test_optional_list_datetime(client):
+    url = "/json/list/opt_datetime"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present List[datetime] input yields input value
+    v = [datetime.datetime(2025, 8, 8, 21, 7, 18),
+         datetime.datetime(2025, 8, 8, 21, 7, 38)]
+    r = client.post(url, json={"v": [d.isoformat() for d in v]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": "2025-08-08T21:18:04"})
+    assert "error" in r.json
+    # Test that present non-datetime list items yields error
+    r = client.post(url, json={"v": ["a"]})
+    assert "error" in r.json
+
+
 def test_required_list_date(client):
     url = "/json/list/req_date"
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present List[date] input yields input value
     v = [datetime.date(2024, 2, 10), datetime.date(2024, 2, 11)]
     r = client.post(url, json={"v": [d.isoformat() for d in v]})
@@ -820,16 +1070,50 @@ def test_required_list_date(client):
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": "2025-08-08"})
+    assert "error" in r.json
     # Test that present non-date list items yields error
-    r = client.post(url, json={"v": "a"})
+    r = client.post(url, json={"v": ["a"]})
     assert "error" in r.json
     # Test that missing input yields error
     r = client.post(url)
     assert "error" in r.json
 
 
+def test_optional_list_date(client):
+    url = "/json/list/opt_date"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present List[date] input yields input value
+    v = [datetime.date(2024, 2, 10), datetime.date(2024, 2, 11)]
+    r = client.post(url, json={"v": [d.isoformat() for d in v]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": "2025-08-09"})
+    assert "error" in r.json
+    # Test that present non-date list items yields error
+    r = client.post(url, json={"v": ["a"]})
+    assert "error" in r.json
+
+
 def test_required_list_time(client):
     url = "/json/list/req_time"
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that present List[time] input yields input value
     v = [datetime.time(14, 37, 34), datetime.time(14, 37, 45)]
     r = client.post(url, json={"v": [d.isoformat() for d in v]})
@@ -837,28 +1121,245 @@ def test_required_list_time(client):
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": "21:20:17"})
+    assert "error" in r.json
     # Test that present non-time list items yields error
-    r = client.post(url, json={"v": "a"})
+    r = client.post(url, json={"v": ["a"]})
     assert "error" in r.json
     # Test that missing input yields error
     r = client.post(url)
     assert "error" in r.json
 
 
-def test_optional_list(client):
-    url = "/json/list/optional"
+def test_optional_list_time(client):
+    url = "/json/list/opt_time"
     # Test that missing input yields None
     r = client.post(url)
     assert "v" in r.json
     assert r.json["v"] is None
-    # Test that present List[str] input yields input value
-    v = ["two", "tests"]
+    url = "/json/list/req_time"
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present List[time] input yields input value
+    v = [datetime.time(21, 21, 27), datetime.time(21, 21, 37)]
+    r = client.post(url, json={"v": [d.isoformat() for d in v]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"], expected_call="isoformat")
+    # Test that non-list input yields error
+    r = client.post(url, json={"v": "21:21:49"})
+    assert "error" in r.json
+    # Test that present non-time list items yields error
+    r = client.post(url, json={"v": ["a"]})
+    assert "error" in r.json
+
+
+def test_required_list_dict(client):
+    url = "/json/list/req_dict"
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single dict input yields [input value]
+    v = {"hello": "world"}
+    r = client.post(url, json={"v": [v]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is dict
+    assert r.json["v"][0] == v
+    # Test that present dict input in multiple of the same form param yields [input values]
+    v = [{"one": "dict"}, {"two": "dict", "red": "dict"}, {"blue": "dict"}]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 3
+    list_assertion_helper(2, dict, v, r.json["v"])
+    # Test that present non-list input yields error
+    r = client.post(url, json={"v": "maybe,a,list"})
+    # Test that present non-dict list items yields error
+    r = client.post(url, json={"v": ["a"]})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+
+
+def test_optional_list_dict(client):
+    url = "/json/list/opt_dict"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single dict input yields [input value]
+    v = {"hello": "world"}
+    r = client.post(url, json={"v": [v]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is dict
+    assert r.json["v"][0] == v
+    # Test that present dict input in multiple of the same form param yields [input values]
+    v = [{"one": "dict"}, {"two": "dict", "red": "dict"}, {"blue": "dict"}]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 3
+    list_assertion_helper(2, dict, v, r.json["v"])
+    # Test that present non-list input yields error
+    r = client.post(url, json={"v": "maybe,a,list"})
+    # Test that present non-dict list items yields error
+    r = client.post(url, json={"v": ["a"]})
+    assert "error" in r.json
+
+
+def test_required_list_str_enum(client):
+    url = "/json/list/req_str_enum"
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single Fruits list input yields [input value]
+    v = Fruits.APPLE
+    r = client.post(url, json={"v": [v.value]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == v.value
+    # Test present multiple Fruits input
+    v = [Fruits.APPLE.value, Fruits.ORANGE.value]
     r = client.post(url, json={"v": v})
     assert "v" in r.json
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present non-list input yields error
+    r = client.post(url, json={"v": Fruits.APPLE.value})
+    assert "error" in r.json
+    # Test that present non-Fruits list items yields error
+    r = client.post(url, json={"v": ["a"]})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
 
+
+def test_optional_list_str_enum(client):
+    url = "/json/list/opt_str_enum"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single Fruits list input yields [input value]
+    v = Fruits.APPLE
+    r = client.post(url, json={"v": [v.value]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is str
+    assert r.json["v"][0] == v.value
+    # Test present multiple Fruits input
+    v = [Fruits.APPLE.value, Fruits.ORANGE.value]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that present non-list input yields error
+    r = client.post(url, json={"v": Fruits.APPLE.value})
+    assert "error" in r.json
+    # Test that present non-Fruits list items yields error
+    r = client.post(url, json={"v": ["a"]})
+    assert "error" in r.json
+
+
+def test_required_list_int_enum(client):
+    url = "/json/list/req_int_enum"
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single Binary input yields [input value]
+    v = Binary.ZERO
+    r = client.post(url, json={"v": [v.value]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is int
+    assert r.json["v"][0] == v.value
+    # Test present multiple Binary input
+    v = [
+        Binary.ONE.value, Binary.ZERO.value, Binary.ZERO.value,
+        Binary.ONE.value, Binary.ONE.value
+    ]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 5
+    list_assertion_helper(5, int, v, r.json["v"])
+    # Test that present non-list input yields error
+    r = client.post(url, json={"v": "crying zeros and I'm hearing"})
+    # Test that present non-Binary list items yields error
+    r = client.post(url, json={"v": [Binary.ONE, Binary.ONE, "ones"]})
+    assert "error" in r.json
+    # Test that missing input yields error
+    r = client.post(url)
+    assert "error" in r.json
+
+
+def test_optional_list_int_enum(client):
+    url = "/json/list/opt_int_enum"
+    # Test that missing input yields None
+    r = client.post(url)
+    assert "v" in r.json
+    assert r.json["v"] is None
+    # Test that present single empty list input yields empty list
+    r = client.post(url, json={"v": []})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
+    # Test that present single Binary input yields [input value]
+    v = Binary.ZERO
+    r = client.post(url, json={"v": [v.value]})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    assert type(r.json["v"][0]) is int
+    assert r.json["v"][0] == v.value
+    # Test present multiple Binary input
+    v = [
+        Binary.ONE.value, Binary.ZERO.value, Binary.ZERO.value,
+        Binary.ONE.value, Binary.ONE.value
+    ]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 5
+    list_assertion_helper(5, int, v, r.json["v"])
+    # Test that present non-list input yields error
+    r = client.post(url, json={"v": "crying zeros and I'm hearing"})
+    # Test that present non-Binary list items yields error
+    r = client.post(url, json={"v": [Binary.ONE, Binary.ONE, "ones"]})
+    assert "error" in r.json
 
 def test_list_default(client):
     url = "/json/list/default"

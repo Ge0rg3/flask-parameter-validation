@@ -4,6 +4,9 @@ import inspect
 import re
 import uuid
 from inspect import signature
+from typing import Optional
+
+import flask
 from flask import request, Response
 from werkzeug.datastructures import ImmutableMultiDict
 from werkzeug.exceptions import BadRequest
@@ -69,19 +72,23 @@ class ValidateParameters:
                     except BadRequest:
                         return {"error": ({"error": "Could not parse JSON."}, 400), "validated": False}
 
-            # Step 3 - Extract list of parameters expected to be lists (otherwise all values are converted to lists)
-            expected_list_params = []
+            # Step 3 - Extract list of parameters expected to be lists (otherwise all values are converted to lists), and for Query params, whether they should split strings by `,`
+            expected_list_params = {}
+            default_list_disable_query_csv = flask.current_app.config.get("FPV_LIST_DISABLE_QUERY_CSV", False)
             for name, param in expected_inputs.items():
-                if True in [str(param.annotation).startswith(list_hint) for list_hint in list_type_hints]:
-                    expected_list_params.append(param.default.alias or name)
+                if any([str(param.annotation).startswith(list_hint) for list_hint in list_type_hints]):
+                    list_disable_query_csv = default_list_disable_query_csv
+                    if param.default.list_disable_query_csv is not None:
+                        list_disable_query_csv = param.default.list_disable_query_csv
+                    expected_list_params[param.default.alias or name] = not list_disable_query_csv
 
             # Step 4 - Convert request inputs to dicts
             request_inputs = {
                 Route: kwargs.copy(),
                 Json: json_input or {},
-                Query: self._to_dict_with_lists(request.args, expected_list_params, True),
-                Form: self._to_dict_with_lists(request.form, expected_list_params),
-                File: self._to_dict_with_lists(request.files, expected_list_params),
+                Query: self._to_dict_with_lists(request.args, list(expected_list_params.keys()), list(expected_list_params.values())),
+                Form: self._to_dict_with_lists(request.form, list(expected_list_params.keys())),
+                File: self._to_dict_with_lists(request.files, list(expected_list_params.keys())),
             }
 
             # Step 5 - Validate each expected input
@@ -122,23 +129,90 @@ class ValidateParameters:
         return nested_func
 
     def _to_dict_with_lists(
-            self, multi_dict: ImmutableMultiDict, expected_lists: list, split_strings: bool = False
+            self, multi_dict: ImmutableMultiDict, expected_lists: list[str], split_strings: Optional[list[bool]] = None
     ) -> dict:
         dict_with_lists = {}
         for key, values in multi_dict.lists():
             # Only create lists for keys that are expected to be lists
             if key in expected_lists:
+                key_index = expected_lists.index(key)
                 list_values = []
                 for value in values:
-                    if split_strings:
-                        list_values.extend(value.split(","))
-                    else:
-                        list_values.append(value)
+                    if value != "" or len(values) > 1:
+                        if split_strings and split_strings[key_index]:
+                            list_values.extend(value.split(","))
+                        else:
+                            list_values.append(value)
                 dict_with_lists[key] = list_values
             else:
                 # If only one value and not expected to be a list, don't use a list
                 dict_with_lists[key] = values[0] if len(values) == 1 else values
         return dict_with_lists
+
+    def _generic_types_validation_helper(self, expected_name, expected_input_type, expected_input_type_str, user_input, source):
+        """
+        Perform recursive validation of generic types (Optional, Union, and List/list)
+        """
+        # In python3.7+, typing.Optional is used instead of typing.Union[..., None]
+        if expected_input_type_str.startswith("typing.Optional"):
+            sub_expected_input_types = expected_input_type
+            sub_expected_input_type_str = expected_input_type_str.replace("typing.Optional[", "typing.Union[None, ")
+            user_inputs, sub_expected_input_types = self._generic_types_validation_helper(expected_name, sub_expected_input_types, sub_expected_input_type_str, user_input, source)
+        elif expected_input_type_str.startswith("typing.Union"):
+            if type(expected_input_type) is tuple or type(expected_input_type) is list:
+                sub_expected_input_types = expected_input_type
+            else:
+                sub_expected_input_types = expected_input_type.__args__
+            sub_expected_input_type_str = expected_input_type_str[expected_input_type_str.index("[") + 1:-1]
+            if type(user_input) is list:
+                user_inputs = user_input
+            else:
+                user_inputs = [user_input]
+            user_inputs, sub_expected_input_types = self._generic_types_validation_helper(expected_name, sub_expected_input_types, sub_expected_input_type_str, user_inputs, source)
+            # If typing.List in optional and user supplied valid list, convert remaining check only for list
+            for exp_type in sub_expected_input_types:
+                if any(str(exp_type).startswith(list_hint) for list_hint in list_type_hints):
+                    if type(user_input) is list:
+                        if hasattr(exp_type, "__args__"):
+                            sub_expected_input_types = exp_type.__args__
+                            if len(sub_expected_input_types) == 1:
+                                sub_expected_input_types = sub_expected_input_types[0]
+                            sub_expected_input_type_str = str(sub_expected_input_types)
+                            user_inputs = user_input
+                            user_inputs, sub_expected_input_types = self._generic_types_validation_helper(expected_name, sub_expected_input_types, sub_expected_input_type_str, user_inputs, source)
+        # If list, expand inner typing items. Otherwise, convert to list to match anyway.
+        elif any(expected_input_type_str.startswith(list_hint) for list_hint in list_type_hints):
+            if hasattr(expected_input_type, "__args__"):
+                sub_expected_input_types = expected_input_type.__args__[0]
+            else:
+                sub_expected_input_types = expected_input_type
+            sub_expected_input_type_str = expected_input_type_str[expected_input_type_str.index("[")+1:-1]
+            if type(user_input) is list:
+                user_inputs = user_input
+            else:
+                user_inputs = [user_input]
+            user_inputs, sub_expected_input_types = self._generic_types_validation_helper(expected_name, sub_expected_input_types, sub_expected_input_type_str, user_inputs, source)
+        else:
+            if type(user_input) is list:
+                user_inputs = user_input
+            else:
+                user_inputs = [user_input]
+            if type(expected_input_type) is list or type(expected_input_type) is tuple:
+                sub_expected_input_types = expected_input_type
+            elif type(expected_input_type) is list and len(expected_input_type) > 0 and hasattr(expected_input_type[0], "__len__"):
+                sub_expected_input_types = expected_input_type[0]
+            elif expected_input_type is list and not hasattr(expected_input_type, "__args__"):
+                return [user_inputs], [expected_input_type]
+            else:
+                sub_expected_input_types = [expected_input_type]
+            for count, value in enumerate(user_inputs):
+                try:
+                    user_inputs[count] = source.convert(
+                        value, sub_expected_input_types
+                    )
+                except ValueError as e:
+                    raise ValidationError(str(e), expected_name, expected_input_type)
+        return user_inputs, sub_expected_input_types
 
     def validate(self, expected_input, all_request_inputs):
         """
@@ -203,60 +277,7 @@ class ValidateParameters:
             if expected_input_type_str.startswith("typing.Any"):
                 return user_input
 
-            # In python3.7+, typing.Optional is used instead of typing.Union[..., None]
-            if expected_input_type_str.startswith("typing.Optional"):
-                expected_input_types = expected_input_type.__args__
-                user_inputs = [user_input]
-                # If typing.List in optional and user supplied valid list, convert remaining check only for list
-                for exp_type in expected_input_types:
-                    if any(str(exp_type).startswith(list_hint) for list_hint in list_type_hints):
-                        if type(user_input) is list:
-                            if hasattr(exp_type, "__args__"):
-                                if all(type(inp) in exp_type.__args__ for inp in user_input):
-                                    expected_input_type = exp_type
-                                    expected_input_types = expected_input_type.__args__
-                                    expected_input_type_str = str(exp_type)
-                                    user_inputs = user_input
-                                elif int in exp_type.__args__:  # Ints from list[str] sources haven't been converted yet, so give it a typecast for good measure
-                                    if all(type(int(inp)) in exp_type.__args__ for inp in user_input):
-                                        expected_input_type = exp_type
-                                        expected_input_types = expected_input_type.__args__
-                                        expected_input_type_str = str(exp_type)
-                                        user_inputs = user_input
-            # Prepare expected type checks for unions, lists and plain types
-            elif expected_input_type_str.startswith("typing.Union"):
-                expected_input_types = expected_input_type.__args__
-                user_inputs = [user_input]
-                # If typing.List in union and user supplied valid list, convert remaining check only for list
-                for exp_type in expected_input_types:
-                    if any(str(exp_type).startswith(list_hint) for list_hint in list_type_hints):
-                        if type(user_input) is list:
-                            # Only convert if validation passes
-                            if hasattr(exp_type, "__args__"):
-                                if all(type(inp) in exp_type.__args__ for inp in user_input):
-                                    expected_input_type = exp_type
-                                    expected_input_types = expected_input_type.__args__
-                                    expected_input_type_str = str(exp_type)
-                                    user_inputs = user_input
-            # If list, expand inner typing items. Otherwise, convert to list to match anyway.
-            elif any(expected_input_type_str.startswith(list_hint) for list_hint in list_type_hints):
-                expected_input_types = expected_input_type.__args__
-                if type(user_input) is list:
-                    user_inputs = user_input
-                else:
-                    user_inputs = [user_input]
-            else:
-                user_inputs = [user_input]
-                expected_input_types = [expected_input_type]
-
-            # Perform automatic type conversion for parameter types (i.e. "true" -> True)
-            for count, value in enumerate(user_inputs):
-                try:
-                    user_inputs[count] = source.convert(
-                        value, expected_input_types
-                    )
-                except ValueError as e:
-                    raise ValidationError(str(e), expected_name, expected_input_type)
+            user_inputs, expected_input_types = self._generic_types_validation_helper(expected_name, expected_input_type, expected_input_type_str, user_input, source)
 
             # Validate that user type(s) match expected type(s)
             validation_success = all(
