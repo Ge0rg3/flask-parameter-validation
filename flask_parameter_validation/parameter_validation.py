@@ -6,7 +6,7 @@ import inspect
 import re
 import uuid
 from inspect import signature
-from typing import Optional, Union, get_origin, get_args, Any
+from typing import NotRequired, Optional, Required, Union, get_origin, get_args, Any, is_typeddict
 
 import flask
 from flask import request
@@ -20,10 +20,13 @@ from .parameter_types.multi_source import MultiSource
 fn_list = dict()
 
 # from 3.10 onwards, Unions written X | Y have the type UnionType
+# from 3.10 onwards, we get the is_typeddict function so we can support TypedDicts
 UNION_TYPES = [Union]
+HANDLE_TYPEDDICTS = False
 if sys.version_info >= (3, 10):
     from types import UnionType
     UNION_TYPES = [Union, UnionType]
+    HANDLE_TYPEDDICTS = True
 
 class ValidateParameters:
     @classmethod
@@ -216,6 +219,40 @@ class ValidateParameters:
                     return user_input, False
                 converted_list.append(sub_converted_input)
             return converted_list, True
+
+        # typeddict
+        elif HANDLE_TYPEDDICTS and is_typeddict(expected_input_type):
+            # check for a stringified dict (like from Query)
+            if type(user_input) is str:
+                try:
+                    user_input = json.loads(user_input)
+                except ValueError:
+                    return user_input, False
+            if type(user_input) is not dict:
+                return user_input, False
+            # check that we have all required keys
+            for key in expected_input_type.__required_keys__:
+                if key not in user_input:
+                    return user_input, False
+
+            # process
+            converted_dict = {}
+            # go through each user input key and make sure the value is the correct type
+            for key, value in user_input.items():
+                annotations = inspect.get_annotations(expected_input_type)
+                if key not in annotations:
+                    # we are strict in not allowing extra keys
+                    # if you want extra keys, use NotRequired
+                    return user_input, False
+                # get the Required and NotRequired decorators out of the way, if present                
+                annotation_type = annotations[key]
+                if get_origin(annotation_type) is NotRequired or get_origin(annotation_type) is Required:
+                    annotation_type = get_args(annotation_type)[0]
+                sub_converted_input, sub_success = self._generic_types_validation_helper(expected_name, annotation_type, value, source)
+                if not sub_success:
+                    return user_input, False
+                converted_dict[key] = sub_converted_input
+            return converted_dict, True
 
         # dict
         elif get_origin(expected_input_type) is dict or expected_input_type is dict:
