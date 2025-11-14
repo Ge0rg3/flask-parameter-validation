@@ -326,12 +326,7 @@ class ValidateParameters:
 
             # Error if types don't match
             if not validation_success:
-                if hasattr(
-                        original_expected_input_type, "__name__"
-                ) and not (str(original_expected_input_type).startswith("typing.") or str(original_expected_input_type).startswith("list")):
-                    type_name = original_expected_input_type.__name__
-                else:
-                    type_name = str(original_expected_input_type)
+                type_name = str(original_expected_input_type)
                 raise ValidationError(
                     f"must be type '{type_name}'",
                     expected_name,
