@@ -9,17 +9,15 @@ from inspect import signature
 from typing import Optional, Union, get_origin, get_args, Any
 
 import flask
-from flask import request, Response
+from flask import request
 from werkzeug.datastructures import ImmutableMultiDict
 from werkzeug.exceptions import BadRequest
 from .exceptions import (InvalidParameterTypeError, MissingInputError,
                          ValidationError)
-from .parameter_types import File, Form, Json, Query, Route
+from .parameter_types import File, Form, Json, Query, Route, Parameter
 from .parameter_types.multi_source import MultiSource
 
 fn_list = dict()
-
-list_type_hints = ["typing.List", "typing.Optional[typing.List", "list", "typing.Optional[list"]
 
 # from 3.10 onwards, Unions written X | Y have the type UnionType
 UNION_TYPES = [Union]
@@ -80,23 +78,22 @@ class ValidateParameters:
                     except BadRequest:
                         return {"error": ({"error": "Could not parse JSON."}, 400), "validated": False}
 
-            # Step 3 - Extract list of parameters expected to be lists (otherwise all values are converted to lists), and for Query params, whether they should split strings by `,`
-            expected_list_params = {}
+            # Step 3 - For Query params, find which parameters should be split y `,`
+            split_csv = {}
             default_list_disable_query_csv = flask.current_app.config.get("FPV_LIST_DISABLE_QUERY_CSV", False)
             for name, param in expected_inputs.items():
-                if any([str(param.annotation).startswith(list_hint) for list_hint in list_type_hints]):
-                    list_disable_query_csv = default_list_disable_query_csv
-                    if param.default.list_disable_query_csv is not None:
-                        list_disable_query_csv = param.default.list_disable_query_csv
-                    expected_list_params[param.default.alias or name] = not list_disable_query_csv
+                list_disable_query_csv = default_list_disable_query_csv
+                if param.default.list_disable_query_csv is not None:
+                    list_disable_query_csv = param.default.list_disable_query_csv
+                split_csv[param.default.alias or name] = not list_disable_query_csv
 
             # Step 4 - Convert request inputs to dicts
             request_inputs = {
                 Route: kwargs.copy(),
                 Json: json_input or {},
-                Query: self._to_dict_with_lists(request.args, list(expected_list_params.keys()), list(expected_list_params.values())),
-                Form: self._to_dict_with_lists(request.form, list(expected_list_params.keys())),
-                File: self._to_dict_with_lists(request.files, list(expected_list_params.keys())),
+                Query: self._to_dict_with_lists(request.args, split_csv),
+                Form: self._to_dict_with_lists(request.form),
+                File: self._to_dict_with_lists(request.files),
             }
 
             # Step 5 - Validate each expected input
@@ -137,27 +134,25 @@ class ValidateParameters:
         return nested_func
 
     def _to_dict_with_lists(
-            self, multi_dict: ImmutableMultiDict, expected_lists: list[str], split_strings: Optional[list[bool]] = None
+            self, multi_dict: ImmutableMultiDict, split_csv: Optional[dict[str, bool]] = None
     ) -> dict:
         dict_with_lists = {}
         for key, values in multi_dict.lists():
-            # Only create lists for keys that are expected to be lists
-            if key in expected_lists:
-                key_index = expected_lists.index(key)
-                list_values = []
-                for value in values:
-                    if value != "" or len(values) > 1:
-                        if split_strings and split_strings[key_index]:
-                            list_values.extend(value.split(","))
-                        else:
-                            list_values.append(value)
-                dict_with_lists[key] = list_values
-            else:
-                # If only one value and not expected to be a list, don't use a list
-                dict_with_lists[key] = values[0] if len(values) == 1 else values
+            list_values = []
+            for value in values:
+                if split_csv and key in split_csv and split_csv[key]:
+                    list_values.extend(value.split(","))
+                else:
+                    list_values.append(value)
+            dict_with_lists[key] = list_values[0] if len(list_values) == 1 else list_values
         return dict_with_lists
 
-    def _generic_types_validation_helper(self, expected_name, expected_input_type, user_input, source, other_union_allowed_types = []):
+    def _generic_types_validation_helper(self, 
+                                         expected_name: str,
+                                         expected_input_type: type,
+                                         user_input: Any,
+                                         source: Parameter,
+                                         other_union_allowed_types: list[type] = []) -> tuple[Any, bool]:
         """
         Perform recursive validation of generic types (Optional, Union, and List/list)
         and convert input. If input is invalid, a fully converted input is not garunteed.
@@ -178,24 +173,35 @@ class ValidateParameters:
             sub_expected_input_types = expected_input_type.__args__
             # go through each type in the union and see if we get a match
             for sub_expected_input_type in sub_expected_input_types:
-                sub_converted_input, sub_success = self._generic_types_validation_helper(expected_name, sub_expected_input_type, user_input, source, other_union_allowed_types=sub_expected_input_types)
+                sub_converted_input, sub_success = self._generic_types_validation_helper(expected_name, sub_expected_input_type, user_input, source, other_union_allowed_types=list(sub_expected_input_types))
                 if sub_success:
                     return sub_converted_input, True
             return user_input, False
 
         # list
         elif get_origin(expected_input_type) is list or expected_input_type is list:
-            # check for a list
+            # check for a normal list
             if type(user_input) is not list:
-                return user_input, False
+                # if using a source that supports multidict style lists,
+                # give singletons the benefit of the doubt. they could still count
+                # as single-element lists
+                if type(source) == Form or type(source) == Query:
+                    user_input = [user_input]
+                else:
+                    return user_input, False
 
             # process
             if len(get_args(expected_input_type)) == 0:
                 # expected type is just a bare list with no sub type
+                # we set to Any instead of returning True so that the input can get converted
                 sub_expected_input_type = Any
             else:
                 sub_expected_input_type = get_args(expected_input_type)[0]
+            if len(user_input) == 1 and user_input[0] == "":
+                # treat arrays of a single empty string as an empty array to support the Query param &value=
+                return [], True
             converted_list = []
+            # go through and validate each item in the array
             for inp in user_input:
                 sub_converted_input, sub_success = self._generic_types_validation_helper(expected_name, sub_expected_input_type, inp, source)
                 if not sub_success:
@@ -211,18 +217,21 @@ class ValidateParameters:
                     user_input = json.loads(user_input)
                 except ValueError:
                     return user_input, False
+            # check for a normal dict
             if type(user_input) is not dict:
                 return user_input, False
 
             # process
             if len(get_args(expected_input_type)) == 0:
                 # expected type is just a bare dict with no sub types
+                # we set to Any instead of returning True so that the input can get converted
                 key_expected_input_type = Any
                 val_expected_input_type = Any
             else:
                 key_expected_input_type = get_args(expected_input_type)[0]
                 val_expected_input_type = get_args(expected_input_type)[1]
             converted_dict = {}
+            # go through and validate each key and value in the dict
             for key, val in user_input.items():
                 key_converted_input, key_success = self._generic_types_validation_helper(expected_name, key_expected_input_type, key, source)
                 val_converted_input, val_success = self._generic_types_validation_helper(expected_name, val_expected_input_type, val, source)
@@ -239,7 +248,8 @@ class ValidateParameters:
             try:
                 # convert
                 user_input = source.convert(
-                    user_input, [expected_input_type] + list(other_union_allowed_types) # include any other allowed types for proper conversion
+                    # include any other allowed types for proper conversion
+                    user_input, [expected_input_type] + other_union_allowed_types
                 )
 
                 if expected_input_type is Any:
@@ -308,22 +318,8 @@ class ValidateParameters:
 
             converted_user_input, validation_success = self._generic_types_validation_helper(expected_name, expected_input_type, user_input, source)
 
-            # # Validate that user type(s) match expected type(s)
-            # validation_success = all(
-            #     type(inp) in expected_input_types for inp in user_inputs
-            # )
-
-            # Validate that if lists are required, lists are given
-            # if any(expected_input_type_str.startswith(list_hint) for list_hint in list_type_hints):
-            #     if type(user_input) is not list:
-            #         validation_success = False
-
             # Validate parameter-specific requirements are met
             try:
-                # if type(user_input) is list:
-                #     source.validate(user_input)
-                # else:
-                #     source.validate(user_inputs[0])
                 source.validate(converted_user_input)
             except ValueError as e:
                 raise ValidationError(str(e), expected_name, expected_input_type)
@@ -342,8 +338,4 @@ class ValidateParameters:
                     original_expected_input_type,
                 )
 
-            # Return input back to parent function
-            # if any(expected_input_type_str.startswith(list_hint) for list_hint in list_type_hints):
-            #     return user_inputs
-            # return user_inputs[0]
             return converted_user_input
