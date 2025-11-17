@@ -1,8 +1,11 @@
+import sys
 from enum import Enum
 import flask
 from flask import Blueprint, current_app, jsonify
-
 from flask_parameter_validation import ValidateParameters
+
+if sys.version_info >= (3, 10):
+    from types import UnionType
 
 docs_blueprint = Blueprint(
     "docs", __name__, url_prefix="/docs", template_folder="./templates"
@@ -76,7 +79,10 @@ def get_arg_type_hint(fdocs, arg_name):
     """
     arg_type = fdocs["argspec"].annotations[arg_name]
     def recursively_resolve_type_hint(type_to_resolve):
-        if hasattr(type_to_resolve, "__name__"):  # In Python 3.9, Optional and Union do not have __name__
+        if sys.version_info >= (3, 10) and isinstance(type_to_resolve, UnionType):
+            # support 3.10 style unions (e.g. str | int)
+            type_base_name = "Union"
+        elif hasattr(type_to_resolve, "__name__"):  # In Python 3.9, Optional and Union do not have __name__
             type_base_name = type_to_resolve.__name__
         elif hasattr(type_to_resolve, "_name") and type_to_resolve._name is not None:
             # In Python 3.9, _name exists on list[whatever] and has a non-None value
