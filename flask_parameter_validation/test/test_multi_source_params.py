@@ -1,3 +1,4 @@
+import sys
 import datetime
 import json
 
@@ -689,3 +690,82 @@ def test_multi_source_optional_uuid(client, source_a, source_b):
     # Test that missing input yields error
     r = client.get(url)
     assert r.json["v"] is None
+
+if sys.version_info >= (3, 10):
+    @pytest.mark.parametrize(*common_parameters)
+    def test_multi_source_3_10_union(client, source_a, source_b):
+        if source_a == source_b or "route" in [source_a, source_b]:  # Duplicate sources shouldn't be something someone does, so we won't test for it, Route does not support parameters of type 'dict'
+            return
+        url = f"/ms_{source_a}_{source_b}/union/3_10/required"
+        for source in [source_a, source_b]:
+            # Test that present input yields input value
+            r = None
+            d = False
+            if source == "query":
+                r = client.get(url, query_string={"v": d})
+            elif source == "form":
+                r = client.get(url, data={"v": d})
+            elif source == "json":
+                r = client.get(url, json={"v": d})
+            assert r is not None
+            assert "v" in r.json
+            assert r.json["v"] == d
+            r = None
+            d = datetime.datetime.now().isoformat()
+            if source == "query":
+                r = client.get(url, query_string={"v": d})
+            elif source == "form":
+                r = client.get(url, data={"v": d})
+            elif source == "json":
+                r = client.get(url, json={"v": d})
+            assert r is not None
+            assert "v" in r.json
+            assert r.json["v"] == d
+        # Test that missing input yields error
+        r = client.get(url)
+        assert "error" in r.json
+
+    @pytest.mark.parametrize(*common_parameters)
+    def test_multi_source_dict_args_str_3_10_union(client, source_a, source_b):
+        if source_a == source_b or "route" in [source_a, source_b]:  # Duplicate sources shouldn't be something someone does, so we won't test for it, Route does not support parameters of type 'dict'
+            return
+        d = {"c": "d", "e": -3}
+        url = f"/ms_{source_a}_{source_b}/dict/args/str/3_10_union"
+        for source in [source_a, source_b]:
+            # Test that present input yields input value
+            r = None
+            if source == "query":
+                r = client.get(url, query_string={"v": json.dumps(d)})
+            elif source == "form":
+                r = client.get(url, data={"v": json.dumps(d)})
+            elif source == "json":
+                r = client.get(url, json={"v": d})
+            assert r is not None
+            assert "v" in r.json
+            assert r.json["v"] == d
+        # Test that missing input yields error
+        r = client.get(url)
+        assert "error" in r.json
+
+    @pytest.mark.parametrize(*common_parameters)
+    def test_multi_source_dict_args_str_list_3_10_union(client, source_a, source_b):
+        if source_a == source_b or "route" in [source_a, source_b]:  # Duplicate sources shouldn't be something someone does, so we won't test for it, Route does not support parameters of type 'dict'
+            return
+        d = {"c": True, "e": True, "b": [3, 4, 87]}
+        url = f"/ms_{source_a}_{source_b}/dict/args/str/list/3_10_union"
+        for source in [source_a, source_b]:
+            # Test that present input yields input value
+            r = None
+            if source == "query":
+                r = client.get(url, query_string={"v": json.dumps(d)})
+            elif source == "form":
+                r = client.get(url, data={"v": json.dumps(d)})
+            elif source == "json":
+                r = client.get(url, json={"v": d})
+            assert r is not None
+            assert "v" in r.json
+            assert r.json["v"] == d
+        # Test that missing input yields error
+        r = client.get(url)
+        assert "error" in r.json
+

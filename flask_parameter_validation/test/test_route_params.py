@@ -1,4 +1,5 @@
 # String Validation
+import sys
 import datetime
 import uuid
 from typing import Type, List, Optional
@@ -476,3 +477,22 @@ def test_uuid_func(client):
     # Test that input failing func yields error
     r = client.get(f"{url}/492c6dfc-1730-11f0-9cd2-0242ac120002")
     assert "error" in r.json
+
+if sys.version_info >= (3, 10):
+    def test_union_requred_3_10(client):
+        url = "/route/union/3_10/required"
+        # Test that present datetime input yields input value
+        d = datetime.datetime.now()
+        r = client.get(f"{url}/{d.isoformat()}")
+        assert "v" in r.json
+        assert r.json["v"] == d.isoformat()
+        # Test that present bool input yields input value
+        d = True
+        r = client.get(f"{url}/{d}")
+        assert "v" in r.json
+        assert r.json["v"] == d
+        d = {"v": "string"}
+        # Test that present non-bool/datetime input yields error
+        r = client.get(f"{url}/{d}")
+        assert "error" in r.json
+

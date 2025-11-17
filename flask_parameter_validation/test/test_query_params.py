@@ -1,4 +1,5 @@
 # String Validation
+import sys
 import datetime
 import json
 import uuid
@@ -2754,7 +2755,6 @@ def test_dict_args_str_list(client):
     r = client.get(url, query_string={"v": json.dumps(d)})
     assert "error" in r.json
 
-
 def test_list_dict_args_str_union(client):
     url = "/query/list/dict/args/str/union"
     # Test that correct input yields input value
@@ -2771,4 +2771,83 @@ def test_list_dict_args_str_union(client):
     d = [{"id": 1.03, "name": "foo"}, {"id": -1}]
     r = client.get(url, query_string={"v": json.dumps(d)})
     assert "error" in r.json
+
+
+if sys.version_info >= (3, 10):
+    def test_union_requred_3_10(client):
+        url = "/query/union/3_10/required"
+        # Test that missing input yields error
+        r = client.get(url)
+        assert "error" in r.json
+        # Test that present datetime input yields input value
+        d = datetime.datetime.now()
+        r = client.get(url, query_string={"v": d})
+        assert "v" in r.json
+        assert r.json["v"] == d.isoformat()
+        # Test that present bool input yields input value
+        d = True
+        r = client.get(url, query_string={"v": d})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        d = {"v": "string"}
+        # Test that present non-bool/datetime input yields error
+        r = client.get(url, query_string={"v": d})
+        assert "error" in r.json
+
+    def test_union_optional_3_10(client):
+        url = "/query/union/3_10/optional"
+        # Test that missing input yields input value
+        r = client.get(url)
+        assert "v" in r.json
+        assert r.json["v"] is None
+        # Test that present datetime input yields input value
+        d = datetime.datetime.now()
+        r = client.get(url, query_string={"v": d})
+        assert "v" in r.json
+        assert r.json["v"] == d.isoformat()
+        # Test that present bool input yields input value
+        d = True
+        r = client.get(url, query_string={"v": d})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        d = "string"
+        # Test that present non-bool/datetime input yields error
+        r = client.get(url, query_string={"v": d})
+        assert "error" in r.json
+
+    def test_dict_args_str_3_10_union(client):
+        url = "/query/dict/args/str/3_10_union"
+        # Test that union input yields input value
+        d = {"hi": "ho", "id": 1}
+        r = client.get(url, query_string={"v": json.dumps(d)})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        # Test that only one type also yields input value
+        d = {"hi": 90, "id": 1}
+        r = client.get(url, query_string={"v": json.dumps(d)})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        # Test that empty dict yields input value
+        d = {}
+        r = client.get(url, query_string={"v": json.dumps(d)})
+        assert "v" in r.json
+        assert r.json["v"] == d
+
+    def test_dict_args_str_list_3_10_union(client):
+        url = "/query/dict/args/str/list/3_10_union"
+        # Test that correct input yields input value
+        d = {"1.3": False, "9.0": [2, 4, 5]}
+        r = client.get(url, query_string={"v": json.dumps(d)})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        # Test that empty dict yields input value
+        d = {}
+        r = client.get(url, query_string={"v": json.dumps(d)})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        # Test that incorrect values yields error
+        d = {"test": False, "ing": [2, True, 5]}
+        r = client.get(url, query_string={"v": json.dumps(d)})
+        assert "error" in r.json
+
 

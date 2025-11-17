@@ -1,4 +1,5 @@
 import datetime
+import sys
 from typing import Optional, List, Union
 
 from flask import Blueprint, jsonify
@@ -113,7 +114,7 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
 
     @decorator("/args/str/list")
     @ValidateParameters()
-    def args_date_list(v: dict[str, Union[list[int], bool]] = ParamType(list_disable_query_csv=True)):
+    def args_str_list(v: dict[str, Union[list[int], bool]] = ParamType(list_disable_query_csv=True)):
         assert type(v) is dict
         for key, val in v.items():
             assert type(key) is str
@@ -122,5 +123,27 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
                 for item in val:
                     assert type(item) is int
         return jsonify({"v": v})
+
+    if sys.version_info >= (3, 10):
+        @decorator("/args/str/3_10_union")
+        @ValidateParameters()
+        def args_str_3_10_union(v: dict[str, str|int] = ParamType(list_disable_query_csv=True)):
+            assert type(v) is dict
+            for key, val in v.items():
+                assert type(key) is str
+                assert type(val) is str or type(val) is int
+            return jsonify({"v": v})
+
+        @decorator("/args/str/list/3_10_union")
+        @ValidateParameters()
+        def args_str_list_3_10_union(v: dict[str, list[int] | bool] = ParamType(list_disable_query_csv=True)):
+            assert type(v) is dict
+            for key, val in v.items():
+                assert type(key) is str
+                assert type(val) is list or type(val) is bool
+                if type(val) is list:
+                    for item in val:
+                        assert type(item) is int
+            return jsonify({"v": v})
 
     return dict_bp
