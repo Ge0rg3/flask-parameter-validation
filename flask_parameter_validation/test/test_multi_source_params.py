@@ -200,6 +200,72 @@ def test_multi_source_optional_dict(client, source_a, source_b):
     assert r.json["v"] is None
 
 @pytest.mark.parametrize(*common_parameters)
+def test_multi_source_dict_args_str_str(client, source_a, source_b):
+    if source_a == source_b or "route" in [source_a, source_b]:  # Duplicate sources shouldn't be something someone does, so we won't test for it, Route does not support parameters of type 'dict'
+        return
+    d = {"c": "d", "e": "f"}
+    url = f"/ms_{source_a}_{source_b}/dict/args/str/str"
+    for source in [source_a, source_b]:
+        # Test that present input yields input value
+        r = None
+        if source == "query":
+            r = client.get(url, query_string={"v": json.dumps(d)})
+        elif source == "form":
+            r = client.get(url, data={"v": json.dumps(d)})
+        elif source == "json":
+            r = client.get(url, json={"v": d})
+        assert r is not None
+        assert "v" in r.json
+        assert r.json["v"] == d
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+@pytest.mark.parametrize(*common_parameters)
+def test_multi_source_dict_args_str_union(client, source_a, source_b):
+    if source_a == source_b or "route" in [source_a, source_b]:  # Duplicate sources shouldn't be something someone does, so we won't test for it, Route does not support parameters of type 'dict'
+        return
+    d = {"c": "d", "e": -3}
+    url = f"/ms_{source_a}_{source_b}/dict/args/str/union"
+    for source in [source_a, source_b]:
+        # Test that present input yields input value
+        r = None
+        if source == "query":
+            r = client.get(url, query_string={"v": json.dumps(d)})
+        elif source == "form":
+            r = client.get(url, data={"v": json.dumps(d)})
+        elif source == "json":
+            r = client.get(url, json={"v": d})
+        assert r is not None
+        assert "v" in r.json
+        assert r.json["v"] == d
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+@pytest.mark.parametrize(*common_parameters)
+def test_multi_source_dict_args_str_list(client, source_a, source_b):
+    if source_a == source_b or "route" in [source_a, source_b]:  # Duplicate sources shouldn't be something someone does, so we won't test for it, Route does not support parameters of type 'dict'
+        return
+    d = {"c": True, "e": True, "b": [3, 4, 87]}
+    url = f"/ms_{source_a}_{source_b}/dict/args/str/list"
+    for source in [source_a, source_b]:
+        # Test that present input yields input value
+        r = None
+        if source == "query":
+            r = client.get(url, query_string={"v": json.dumps(d)})
+        elif source == "form":
+            r = client.get(url, data={"v": json.dumps(d)})
+        elif source == "json":
+            r = client.get(url, json={"v": d})
+        assert r is not None
+        assert "v" in r.json
+        assert r.json["v"] == d
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+@pytest.mark.parametrize(*common_parameters)
 def test_multi_source_float(client, source_a, source_b):
     if source_a == source_b:  # This shouldn't be something someone does, so we won't test for it
         return
@@ -342,6 +408,29 @@ def test_multi_source_optional_list(client, source_a, source_b):
     r = client.get(url)
     assert r.json["v"] is None
 
+
+@pytest.mark.parametrize(*common_parameters)
+def test_multi_source_list_dict(client, source_a, source_b):
+    if source_a == source_b or "route" in [source_a, source_b]:  # Duplicate sources shouldn't be something someone does, so we won't test for it, Route does not support parameters of type 'List'
+        return
+    l = [{"id": 3, "chicken": "noodle soup"}, {}, {"foo": "bar"}]
+    url = f"/ms_{source_a}_{source_b}/list/dict/args/str/union"
+    for source in [source_a, source_b]:
+        # Test that present input yields input value
+        r = None
+        if source == "query":
+            r = client.get(url, query_string={"v": json.dumps(l)})
+        elif source == "form":
+            r = client.get(url, data={"v": json.dumps(l)})
+        elif source == "json":
+            r = client.get(url, json={"v": l})
+        assert r is not None
+        assert "v" in r.json
+        assert r.json["v"] == l
+
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
 
 @pytest.mark.parametrize(*common_parameters)
 def test_multi_source_str(client, source_a, source_b):

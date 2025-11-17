@@ -93,4 +93,34 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     def json_schema(v: dict = ParamType(json_schema=json_schema)):
         return jsonify({"v": v})
 
+    @decorator("/args/str/str")
+    @ValidateParameters()
+    def args_str_str(v: dict[str, str] = ParamType(list_disable_query_csv=True)):
+        assert type(v) is dict
+        for key, val in v.items():
+            assert type(key) is str
+            assert type(val) is str
+        return jsonify({"v": v})
+
+    @decorator("/args/str/union")
+    @ValidateParameters()
+    def args_str_union(v: dict[str, Union[str,int]] = ParamType(list_disable_query_csv=True)):
+        assert type(v) is dict
+        for key, val in v.items():
+            assert type(key) is str
+            assert type(val) is str or type(val) is int
+        return jsonify({"v": v})
+
+    @decorator("/args/str/list")
+    @ValidateParameters()
+    def args_date_list(v: dict[str, Union[list[int], bool]] = ParamType(list_disable_query_csv=True)):
+        assert type(v) is dict
+        for key, val in v.items():
+            assert type(key) is str
+            assert type(val) is list or type(val) is bool
+            if type(val) is list:
+                for item in val:
+                    assert type(item) is int
+        return jsonify({"v": v})
+
     return dict_bp

@@ -180,15 +180,23 @@ class ValidateParameters:
 
         # list
         elif get_origin(expected_input_type) is list or expected_input_type is list:
-            # check for a normal list
             if type(user_input) is not list:
+                # check if we should try to work with strings
+                if type(source) is not Form and type(source) is not Query:
+                    return user_input, False
                 # if using a source that supports multidict style lists,
                 # give singletons the benefit of the doubt. they could still count
                 # as single-element lists
-                if type(source) == Form or type(source) == Query:
-                    user_input = [user_input]
+                if type(user_input) is str and len(user_input) > 0:
+                    try:
+                        user_input = json.loads(user_input)
+                        # check for a stringified list e.g. '[1, 2]'
+                        if type(user_input) is not list:
+                            user_input = [user_input]
+                    except ValueError:
+                        user_input = [user_input]
                 else:
-                    return user_input, False
+                    user_input = [user_input]
 
             # process
             if len(get_args(expected_input_type)) == 0:
@@ -211,8 +219,8 @@ class ValidateParameters:
 
         # dict
         elif get_origin(expected_input_type) is dict or expected_input_type is dict:
-            # check for a stringified dict (like from Query)
-            if type(user_input) is str:
+            # check for a stringified dict (like from Query or Form)
+            if type(user_input) is str and len(user_input) > 0:
                 try:
                     user_input = json.loads(user_input)
                 except ValueError:
