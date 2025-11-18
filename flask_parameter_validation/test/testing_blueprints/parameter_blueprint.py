@@ -14,6 +14,7 @@ from flask_parameter_validation.test.testing_blueprints.str_blueprint import get
 from flask_parameter_validation.test.testing_blueprints.time_blueprint import get_time_blueprint
 from flask_parameter_validation.test.testing_blueprints.union_blueprint import get_union_blueprint
 from flask_parameter_validation.test.testing_blueprints.uuid_blueprint import get_uuid_blueprint
+from flask_parameter_validation.test.testing_blueprints.typeddict_blueprint import get_typeddict_blueprint
 
 
 def get_parameter_blueprint(ParamType: type[Parameter], bp_name: str, param_name: str, http_verb: str) -> Blueprint:
@@ -33,4 +34,5 @@ def get_parameter_blueprint(ParamType: type[Parameter], bp_name: str, param_name
     param_bp.register_blueprint(get_enum_blueprint(ParamType, f"{bp_name}_str_enum", http_verb, Fruits, "str_enum"))
     param_bp.register_blueprint(get_enum_blueprint(ParamType, f"{bp_name}_int_enum", http_verb, Binary, "int_enum"))
     param_bp.register_blueprint(get_uuid_blueprint(ParamType, f"{bp_name}_uuid", http_verb))
+    param_bp.register_blueprint(get_typeddict_blueprint(ParamType, f"{bp_name}_typeddict", http_verb))
     return param_bp

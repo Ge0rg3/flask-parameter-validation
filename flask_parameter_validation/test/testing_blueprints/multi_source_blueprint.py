@@ -1,7 +1,7 @@
 import sys
 import datetime
 import uuid
-from typing import Optional, List, Union
+from typing import Optional, List, Union, TypedDict, NotRequired, Required
 
 from flask import Blueprint, jsonify
 
@@ -238,5 +238,20 @@ def get_multi_source_blueprint(sources, name):
                         assert type(ele) is int
             return jsonify({"v": v})
 
+        class Simple(TypedDict):
+            id: int
+            name: str
+            timestamp: datetime.datetime
+
+        @param_bp.route("/typeddict/", methods=["GET", "POST"])
+        @ValidateParameters()
+        def multi_source_typeddict_normal(v: Simple = MultiSource(sources[0], sources[1], list_disable_query_csv=True)):
+            assert type(v) is dict
+            assert "id" in v and "name" in v and "timestamp" in v
+            assert type(v["id"]) is int
+            assert type(v["name"]) is str
+            assert type(v["timestamp"]) is datetime.datetime
+            v["timestamp"] = v["timestamp"].isoformat()
+            return jsonify({"v": v})
 
     return param_bp

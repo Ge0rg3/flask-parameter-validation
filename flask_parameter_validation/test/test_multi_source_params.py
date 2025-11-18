@@ -769,3 +769,25 @@ if sys.version_info >= (3, 10):
         r = client.get(url)
         assert "error" in r.json
 
+    @pytest.mark.parametrize(*common_parameters)
+    def test_multi_source_typeddict(client, source_a, source_b):
+        if source_a == source_b or "route" in [source_a, source_b]:  # Duplicate sources shouldn't be something someone does, so we won't test for it, Route does not support parameters of type 'dict'
+            return
+        d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
+        url = f"/ms_{source_a}_{source_b}/typeddict/"
+        for source in [source_a, source_b]:
+            # Test that present input yields input value
+            r = None
+            if source == "query":
+                r = client.get(url, query_string={"v": json.dumps(d)})
+            elif source == "form":
+                r = client.get(url, data={"v": json.dumps(d)})
+            elif source == "json":
+                r = client.get(url, json={"v": d})
+            assert r is not None
+            assert "v" in r.json
+            assert r.json["v"] == d
+        # Test that missing input yields error
+        r = client.get(url)
+        assert "error" in r.json
+
