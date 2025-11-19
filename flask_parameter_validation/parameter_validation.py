@@ -78,7 +78,7 @@ class ValidateParameters:
                     except BadRequest:
                         return {"error": ({"error": "Could not parse JSON."}, 400), "validated": False}
 
-            # Step 3 - For Query params, find which parameters should be split y `,`
+            # Step 3 - For Query params, find which parameters should be split by commas
             split_csv = {}
             default_list_disable_query_csv = flask.current_app.config.get("FPV_LIST_DISABLE_QUERY_CSV", False)
             for name, param in expected_inputs.items():
