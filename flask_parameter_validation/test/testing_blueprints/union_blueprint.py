@@ -1,4 +1,5 @@
 import datetime
+import sys
 from typing import Optional, Union
 
 from flask import Blueprint, jsonify
@@ -61,5 +62,18 @@ def get_union_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str
     @ValidateParameters()
     def func(v: Union[bool, int] = ParamType(func=is_truthy)):
         return jsonify({"v": v})
+
+    if sys.version_info >= (3, 10):
+        @decorator(path("/3_10/required", "/<v>"))
+        @ValidateParameters()
+        def required_3_10(v: bool | datetime.datetime = ParamType()):
+            assert type(v) is bool or type(v) is datetime.datetime
+            return jsonify({"v": v.isoformat() if type(v) is datetime.datetime else v})
+
+        @decorator("/3_10/optional")  # Route not supported by Optional
+        @ValidateParameters()
+        def optional_3_10(v: Optional[bool | datetime.datetime] = ParamType()):
+            assert type(v) is bool or type(v) is datetime.datetime or v is None
+            return jsonify({"v": v.isoformat() if type(v) is datetime.datetime else v})
 
     return union_bp

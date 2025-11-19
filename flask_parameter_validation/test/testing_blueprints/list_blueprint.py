@@ -373,4 +373,15 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     def optional_non_typing(v: Optional[list[str]] = ParamType()):
         return jsonify({"v": v})
 
+    @decorator("/dict/args/str/union")
+    @ValidateParameters()
+    def dict_args_str_union(v: list[dict[str, Union[str, int]]] = ParamType(list_disable_query_csv=True)):
+        assert type(v) is list
+        for ele in v:
+            assert type(ele) is dict
+            for key, val in ele.items():
+                assert type(key) is str
+                assert type(val) is str or type(val) is int
+        return jsonify({"v": v})
+
     return list_bp

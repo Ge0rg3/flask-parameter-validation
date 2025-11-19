@@ -1,4 +1,5 @@
 # String Validation
+import sys
 import datetime
 import json
 import uuid
@@ -1592,3 +1593,152 @@ def test_uuid_func(client):
     # Test that input failing func yields error
     r = client.post(url, data={"v": "492c6dfc-1730-11f0-9cd2-0242ac120002"})
     assert "error" in r.json
+
+
+def test_dict_args_str_str(client):
+    url = "/form/dict/args/str/str"
+    # Test that correct input yields input value
+    d = {"hi": "ho"}
+    r = client.post(url, data={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    d = {"hi": -45}
+    # Test that incorrect input yields error
+    r = client.post(url, data={"v": json.dumps(d)})
+    assert "error" in r.json
+
+
+def test_dict_args_str_union(client):
+    url = "/form/dict/args/str/union"
+    # Test that union input yields input value
+    d = {"hi": "ho", "id": 1}
+    r = client.post(url, data={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that only one type also yields input value
+    d = {"hi": 90, "id": 1}
+    r = client.post(url, data={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that empty dict yields input value
+    d = {}
+    r = client.post(url, data={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+
+
+def test_dict_args_str_list(client):
+    url = "/form/dict/args/str/list"
+    # Test that correct input yields input value
+    d = {"1.3": False, "9.0": [2, 4, 5]}
+    r = client.post(url, data={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that empty dict yields input value
+    d = {}
+    r = client.post(url, data={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that incorrect values yields error
+    d = {"test": False, "ing": [2, True, 5]}
+    r = client.post(url, data={"v": json.dumps(d)})
+    assert "error" in r.json
+
+
+def test_list_dict_args_str_union(client):
+    url = "/form/list/dict/args/str/union"
+    # Test that correct input yields input value
+    d = [{"id": 3, "chicken": "noodle soup"}, {}, {"foo": "bar"}]
+    r = client.post(url, data={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that empty list yields input value
+    d = []
+    r = client.post(url, data={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that incorrect values yields error
+    d = [{"id": 1.03, "name": "foo"}, {"id": -1}]
+    r = client.post(url, data={"v": json.dumps(d)})
+    assert "error" in r.json
+
+
+
+if sys.version_info >= (3, 10):
+    def test_union_requred_3_10(client):
+        url = "/form/union/3_10/required"
+        # Test that missing input yields error
+        r = client.post(url)
+        assert "error" in r.json
+        # Test that present datetime input yields input value
+        d = datetime.datetime.now()
+        r = client.post(url, data={"v": d})
+        assert "v" in r.json
+        assert r.json["v"] == d.isoformat()
+        # Test that present bool input yields input value
+        d = True
+        r = client.post(url, data={"v": d})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        d = {"v": "string"}
+        # Test that present non-bool/datetime input yields error
+        r = client.post(url, data={"v": d})
+        assert "error" in r.json
+
+    def test_union_optional_3_10(client):
+        url = "/form/union/3_10/optional"
+        # Test that missing input yields input value
+        r = client.post(url)
+        assert "v" in r.json
+        assert r.json["v"] is None
+        # Test that present datetime input yields input value
+        d = datetime.datetime.now()
+        r = client.post(url, data={"v": d})
+        assert "v" in r.json
+        assert r.json["v"] == d.isoformat()
+        # Test that present bool input yields input value
+        d = True
+        r = client.post(url, data={"v": d})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        d = "string"
+        # Test that present non-bool/datetime input yields error
+        r = client.post(url, data={"v": d})
+        assert "error" in r.json
+
+    def test_dict_args_str_3_10_union(client):
+        url = "/form/dict/args/str/3_10_union"
+        # Test that union input yields input value
+        d = {"hi": "ho", "id": 1}
+        r = client.post(url, data={"v": json.dumps(d)})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        # Test that only one type also yields input value
+        d = {"hi": 90, "id": 1}
+        r = client.post(url, data={"v": json.dumps(d)})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        # Test that empty dict yields input value
+        d = {}
+        r = client.post(url, data={"v": json.dumps(d)})
+        assert "v" in r.json
+        assert r.json["v"] == d
+
+    def test_dict_args_str_list_3_10_union(client):
+        url = "/form/dict/args/str/list/3_10_union"
+        # Test that correct input yields input value
+        d = {"1.3": False, "9.0": [2, 4, 5]}
+        r = client.post(url, data={"v": json.dumps(d)})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        # Test that empty dict yields input value
+        d = {}
+        r = client.post(url, data={"v": json.dumps(d)})
+        assert "v" in r.json
+        assert r.json["v"] == d
+        # Test that incorrect values yields error
+        d = {"test": False, "ing": [2, True, 5]}
+        r = client.post(url, data={"v": json.dumps(d)})
+        assert "error" in r.json
+
+

@@ -4,7 +4,8 @@ from .json import Json
 from .query import Query
 from .route import Route
 from .multi_source import MultiSource
+from .parameter import Parameter
 
 __all__ = [
-    "File", "Form", "Json", "Query", "Route", "MultiSource"
+        "File", "Form", "Json", "Query", "Route", "MultiSource", "Parameter"
 ]
