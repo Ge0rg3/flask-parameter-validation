@@ -1,6 +1,8 @@
 import datetime
 import sys
-from typing import NotRequired, Optional, Required, TypedDict, is_typeddict
+from typing import Optional, TypedDict
+if sys.version_info >= (3, 10):
+    from typing import NotRequired, Required, is_typeddict
 
 from flask import Blueprint, jsonify
 

@@ -1,7 +1,9 @@
 import sys
 import datetime
 import uuid
-from typing import Optional, List, Union, TypedDict, NotRequired, Required
+from typing import Optional, List, Union, TypedDict
+if sys.version_info >= (3, 10):
+    from typing import NotRequired, Required
 
 from flask import Blueprint, jsonify
 

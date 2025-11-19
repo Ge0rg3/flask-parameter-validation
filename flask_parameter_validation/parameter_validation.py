@@ -6,7 +6,9 @@ import inspect
 import re
 import uuid
 from inspect import signature
-from typing import NotRequired, Optional, Required, Union, get_origin, get_args, Any, is_typeddict
+from typing import Optional, Union, get_origin, get_args, Any
+if sys.version_info >= (3, 10):
+    from typing import NotRequired, Required, is_typeddict
 
 import flask
 from flask import request
