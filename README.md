@@ -10,7 +10,7 @@
 ## Usage Example
 ```py
 from flask import Flask
-from typing import Optional
+from typing import Optional, TypedDict, NotRequired
 from flask_parameter_validation import ValidateParameters, Route, Json, Query
 from datetime import datetime
 from enum import Enum
@@ -22,6 +22,11 @@ class AccountStatus(int, Enum):  # In Python 3.11 or later, subclass IntEnum fro
 class UserType(str, Enum):  # In Python 3.11 or later, subclass StrEnum from enum package instead of str, Enum
   USER = "user"
   SERVICE = "service"
+
+class SocialLink(TypedDict):
+    friendly_name: str
+    url: str
+    icon: NotRequired[str]
 
 app = Flask(__name__)
 
@@ -37,7 +42,8 @@ def hello(
         is_admin: bool = Query(False),
         user_type: UserType = Json(alias="type"),
         status: AccountStatus = Json(),
-        permissions: dict[str, str] = Query(list_disable_query_csv=True)
+        permissions: dict[str, str] = Query(list_disable_query_csv=True),
+        socials: list[SocialLink] = Json()
      ):
     return "Hello World!"
 
@@ -131,7 +137,8 @@ Type Hints allow for inline specification of the input type of a parameter. Some
 | `datetime.datetime`                                                                                             | Received as a `str` in ISO-8601 date-time format                                                                                                                                                                                                                                                                                                                                                                                                                                       | Y       | Y      | Y      | Y       | N      |
 | `datetime.date`                                                                                                 | Received as a `str` in ISO-8601 full-date format                                                                                                                                                                                                                                                                                                                                                                                                                                       | Y       | Y      | Y      | Y       | N      |
 | `datetime.time`                                                                                                 | Received as a `str` in ISO-8601 partial-time format                                                                                                                                                                                                                                                                                                                                                                                                                                    | Y       | Y      | Y      | Y       | N      |
-| `dict`                                                                                                          | For `Query` and `Form` inputs, users should pass the stringified JSON. For `Query`, you likely will need to use `list_disable_query_csv=True`.                                                                                                                                                                                                                                                                                                                 | N       | Y      | Y      | Y       | N      |
+| `dict`                                                                                                          | For `Query` and `Form` inputs, users should pass the stringified JSON. For `Query`, you likely will need to use `list_disable_query_csv=True`.                                                                                                                                                                                                                                                                                                                                         | N       | Y      | Y      | Y       | N      |
+| `TypedDict`                                                                                                     | For `Query` and `Form` inputs, users should pass the stringified JSON. For `Query`, you likely will need to use `list_disable_query_csv=True`.                                                                                                                                                                                                                                                                                                                                         | N       | Y      | Y      | Y       | N      |
 | `FileStorage`                                                                                                   |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | N       | N      | N      | N       | Y      |
 | A subclass of `StrEnum` or `IntEnum`, or a subclass of `Enum` with `str` or `int` mixins prior to Python 3.11   |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Y       | Y      | Y      | Y       | N      |
 | `uuid.UUID`                                                                                                     | Received as a `str` with or without hyphens, case-insensitive                                                                                                                                                                                                                                                                                                                                                                                                                          | Y       | Y      | Y      | Y       | N      |
@@ -334,6 +341,7 @@ def json_schema(data: dict = Json(json_schema=json_schema)):
 ## Contributions
 Many thanks to all those who have made contributions to the project:
 * [d3-steichman](https://github.com/d3-steichman)/[smt5541](https://github.com/smt5541): API documentation, custom error handling, datetime validation and bug fixes
+* [willowrimlinger](https://github.com/willowrimlinger): TypedDict support, dict subtyping, and async view handling bug fixes
 * [summersz](https://github.com/summersz): Parameter aliases, async support, form type conversion and list bug fixes
 * [Garcel](https://github.com/Garcel): Allow passing custom validator function
 * [iml1111](https://github.com/iml1111): Implement regex validation
