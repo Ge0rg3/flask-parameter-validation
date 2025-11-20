@@ -341,6 +341,7 @@ def json_schema(data: dict = Json(json_schema=json_schema)):
 ## Contributions
 Many thanks to all those who have made contributions to the project:
 * [d3-steichman](https://github.com/d3-steichman)/[smt5541](https://github.com/smt5541): API documentation, custom error handling, datetime validation and bug fixes
+* [willowrimlinger](https://github.com/willowrimlinger): TypedDict support, dict subtyping, and async view handling bug fixes
 * [summersz](https://github.com/summersz): Parameter aliases, async support, form type conversion and list bug fixes
 * [Garcel](https://github.com/Garcel): Allow passing custom validator function
 * [iml1111](https://github.com/iml1111): Implement regex validation
