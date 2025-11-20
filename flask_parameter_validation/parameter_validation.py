@@ -6,9 +6,7 @@ import inspect
 import re
 import uuid
 from inspect import signature
-from typing import Optional, Union, get_origin, get_args, Any
-if sys.version_info >= (3, 10):
-    from typing import NotRequired, Required, is_typeddict
+from typing import Optional, Union, get_origin, get_args, Any, get_type_hints
 
 import flask
 from flask import request
@@ -22,13 +20,15 @@ from .parameter_types.multi_source import MultiSource
 fn_list = dict()
 
 # from 3.10 onwards, Unions written X | Y have the type UnionType
-# from 3.10 onwards, we get the is_typeddict function so we can support TypedDicts
 UNION_TYPES = [Union]
-HANDLE_TYPEDDICTS = False
 if sys.version_info >= (3, 10):
     from types import UnionType
     UNION_TYPES = [Union, UnionType]
-    HANDLE_TYPEDDICTS = True
+
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, Required, is_typeddict
+elif sys.version_info >= (3, 9):
+    from typing_extensions import NotRequired, Required, is_typeddict
 
 class ValidateParameters:
     @classmethod
@@ -223,7 +223,7 @@ class ValidateParameters:
             return converted_list, True
 
         # typeddict
-        elif HANDLE_TYPEDDICTS and is_typeddict(expected_input_type):
+        elif is_typeddict(expected_input_type):
             # check for a stringified dict (like from Query)
             if type(user_input) is str:
                 try:
@@ -241,7 +241,7 @@ class ValidateParameters:
             converted_dict = {}
             # go through each user input key and make sure the value is the correct type
             for key, value in user_input.items():
-                annotations = inspect.get_annotations(expected_input_type)
+                annotations = get_type_hints(expected_input_type)
                 if key not in annotations:
                     # we are strict in not allowing extra keys
                     # if you want extra keys, use NotRequired

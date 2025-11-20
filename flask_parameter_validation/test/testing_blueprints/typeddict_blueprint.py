@@ -1,8 +1,11 @@
 import datetime
 import sys
-from typing import Optional, TypedDict
-if sys.version_info >= (3, 10):
-    from typing import NotRequired, Required, is_typeddict
+from typing import Optional
+
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, Required, is_typeddict, TypedDict
+elif sys.version_info >= (3, 9):
+    from typing_extensions import NotRequired, Required, is_typeddict, TypedDict
 
 from flask import Blueprint, jsonify
 
@@ -13,9 +16,6 @@ from flask_parameter_validation.parameter_types.parameter import Parameter
 def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) -> Blueprint:
     typeddict_bp = Blueprint(bp_name, __name__, url_prefix="/typeddict")
     decorator = getattr(typeddict_bp, http_verb)
-
-    if sys.version_info < (3, 10):
-        return typeddict_bp
 
     # TypedDict not currently supported by Route
     # def path(base: str, route_additions: str) -> str:
@@ -62,17 +62,18 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
             v["timestamp"] = v["timestamp"].isoformat()
         return jsonify({"v": v})
 
-    @decorator("/union_optional")
-    @ValidateParameters()
-    def union_optional(v: Simple | None = ParamType(list_disable_query_csv=True)):
-        if v is not None:
-            assert type(v) is dict
-            assert "id" in v and "name" in v and "timestamp" in v
-            assert type(v["id"]) is int
-            assert type(v["name"]) is str
-            assert type(v["timestamp"]) is datetime.datetime
-            v["timestamp"] = v["timestamp"].isoformat()
-        return jsonify({"v": v})
+    if sys.version_info >= (3, 10):
+        @decorator("/union_optional")
+        @ValidateParameters()
+        def union_optional(v: Simple | None = ParamType(list_disable_query_csv=True)):
+            if v is not None:
+                assert type(v) is dict
+                assert "id" in v and "name" in v and "timestamp" in v
+                assert type(v["id"]) is int
+                assert type(v["name"]) is str
+                assert type(v["timestamp"]) is datetime.datetime
+                v["timestamp"] = v["timestamp"].isoformat()
+            return jsonify({"v": v})
 
     @decorator("/default")
     @ValidateParameters()

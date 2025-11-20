@@ -2850,59 +2850,60 @@ if sys.version_info >= (3, 10):
         r = client.get(url, query_string={"v": json.dumps(d)})
         assert "error" in r.json
 
-    def test_typeddict_normal(client):
-        url = "/query/typeddict/"
-        # Test that correct input yields input value
-        d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that missing keys yields error
-        d = {"id": 3}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
-        # Test that incorrect values yields error
-        d = {"id": 1.03, "name": "foo", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
+def test_typeddict_normal(client):
+    url = "/query/typeddict/"
+    # Test that correct input yields input value
+    d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that missing keys yields error
+    d = {"id": 3}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
+    # Test that incorrect values yields error
+    d = {"id": 1.03, "name": "foo", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
 
-    def test_typeddict_functional(client):
-        url = "/query/typeddict/functional"
-        # Test that correct input yields input value
-        d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that missing keys yields error
-        d = {"id": 3}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
-        # Test that incorrect values yields error
-        d = {"id": 1.03, "name": "foo", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
+def test_typeddict_functional(client):
+    url = "/query/typeddict/functional"
+    # Test that correct input yields input value
+    d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that missing keys yields error
+    d = {"id": 3}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
+    # Test that incorrect values yields error
+    d = {"id": 1.03, "name": "foo", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
 
-    def test_typeddict_optional(client):
-        url = "/query/typeddict/optional"
-        # Test that correct input yields input value
-        d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that no input yields input value
-        d = None
-        r = client.get(url, query_string={"v": d})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that missing keys yields error
-        d = {"id": 3}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
-        # Test that empty dict yields error
-        d = {}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
+def test_typeddict_optional(client):
+    url = "/query/typeddict/optional"
+    # Test that correct input yields input value
+    d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that no input yields input value
+    d = None
+    r = client.get(url, query_string={"v": d})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that missing keys yields error
+    d = {"id": 3}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
+    # Test that empty dict yields error
+    d = {}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
 
+if sys.version_info >= (3, 10):
     def test_typeddict_union_optional(client):
         url = "/query/typeddict/union_optional"
         # Test that correct input yields input value
@@ -2924,183 +2925,183 @@ if sys.version_info >= (3, 10):
         r = client.get(url, query_string={"v": json.dumps(d)})
         assert "error" in r.json
 
-    def test_typeddict_default(client):
-        url = "/query/typeddict/default"
-        # Test that missing input for required and optional yields default values
-        r = client.get(url)
-        assert "n_opt" in r.json
-        assert r.json["n_opt"] == {"id": 1, "name": "Bob", "timestamp": datetime.datetime(2025, 11, 18, 0, 0).isoformat()}
-        assert "opt" in r.json
-        assert r.json["opt"] == {"id": 2, "name": "Billy", "timestamp": datetime.datetime(2025, 11, 18, 5, 30).isoformat()}
-        # Test that present TypedDict input for required and optional yields input values
-        d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={
-            "opt": json.dumps(d),
-            "n_opt": json.dumps(d),
-        })
-        assert "opt" in r.json
-        assert r.json["opt"] == d
-        assert "n_opt" in r.json
-        assert r.json["n_opt"] == d
-        # Test that present non-TypedDict input for required yields error
-        r = client.get(url, query_string={"opt": {"id": 3}, "n_opt": "b"})
-        assert "error" in r.json
+def test_typeddict_default(client):
+    url = "/query/typeddict/default"
+    # Test that missing input for required and optional yields default values
+    r = client.get(url)
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == {"id": 1, "name": "Bob", "timestamp": datetime.datetime(2025, 11, 18, 0, 0).isoformat()}
+    assert "opt" in r.json
+    assert r.json["opt"] == {"id": 2, "name": "Billy", "timestamp": datetime.datetime(2025, 11, 18, 5, 30).isoformat()}
+    # Test that present TypedDict input for required and optional yields input values
+    d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={
+        "opt": json.dumps(d),
+        "n_opt": json.dumps(d),
+    })
+    assert "opt" in r.json
+    assert r.json["opt"] == d
+    assert "n_opt" in r.json
+    assert r.json["n_opt"] == d
+    # Test that present non-TypedDict input for required yields error
+    r = client.get(url, query_string={"opt": {"id": 3}, "n_opt": "b"})
+    assert "error" in r.json
 
-    def test_typeddict_func(client):
-        url = "/query/typeddict/func"
-        # Test that correct input yields input value
-        d = {"id": 3, "name": "Bill", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that func failing input yields input value
-        d = {"id": 3, "name": "Billy Bob Joe", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
+def test_typeddict_func(client):
+    url = "/query/typeddict/func"
+    # Test that correct input yields input value
+    d = {"id": 3, "name": "Bill", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that func failing input yields input value
+    d = {"id": 3, "name": "Billy Bob Joe", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
 
-    def test_typeddict_json_schema(client):
-        url = "/query/typeddict/json_schema"
-        # Test that correct input yields input value
-        d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that missing keys yields error
-        d = {"id": 3}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
-        # Test that incorrect values yields error
-        d = {"id": 1.03, "name": "foo", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
+def test_typeddict_json_schema(client):
+    url = "/query/typeddict/json_schema"
+    # Test that correct input yields input value
+    d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that missing keys yields error
+    d = {"id": 3}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
+    # Test that incorrect values yields error
+    d = {"id": 1.03, "name": "foo", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
 
-    def test_typeddict_not_required(client):
-        url = "/query/typeddict/not_required"
-        # Test that all keys yields input value
-        d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that missing not requried key yields input value
-        d = {"name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that missing required keys yields error
-        d = {"name": "Merriweather"}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
+def test_typeddict_not_required(client):
+    url = "/query/typeddict/not_required"
+    # Test that all keys yields input value
+    d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that missing not requried key yields input value
+    d = {"name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that missing required keys yields error
+    d = {"name": "Merriweather"}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
 
-    def test_typeddict_required(client):
-        url = "/query/typeddict/required"
-        # Test that all keys yields input value
-        d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that missing not requried key yields input value
-        d = {"name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that missing required keys yields error
-        d = {"name": "Merriweather"}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
+def test_typeddict_required(client):
+    url = "/query/typeddict/required"
+    # Test that all keys yields input value
+    d = {"id": 3, "name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that missing not requried key yields input value
+    d = {"name": "Merriweather", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that missing required keys yields error
+    d = {"name": "Merriweather"}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
 
-    def test_typeddict_complex(client):
-        url = "/query/typeddict/complex"
-        # Test that correct input yields input value
-        d = {
-            "name": "change da world",
-            "children": [
-                {
-                    "id": 4,
-                    "name": "my final message. Goodb ye",
-                    "timestamp": datetime.datetime.now().isoformat(),
-                }
-            ],
-            "left": {
-                "x": 3.4,
-                "y": 1.0,
-                "z": 99999.34455663
-            },
-            "right": {
-                "x": 3.2,
-                "y": 1.1,
-                "z": 999.3663
-            },
-        }
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that empty children list yields input value
-        d = {
-            "name": "change da world",
-            "children": [],
-            "left": {
-                "x": 3.4,
-                "y": 1.0,
-                "z": 99999.34455663
-            },
-            "right": {
-                "x": 3.2,
-                "y": 1.1,
-                "z": 999.3663
-            },
-        }
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that incorrect child TypedDict yields error
-        d = {
-            "name": "change da world",
-            "children": [
-                {
-                    "id": 4,
-                    "name": 6,
-                    "timestamp": datetime.datetime.now().isoformat(),
-                }
-            ],
-            "left": {
-                "x": 3.4,
-                "y": 1.0,
-                "z": 99999.34455663
-            },
-            "right": {
-                "x": 3.2,
-                "y": 1.1,
-                "z": 999.3663
-            },
-        }
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
-        # Test that omitting NotRequired key in child yields input value
-        d = {
-            "name": "tags",
-            "children": [
-                {
-                    "id": 4,
-                    "name": "ice my wrist",
-                    "timestamp": datetime.datetime.now().isoformat(),
-                }
-            ],
-            "left": {
-                "x": 3.4,
-                "y": 1.0,
-                "z": 99999.34455663
-            },
-            "right": {
-                "x": 3.2,
-                "y": 1.1,
-                "z": 999.3663
-            },
-        }
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "v" in r.json
-        assert r.json["v"] == d
-        # Test that incorrect values yields error
-        d = {"id": 1.03, "name": "foo", "timestamp": datetime.datetime.now().isoformat()}
-        r = client.get(url, query_string={"v": json.dumps(d)})
-        assert "error" in r.json
+def test_typeddict_complex(client):
+    url = "/query/typeddict/complex"
+    # Test that correct input yields input value
+    d = {
+        "name": "change da world",
+        "children": [
+            {
+                "id": 4,
+                "name": "my final message. Goodb ye",
+                "timestamp": datetime.datetime.now().isoformat(),
+            }
+        ],
+        "left": {
+            "x": 3.4,
+            "y": 1.0,
+            "z": 99999.34455663
+        },
+        "right": {
+            "x": 3.2,
+            "y": 1.1,
+            "z": 999.3663
+        },
+    }
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that empty children list yields input value
+    d = {
+        "name": "change da world",
+        "children": [],
+        "left": {
+            "x": 3.4,
+            "y": 1.0,
+            "z": 99999.34455663
+        },
+        "right": {
+            "x": 3.2,
+            "y": 1.1,
+            "z": 999.3663
+        },
+    }
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that incorrect child TypedDict yields error
+    d = {
+        "name": "change da world",
+        "children": [
+            {
+                "id": 4,
+                "name": 6,
+                "timestamp": datetime.datetime.now().isoformat(),
+            }
+        ],
+        "left": {
+            "x": 3.4,
+            "y": 1.0,
+            "z": 99999.34455663
+        },
+        "right": {
+            "x": 3.2,
+            "y": 1.1,
+            "z": 999.3663
+        },
+    }
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
+    # Test that omitting NotRequired key in child yields input value
+    d = {
+        "name": "tags",
+        "children": [
+            {
+                "id": 4,
+                "name": "ice my wrist",
+                "timestamp": datetime.datetime.now().isoformat(),
+            }
+        ],
+        "left": {
+            "x": 3.4,
+            "y": 1.0,
+            "z": 99999.34455663
+        },
+        "right": {
+            "x": 3.2,
+            "y": 1.1,
+            "z": 999.3663
+        },
+    }
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "v" in r.json
+    assert r.json["v"] == d
+    # Test that incorrect values yields error
+    d = {"id": 1.03, "name": "foo", "timestamp": datetime.datetime.now().isoformat()}
+    r = client.get(url, query_string={"v": json.dumps(d)})
+    assert "error" in r.json
 

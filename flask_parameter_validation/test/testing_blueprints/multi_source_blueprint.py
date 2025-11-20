@@ -2,8 +2,11 @@ import sys
 import datetime
 import uuid
 from typing import Optional, List, Union, TypedDict
-if sys.version_info >= (3, 10):
-    from typing import NotRequired, Required
+
+if sys.version_info >= (3, 11):
+    from typing import NotRequired, Required, is_typeddict, TypedDict
+elif sys.version_info >= (3, 9):
+    from typing_extensions import NotRequired, Required, is_typeddict, TypedDict
 
 from flask import Blueprint, jsonify
 
@@ -240,20 +243,20 @@ def get_multi_source_blueprint(sources, name):
                         assert type(ele) is int
             return jsonify({"v": v})
 
-        class Simple(TypedDict):
-            id: int
-            name: str
-            timestamp: datetime.datetime
+    class Simple(TypedDict):
+        id: int
+        name: str
+        timestamp: datetime.datetime
 
-        @param_bp.route("/typeddict/", methods=["GET", "POST"])
-        @ValidateParameters()
-        def multi_source_typeddict_normal(v: Simple = MultiSource(sources[0], sources[1], list_disable_query_csv=True)):
-            assert type(v) is dict
-            assert "id" in v and "name" in v and "timestamp" in v
-            assert type(v["id"]) is int
-            assert type(v["name"]) is str
-            assert type(v["timestamp"]) is datetime.datetime
-            v["timestamp"] = v["timestamp"].isoformat()
-            return jsonify({"v": v})
+    @param_bp.route("/typeddict/", methods=["GET", "POST"])
+    @ValidateParameters()
+    def multi_source_typeddict_normal(v: Simple = MultiSource(sources[0], sources[1], list_disable_query_csv=True)):
+        assert type(v) is dict
+        assert "id" in v and "name" in v and "timestamp" in v
+        assert type(v["id"]) is int
+        assert type(v["name"]) is str
+        assert type(v["timestamp"]) is datetime.datetime
+        v["timestamp"] = v["timestamp"].isoformat()
+        return jsonify({"v": v})
 
     return param_bp
