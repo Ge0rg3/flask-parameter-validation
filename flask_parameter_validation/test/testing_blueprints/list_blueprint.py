@@ -125,7 +125,7 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
 
     @decorator("/req_union_everything")
     @ValidateParameters()
-    def req_union_everything(v: List[Union[str, int, bool, float, datetime.datetime, datetime.date, datetime.time, dict, Fruits, Binary, uuid.UUID]] = ParamType(list_disable_query_csv=True)):
+    def req_union_everything(v: List[Union[str, int, bool, float, datetime.datetime, datetime.date, datetime.time, dict, Fruits, Binary, uuid.UUID]] = ParamType()):
         assert type(v) is list
         assert len(v) > 0
         assert type(v[0]) is str
@@ -221,7 +221,7 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
 
     @decorator("/req_dict")
     @ValidateParameters()
-    def req_dict(v: List[dict] = ParamType(list_disable_query_csv=True)):
+    def req_dict(v: List[dict] = ParamType()):
         assert type(v) is list
         if len(v) > 0:
             assert type(v[0]) is dict
@@ -229,7 +229,7 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
 
     @decorator("/opt_dict")
     @ValidateParameters()
-    def opt_dict(v: Optional[List[dict]] = ParamType(list_disable_query_csv=True)):
+    def opt_dict(v: Optional[List[dict]] = ParamType()):
         assert type(v) is list or v is None
         if v and len(v) > 0:
             assert type(v[0]) is dict
@@ -375,7 +375,7 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
 
     @decorator("/dict/args/str/union")
     @ValidateParameters()
-    def dict_args_str_union(v: list[dict[str, Union[str, int]]] = ParamType(list_disable_query_csv=True)):
+    def dict_args_str_union(v: list[dict[str, Union[str, int]]] = ParamType()):
         assert type(v) is list
         for ele in v:
             assert type(ele) is dict

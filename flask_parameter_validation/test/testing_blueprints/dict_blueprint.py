@@ -96,7 +96,7 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
 
     @decorator("/args/str/str")
     @ValidateParameters()
-    def args_str_str(v: dict[str, str] = ParamType(list_disable_query_csv=True)):
+    def args_str_str(v: dict[str, str] = ParamType()):
         assert type(v) is dict
         for key, val in v.items():
             assert type(key) is str
@@ -105,7 +105,7 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
 
     @decorator("/args/str/union")
     @ValidateParameters()
-    def args_str_union(v: dict[str, Union[str,int]] = ParamType(list_disable_query_csv=True)):
+    def args_str_union(v: dict[str, Union[str,int]] = ParamType()):
         assert type(v) is dict
         for key, val in v.items():
             assert type(key) is str
@@ -114,7 +114,7 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
 
     @decorator("/args/str/list")
     @ValidateParameters()
-    def args_str_list(v: dict[str, Union[list[int], bool]] = ParamType(list_disable_query_csv=True)):
+    def args_str_list(v: dict[str, Union[list[int], bool]] = ParamType()):
         assert type(v) is dict
         for key, val in v.items():
             assert type(key) is str
@@ -127,7 +127,7 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     if sys.version_info >= (3, 10):
         @decorator("/args/str/3_10_union")
         @ValidateParameters()
-        def args_str_3_10_union(v: dict[str, str|int] = ParamType(list_disable_query_csv=True)):
+        def args_str_3_10_union(v: dict[str, str|int] = ParamType()):
             assert type(v) is dict
             for key, val in v.items():
                 assert type(key) is str
@@ -136,7 +136,7 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
 
         @decorator("/args/str/list/3_10_union")
         @ValidateParameters()
-        def args_str_list_3_10_union(v: dict[str, list[int] | bool] = ParamType(list_disable_query_csv=True)):
+        def args_str_list_3_10_union(v: dict[str, list[int] | bool] = ParamType()):
             assert type(v) is dict
             for key, val in v.items():
                 assert type(key) is str

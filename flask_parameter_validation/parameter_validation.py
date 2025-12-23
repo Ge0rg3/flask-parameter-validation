@@ -90,7 +90,7 @@ class ValidateParameters:
                 list_disable_query_csv = default_list_disable_query_csv
                 if param.default.list_disable_query_csv is not None:
                     list_disable_query_csv = param.default.list_disable_query_csv
-                split_csv[param.default.alias or name] = not list_disable_query_csv
+                split_csv[param.default.alias or name] = type(param.default) is Query and self.should_split_csv(param.annotation) and not list_disable_query_csv
 
             # Step 4 - Convert request inputs to dicts
             request_inputs = {
@@ -151,6 +151,60 @@ class ValidateParameters:
                     list_values.append(value)
             dict_with_lists[key] = list_values[0] if len(list_values) == 1 else list_values
         return dict_with_lists
+
+    def should_split_csv(self, expected_input_type: type) -> bool | None:
+        """
+        Recursively parse type annotation to determine if a Query parameter type should be CSV-split
+
+        :param expected_input_type: the type annotation of the parameter
+
+        :return: `True` if the type allows splitting (resolves to a list without sublists and without dicts involved).
+            `False` if the type forbids splitting (resolves to include dicts or a list with sublists).
+            `None` if the type is indifferent to splitting.
+        """
+        # union
+        if get_origin(expected_input_type) in UNION_TYPES:
+            # check for unions (Optional is just a Union with None)
+            sub_expected_input_types = expected_input_type.__args__
+            # go through each type in the union and see if we get a match
+            contains_list = False
+            for sub_expected_input_type in sub_expected_input_types:
+                sub_should_split = self.should_split_csv(sub_expected_input_type)
+                if sub_should_split is False:  # this subtype forbids splitting, exit early
+                    return False
+                if sub_should_split:  # this subtype allows splitting, continue, but mark as tentatively splittable
+                    contains_list = True
+            if contains_list:  # this type contains a list
+                return True
+            return None  # this type is a union of non-list and non-dict types, can be included in a split
+
+        # list
+        elif get_origin(expected_input_type) is list or expected_input_type is list:
+            # check for lists
+            sub_expected_input_types = expected_input_type.__args__ if hasattr(expected_input_type, "__args__") else []
+            # go through each type in the list and see if we get a negative match
+            contains_list = False
+            for sub_expected_input_type in sub_expected_input_types:
+                sub_should_split = self.should_split_csv(sub_expected_input_type)
+                if sub_should_split is False:  # this subtype forbids splitting, exit early
+                    return False
+                elif sub_should_split:  # this subtype allows splitting, exit early (can't distinguish between which list members would belong to)
+                    return False
+            return True  # this type is a list without sublists or dicts, is splittable
+
+        # typeddict
+        elif is_typeddict(expected_input_type):
+            # typeddicts contain commas for structure, cannot be included in a split
+            return False
+
+        elif get_origin(expected_input_type) is dict or expected_input_type is dict:
+            # dicts contain commas for structure, cannot be included in a split
+            return False
+
+        # everything else is indifferent
+        else:
+            return None
+
 
     def _generic_types_validation_helper(self, 
                                          expected_name: str,

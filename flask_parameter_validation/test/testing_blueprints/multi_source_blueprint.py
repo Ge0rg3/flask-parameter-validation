@@ -108,7 +108,7 @@ def get_multi_source_blueprint(sources, name):
     @param_bp.route("/dict/args/str/str", methods=["GET", "POST"])
     # Route doesn't support List parameters
     @ValidateParameters()
-    def multi_source_dict_str_str(v: dict[str, str] = MultiSource(sources[0], sources[1], list_disable_query_csv=True)):
+    def multi_source_dict_str_str(v: dict[str, str] = MultiSource(sources[0], sources[1])):
         assert type(v) is dict
         for key, val in v.items():
             assert type(key) is str
@@ -118,7 +118,7 @@ def get_multi_source_blueprint(sources, name):
     @param_bp.route("/dict/args/str/union", methods=["GET", "POST"])
     # Route doesn't support List parameters
     @ValidateParameters()
-    def multi_source_dict_str_union(v: dict[str, Union[str, int]] = MultiSource(sources[0], sources[1], list_disable_query_csv=True)):
+    def multi_source_dict_str_union(v: dict[str, Union[str, int]] = MultiSource(sources[0], sources[1])):
         assert type(v) is dict
         for key, val in v.items():
             assert type(key) is str
@@ -128,7 +128,7 @@ def get_multi_source_blueprint(sources, name):
     @param_bp.route("/dict/args/str/list", methods=["GET", "POST"])
     # Route doesn't support List parameters
     @ValidateParameters()
-    def multi_source_dict_str_list(v: dict[str, Union[list[int], bool]] = MultiSource(sources[0], sources[1], list_disable_query_csv=True)):
+    def multi_source_dict_str_list(v: dict[str, Union[list[int], bool]] = MultiSource(sources[0], sources[1])):
         assert type(v) is dict
         for key, val in v.items():
             assert type(key) is str
@@ -141,7 +141,7 @@ def get_multi_source_blueprint(sources, name):
     @param_bp.route("/list/dict/args/str/union", methods=["GET", "POST"])
     # Route doesn't support List parameters
     @ValidateParameters()
-    def multi_source_list_dict_str_union(v: list[dict[str, Union[str, int]]] = MultiSource(sources[0], sources[1], list_disable_query_csv=True)):
+    def multi_source_list_dict_str_union(v: list[dict[str, Union[str, int]]] = MultiSource(sources[0], sources[1])):
         assert type(v) is list
         for ele in v:
             assert type(ele) is dict
@@ -223,7 +223,7 @@ def get_multi_source_blueprint(sources, name):
         @param_bp.route("/dict/args/str/3_10_union", methods=["GET", "POST"])
         # Route doesn't support Dict parameters
         @ValidateParameters()
-        def multi_source_dict_str_3_10_union(v: dict[str, Union[str, int]] = MultiSource(sources[0], sources[1], list_disable_query_csv=True)):
+        def multi_source_dict_str_3_10_union(v: dict[str, Union[str, int]] = MultiSource(sources[0], sources[1])):
             assert type(v) is dict
             for key, val in v.items():
                 assert type(key) is str
@@ -233,7 +233,7 @@ def get_multi_source_blueprint(sources, name):
         @param_bp.route("/dict/args/str/list/3_10_union", methods=["GET", "POST"])
         # Route doesn't support Dict parameters
         @ValidateParameters()
-        def multi_source_dict_str_list_3_10_union(v: dict[str, Union[list[int], bool]] = MultiSource(sources[0], sources[1], list_disable_query_csv=True)):
+        def multi_source_dict_str_list_3_10_union(v: dict[str, Union[list[int], bool]] = MultiSource(sources[0], sources[1])):
             assert type(v) is dict
             for key, val in v.items():
                 assert type(key) is str
@@ -250,7 +250,7 @@ def get_multi_source_blueprint(sources, name):
 
     @param_bp.route("/typeddict/", methods=["GET", "POST"])
     @ValidateParameters()
-    def multi_source_typeddict_normal(v: Simple = MultiSource(sources[0], sources[1], list_disable_query_csv=True)):
+    def multi_source_typeddict_normal(v: Simple = MultiSource(sources[0], sources[1])):
         assert type(v) is dict
         assert "id" in v and "name" in v and "timestamp" in v
         assert type(v["id"]) is int

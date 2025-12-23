@@ -28,7 +28,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
 
     @decorator("/")
     @ValidateParameters()
-    def normal(v: Simple = ParamType(list_disable_query_csv=True)):
+    def normal(v: Simple = ParamType()):
         assert type(v) is dict
         assert "id" in v and "name" in v and "timestamp" in v
         assert type(v["id"]) is int
@@ -41,7 +41,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
 
     @decorator("/functional")
     @ValidateParameters()
-    def functional(v: SimpleFunc = ParamType(list_disable_query_csv=True)):
+    def functional(v: SimpleFunc = ParamType()):
         assert type(v) is dict
         assert "id" in v and "name" in v and "timestamp" in v
         assert type(v["id"]) is int
@@ -52,7 +52,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
     
     @decorator("/optional")
     @ValidateParameters()
-    def optional(v: Optional[Simple] = ParamType(list_disable_query_csv=True)):
+    def optional(v: Optional[Simple] = ParamType()):
         if v is not None:
             assert type(v) is dict
             assert "id" in v and "name" in v and "timestamp" in v
@@ -65,7 +65,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
     if sys.version_info >= (3, 10):
         @decorator("/union_optional")
         @ValidateParameters()
-        def union_optional(v: Simple | None = ParamType(list_disable_query_csv=True)):
+        def union_optional(v: Simple | None = ParamType()):
             if v is not None:
                 assert type(v) is dict
                 assert "id" in v and "name" in v and "timestamp" in v
@@ -78,8 +78,8 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
     @decorator("/default")
     @ValidateParameters()
     def decorator_default(
-            n_opt: Simple = ParamType(default={"id": 1, "name": "Bob", "timestamp": datetime.datetime(2025, 11, 18, 0, 0)}, list_disable_query_csv=True),
-            opt: Optional[Simple] = ParamType(default={"id": 2, "name": "Billy", "timestamp": datetime.datetime(2025, 11, 18, 5, 30)}, list_disable_query_csv=True)
+            n_opt: Simple = ParamType(default={"id": 1, "name": "Bob", "timestamp": datetime.datetime(2025, 11, 18, 0, 0)}),
+            opt: Optional[Simple] = ParamType(default={"id": 2, "name": "Billy", "timestamp": datetime.datetime(2025, 11, 18, 5, 30)})
     ):
         assert type(n_opt) is dict
         assert "id" in n_opt and "name" in n_opt and "timestamp" in n_opt
@@ -106,7 +106,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
     
     @decorator("/func")
     @ValidateParameters()
-    def func(v: Simple = ParamType(func=is_name_short, list_disable_query_csv=True)):
+    def func(v: Simple = ParamType(func=is_name_short)):
         assert type(v) is dict
         assert "id" in v and "name" in v and "timestamp" in v
         assert type(v["id"]) is int
@@ -128,7 +128,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
 
     @decorator("/json_schema")
     @ValidateParameters()
-    def json_schema(v: SimpleFunc = ParamType(json_schema=json_schema, list_disable_query_csv=True)):
+    def json_schema(v: SimpleFunc = ParamType(json_schema=json_schema)):
         assert type(v) is dict
         assert "id" in v and "name" in v and "timestamp" in v
         assert type(v["id"]) is int
@@ -144,7 +144,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
 
     @decorator("/not_required")
     @ValidateParameters()
-    def not_required(v: SimpleNotRequired = ParamType(list_disable_query_csv=True)):
+    def not_required(v: SimpleNotRequired = ParamType()):
         assert type(v) is dict
         assert "name" in v and "timestamp" in v
         assert type(v["name"]) is str
@@ -161,7 +161,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
 
     @decorator("/required")
     @ValidateParameters()
-    def required(v: SimpleRequired = ParamType(list_disable_query_csv=True)):
+    def required(v: SimpleRequired = ParamType()):
         assert type(v) is dict
         assert "name" in v and "timestamp" in v
         assert type(v["name"]) is str
@@ -185,7 +185,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
 
     @decorator("/complex")
     @ValidateParameters()
-    def complex(v: Complex = ParamType(list_disable_query_csv=True)):
+    def complex(v: Complex = ParamType()):
         assert type(v) is dict
         assert "children" in v and "left" in v and "right" in v and "name" in v
         assert type(v["name"]) is str

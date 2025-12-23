@@ -25,6 +25,10 @@ def test_required_str(client):
     r = client.get(url, query_string={"v": "v"})
     assert "v" in r.json
     assert r.json["v"] == "v"
+    # Test that string values can contain commas
+    r = client.get(url, query_string={"v": "v,"})
+    assert "v" in r.json
+    assert r.json["v"] == "v,"
     # Test that missing input yields error
     r = client.get(url)
     assert "error" in r.json
@@ -1360,6 +1364,19 @@ def test_required_list_str_disable_query_csv_unset(client, app):
     assert type(r.json["v"]) is list
     assert len(r.json["v"]) == 2
     list_assertion_helper(2, str, v, r.json["v"])
+    # Test that FPV_LIST_DISABLE_QUERY_CSV returns array of single string when False and provided with commaless string
+    v = "C"
+    r = client.get(f"{url}", query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 1
+    list_assertion_helper(1, str, v, r.json["v"])
+    # Test that FPV_LIST_DISABLE_QUERY_CSV returns empty array when False and passed empty variable
+    v = ""
+    r = client.get(f"{url}", query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 0
     # Test that FPV_LIST_DISABLE_QUERY_CSV returns array of single string when True
     app.config.update({"FPV_LIST_DISABLE_QUERY_CSV": True})
     v = "d,e"
