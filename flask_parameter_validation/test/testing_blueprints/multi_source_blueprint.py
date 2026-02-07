@@ -156,6 +156,17 @@ def get_multi_source_blueprint(sources, name):
     def multi_source_optional_list(v: Optional[List[int]] = MultiSource(sources[0], sources[1])):
         return jsonify({"v": v})
 
+    @param_bp.route("/list/in_union", methods=["GET", "POST"])
+    # Route doesn't support List parameters
+    @ValidateParameters()
+    def in_union(v: Union[str, list[str]] = MultiSource(sources[0], sources[1])):
+        if type(v) is list:
+            for ele in v:
+                assert type(ele) is str
+        else:
+            assert type(v) is str
+        return jsonify({"v": v})
+
     @param_bp.route("/required_str", methods=["GET", "POST"])
     @param_bp.route("/required_str/<v>", methods=["GET", "POST"])
     @ValidateParameters()

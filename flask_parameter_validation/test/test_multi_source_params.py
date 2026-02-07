@@ -434,6 +434,29 @@ def test_multi_source_list_dict(client, source_a, source_b):
     assert "error" in r.json
 
 @pytest.mark.parametrize(*common_parameters)
+def test_multi_source_list_in_union(client, source_a, source_b):
+    if source_a == source_b or "route" in [source_a, source_b]:  # Duplicate sources shouldn't be something someone does, so we won't test for it, Route does not support parameters of type 'List'
+        return
+    l = ["hi", "ho"]
+    url = f"/ms_{source_a}_{source_b}/list/in_union"
+    for source in [source_a, source_b]:
+        # Test that present input yields input value
+        r = None
+        if source == "query":
+            r = client.get(url, query_string={"v": l})
+        elif source == "form":
+            r = client.get(url, data={"v": l})
+        elif source == "json":
+            r = client.get(url, json={"v": l})
+        assert r is not None
+        assert "v" in r.json
+        assert json.dumps(r.json["v"]) == json.dumps(l)
+
+    # Test that missing input yields error
+    r = client.get(url)
+    assert "error" in r.json
+
+@pytest.mark.parametrize(*common_parameters)
 def test_multi_source_str(client, source_a, source_b):
     if source_a == source_b:  # This shouldn't be something someone does, so we won't test for it
         return

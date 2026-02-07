@@ -9,4 +9,8 @@ test.py
 venv/
 .venv/
 env/
-.env
+.env/
+venv*/
+.venv*/
+env*/
+.env*/

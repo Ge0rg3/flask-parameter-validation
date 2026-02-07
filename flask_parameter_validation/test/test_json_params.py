@@ -1404,6 +1404,25 @@ def test_list_func(client):
     assert "error" in r.json
 
 
+def test_list_in_union(client):
+    url = "/json/list/in_union"
+    # Test that input passing func yields input
+    v = ["hi", "ho"]
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that input passing func yields input
+    v = "hi"
+    r = client.post(url, json={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is str
+    # Test that input failing func yields error
+    r = client.post(url, json={"v": [0.4, 0.5]})
+    assert "error" in r.json
+
+
 def test_min_list_length(client):
     url = "/json/list/min_list_length"
     # Test that below length yields error
