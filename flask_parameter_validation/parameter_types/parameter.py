@@ -196,8 +196,8 @@ class Parameter:
                     error = ValueError(f"datetime format does not match: {self.datetime_format}")
         if blank_none and type(None) in allowed_types and str in allowed_types and type(value) is str and len(value) == 0:
             return None
-        if any(isclass(allowed_type) and (issubclass(allowed_type, str) or issubclass(allowed_type, int) and issubclass(allowed_type, Enum)) for allowed_type in allowed_types):
-            for allowed_type in allowed_types:
+        for allowed_type in allowed_types:
+            if isclass(allowed_type) and (issubclass(allowed_type, str) or issubclass(allowed_type, int) and issubclass(allowed_type, Enum)):
                 if issubclass(allowed_type, Enum):
                     try:
                         if issubclass(allowed_type, int):
