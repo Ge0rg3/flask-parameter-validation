@@ -384,4 +384,15 @@ def get_list_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
                 assert type(val) is str or type(val) is int
         return jsonify({"v": v})
 
+    @decorator("/in_union")
+    @ValidateParameters()
+    def in_union(v: Union[str, list[str]] = ParamType(list_disable_query_csv=True)):
+        if type(v) is list:
+            for ele in v:
+                assert type(ele) is str
+        else:
+            assert type(v) is str
+        return jsonify({"v": v})
+
     return list_bp
+

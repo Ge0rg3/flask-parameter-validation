@@ -2409,6 +2409,22 @@ def test_list_func(client):
     assert "error" in r.json
 
 
+def test_list_in_union(client):
+    url = "/query/list/in_union"
+    # Test that input passing func yields input
+    v = ["hi", "ho"]
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is list
+    assert len(r.json["v"]) == 2
+    list_assertion_helper(2, str, v, r.json["v"])
+    # Test that input passing func yields input
+    v = "hi"
+    r = client.get(url, query_string={"v": v})
+    assert "v" in r.json
+    assert type(r.json["v"]) is str
+
+
 def test_min_list_length(client):
     url = "/query/list/min_list_length"
     # Test that below length yields error
