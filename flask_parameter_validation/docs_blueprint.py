@@ -90,7 +90,7 @@ def recursively_resolve_type_hint(type_to_resolve):
     if sys.version_info >= (3, 10) and isinstance(type_to_resolve, UnionType):
             # support 3.10 style unions (e.g. str | int)
             type_base_name = "Union"
-        elif hasattr(type_to_resolve, "__name__"):  # In Python 3.9, Optional and Union do not have __name__
+    elif hasattr(type_to_resolve, "__name__"):  # In Python 3.9, Optional and Union do not have __name__
         type_base_name = type_to_resolve.__name__
     elif hasattr(type_to_resolve, "_name") and type_to_resolve._name is not None:
         # In Python 3.9, _name exists on list[whatever] and has a non-None value
