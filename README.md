@@ -63,12 +63,10 @@ To validate parameters with flask-parameter-validation, two conditions must be m
 ### Enable and customize Validation for a Route with the @ValidateParameters decorator
 The `@ValidateParameters()` decorator takes parameters that alter route validation behavior or provide documentation information:
 
-| Parameter         | Type                 | Default | Description                                                                                                                  |
-|-------------------|----------------------|---------|------------------------------------------------------------------------------------------------------------------------------|
-| error_handler     | `Optional[Response]` | `None`  | Overwrite the output format of generated errors, see [Overwriting Default Errors](#overwriting-default-errors) for more      |
-| route_deprecated  | `bool`               | `False` | Marks this Route as deprecated in any generated [API Documentation](#api-documentation)                                      | 
-| openapi_responses | `Optional[dict]`     | `None`  | The OpenAPI Responses Object for this route, as a `dict` to be used in any generated [API Documentation](#api-documentation) |
-| hide_from_docs    | `bool`               | `False` | Hide this Route from any generated [API Documentation](#api-documentation)                                                   |
+| Parameter         | Type                 | Default | Description                                                                                                                                          |
+|-------------------|----------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| error_handler     | `Optional[Response]` | `None`  | Overwrite the output format of generated errors, see [Overwriting Default Errors](#overwriting-default-errors) for more                              |
+| openapi_responses | `Optional[dict]`     | `None`  | The OpenAPI Responses Object for this route, as a `dict` to be used in any generated [API Documentation](#api-documentation)                         |
 
 #### Overwriting Default Errors
 By default, the error messages are returned as a JSON response, with the detailed error in the "error" field, eg:
@@ -156,28 +154,28 @@ These can be used in tandem to describe a parameter to validate: `parameter_name
 ### Validation with arguments to Parameter
 Validation beyond type-checking can be done by passing arguments into the constructor of the `Parameter` subclass. The arguments available for use on each type hint are:
 
-| Parameter Name           | Type of Argument                                 | Effective On Types     | Description                                                                                                                                                                                            |
-|--------------------------|--------------------------------------------------|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `default`                | any, except `NoneType`                           | All, except in `Route` | Specifies the default value for the field, makes non-Optional fields not required                                                                                                                      |
-| `min_str_length`         | `int`                                            | `str`                  | Specifies the minimum character length for a string input                                                                                                                                              |
-| `max_str_length`         | `int`                                            | `str`                  | Specifies the maximum character length for a string input                                                                                                                                              |
-| `min_list_length`        | `int`                                            | `list`                 | Specifies the minimum number of elements in a list                                                                                                                                                     |
-| `max_list_length`        | `int`                                            | `list`                 | Specifies the maximum number of elements in a list                                                                                                                                                     |
-| `min_int`                | `int`                                            | `int`                  | Specifies the minimum number for an integer input                                                                                                                                                      |
-| `max_int`                | `int`                                            | `int`                  | Specifies the maximum number for an integer input                                                                                                                                                      |
-| `whitelist`              | `str`                                            | `str`                  | A string containing allowed characters for the value                                                                                                                                                   |
-| `blacklist`              | `str`                                            | `str`                  | A string containing forbidden characters for the value                                                                                                                                                 |
-| `pattern`                | `str`                                            | `str`                  | A regex pattern to test for string matches                                                                                                                                                             |
-| `func`                   | `Callable[Any] -> Union[bool, tuple[bool, str]]` | All                    | A function containing a fully customized logic to validate the value. See the [custom validation function](#custom-validation-function) below for usage                                                |
-| `datetime_format`        | `str`                                            | `datetime.datetime`    | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))                                     |
-| `comment`                | `str`                                            | All                    | A string to display as the argument description in any generated documentation                                                                                                                         |
-| `alias`                  | `str`                                            | All but `FileStorage`  | An expected parameter name to receive instead of the function name.                                                                                                                                    |
-| `json_schema`            | `dict`                                           | All but `FileStorage`  | An expected [JSON Schema](https://json-schema.org) which the dict input must conform to                                                                                                                |
-| `content_types`          | `list[str]`                                      | `FileStorage`          | Allowed `Content-Type`s                                                                                                                                                                                |
-| `min_length`             | `int`                                            | `FileStorage`          | Minimum `Content-Length` for a file                                                                                                                                                                    |
-| `max_length`             | `int`                                            | `FileStorage`          | Maximum `Content-Length` for a file                                                                                                                                                                    |
-| `blank_none`             | `bool`                                           | `Optional[str]`        | If `True`, an empty string will be converted to `None`, defaults to configured `FPV_BLANK_NONE`, see [Validation Behavior Configuration](#validation-behavior-configuration) for more                  |
-| `list_disable_query_csv` | `bool`                                           | `list` in `Query`      | If `False`, list-type Query parameters will be split by `,`, defaults to configured `FPV_LIST_DISABLE_QUERY_CSV`, see [Validation Behavior Configuration](#validation-behavior-configuration) for more |
+| Parameter Name           | Type of Argument                                 | Effective On Types     | OpenAPI Docs             | Description                                                                                                                                                                                            |
+|--------------------------|--------------------------------------------------|------------------------|--------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `default`                | any, except `NoneType`                           | All, except in `Route` | ✅                        | Specifies the default value for the field, makes non-Optional fields not required                                                                                                                      |
+| `min_str_length`         | `int`                                            | `str`                  | ✅                        | Specifies the minimum character length for a string input                                                                                                                                              |
+| `max_str_length`         | `int`                                            | `str`                  | ✅                        | Specifies the maximum character length for a string input                                                                                                                                              |
+| `min_list_length`        | `int`                                            | `list`                 | ✅                        | Specifies the minimum number of elements in a list                                                                                                                                                     |
+| `max_list_length`        | `int`                                            | `list`                 | ✅                        | Specifies the maximum number of elements in a list                                                                                                                                                     |
+| `min_int`                | `int`                                            | `int`                  | ✅                        | Specifies the minimum number for an integer input                                                                                                                                                      |
+| `max_int`                | `int`                                            | `int`                  | ✅                        | Specifies the maximum number for an integer input                                                                                                                                                      |
+| `whitelist`              | `str`                                            | `str`                  | Use `pattern` instead    | A string containing allowed characters for the value                                                                                                                                                   |
+| `blacklist`              | `str`                                            | `str`                  | Use `pattern` instead    | A string containing forbidden characters for the value                                                                                                                                                 |
+| `pattern`                | `str`                                            | `str`                  | ✅                        | A regex pattern to test for string matches                                                                                                                                                             |
+| `func`                   | `Callable[Any] -> Union[bool, tuple[bool, str]]` | All                    | ❌ No Attribute           | A function containing a fully customized logic to validate the value. See the [custom validation function](#custom-validation-function) below for usage                                                |
+| `datetime_format`        | `str`                                            | `datetime.datetime`    | ❌ JSON Schema limitation | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))                                     |
+| `comment`                | `str`                                            | All                    | ✅                        | A string to display as the argument description in any generated documentation                                                                                                                         |
+| `alias`                  | `str`                                            | All but `FileStorage`  | ✅                        | An expected parameter name to receive instead of the function name.                                                                                                                                    |
+| `json_schema`            | `dict`                                           | All but `FileStorage`  | ✅                        | An expected [JSON Schema](https://json-schema.org) which the dict input must conform to                                                                                                                |
+| `content_types`          | `list[str]`                                      | `FileStorage`          | ✅                        | Allowed `Content-Type`s                                                                                                                                                                                |
+| `min_length`             | `int`                                            | `FileStorage`          | ❌ JSON Schema limitation | Minimum `Content-Length` for a file                                                                                                                                                                    |
+| `max_length`             | `int`                                            | `FileStorage`          | ❌ JSON Schema limitation | Maximum `Content-Length` for a file                                                                                                                                                                    |
+| `blank_none`             | `bool`                                           | `Optional[str]`        | ❌ No Attribute           | If `True`, an empty string will be converted to `None`, defaults to configured `FPV_BLANK_NONE`, see [Validation Behavior Configuration](#validation-behavior-configuration) for more                  |
+| `list_disable_query_csv` | `bool`                                           | `list` in `Query`      | ❌ No Attribute           | If `False`, list-type Query parameters will be split by `,`, defaults to configured `FPV_LIST_DISABLE_QUERY_CSV`, see [Validation Behavior Configuration](#validation-behavior-configuration) for more |
 
 These validators are passed into the `Parameter` subclass in the route function, such as:
 * `username: str = Json(default="defaultusername", min_length=5)`
@@ -201,10 +199,10 @@ def is_odd(val: int):
 
 ### Configuration Options
 
-#### API Documentation (OpenAPI 3.1.0)
+#### API Documentation (OpenAPI 3.1.0 - 3.2.0)
 * `FPV_OPENAPI_BASE: dict`: The base [OpenAPI Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#openapi-object) that will be populated with a generated [Paths Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#paths-object). Must be set to enable the blueprints. Alternatively, the standalone Paths Object can be retrieved anytime through the `generate_openapi_paths_object()` method.
 
-#### API Documentation (Non-standard Format)
+#### API Documentation (Deprecated, non-standard format)
 * `FPV_DOCS_SITE_NAME: str`: Your site's name, to be displayed in the page title, default: `Site`
 * `FPV_DOCS_CUSTOM_BLOCKS: array`: An array of dicts to display as cards at the top of your documentation, with the (optional) keys:
   * `title: Optional[str]`: The title of the card
@@ -233,7 +231,7 @@ app.register_blueprint(docs_blueprint)
 The default blueprint adds two `GET` routes:
 * `/`: HTML Page with Bootstrap CSS and toggleable light/dark mode
 * `/json`: Non-standard Format JSON Representation of the generated documentation
-* `/openapi`: OpenAPI 3.1.0 (JSON) Representation of the generated documentation
+* `/openapi`: OpenAPI 3.1.0 - 3.2.0 (JSON) Representation of the generated documentation
 
 The `/json` route yields a response with the following format:
 ```json
@@ -287,13 +285,14 @@ Documentation Generated:
 ![](docs/api_documentation_example.png)
 
 ##### Custom Blueprint
-If you would like to use your own blueprint, you can get the raw data from the following function:
+If you would like to use your own blueprint, you can get the raw data from the following functions:
 ```py
 from flask_parameter_validation.docs_blueprint import get_route_docs
-from flask_parameter_validation.docs_blueprint import generate_openapi_paths_object
+from flask_parameter_validation.docs_blueprint import generate_openapi_paths_object, generate_openapi_docs
 ...
-get_route_docs()
-generate_openapi_paths_object()
+get_route_docs()  # The non-standard format (deprecated)
+generate_openapi_paths_object()  # Just the OpenAPI Paths object
+generate_openapi_docs()  # The entire OpenAPI Object
 ```
 
 ###### get_route_docs() return value format
@@ -318,8 +317,7 @@ This method returns an object with the following structure:
           "loc_args": {
             "<Name of argument passed to Parameter Subclass>": "Value passed to Argument",
             "<Name of another argument passed to Parameter Subclass>": 0
-          },
-          "deprecated": "bool, whether this parameter is deprecated (only for Route and Query params)"
+          }
         }
       ],
       "<Another Subclass of Parameter this route uses>": []
@@ -330,28 +328,41 @@ This method returns an object with the following structure:
 ]
 ```
 
+##### Marking routes as deprecated in generated documentation
+
+Using the `warnings.deprecated` (Python 3.13+) or `typing_extensions.deprecated` decorators, you can mark a route as deprecated.
+
+##### Comments in generated OpenAPI documentation
+
+Generated OpenAPI Documentation will pull comments from various locations in the following order (highest priority to lowest priority):
+1. `comment` argument passed to a subclass of `Parameter`
+2. `Annotated[T, "annotated comment"]` on a member of a TypedDict, or `# inline comment` on the same line as a member of a TypedDict or Enum
+3. Docstring on a class (for Enums and TypedDicts)
+
 
 ### JSON Schema Validation
 An example of the [JSON Schema](https://json-schema.org) validation is provided below:
+
 ```python
 json_schema = {
-    "type": "object",
-    "required": ["user_id", "first_name", "last_name", "tags"],
-    "properties": {
-        "user_id": {"type": "integer"},
-        "first_name": {"type": "string"},
-        "last_name": {"type": "string"},
-        "tags": {
-            "type": "array",
-            "items": {"type": "string"}
-        }
+  "type": "object",
+  "required": ["user_id", "first_name", "last_name", "tags"],
+  "properties": {
+    "user_id": {"type": "integer"},
+    "first_name": {"type": "string"},
+    "last_name": {"type": "string"},
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"}
     }
+  }
 }
+
 
 @api.get("/json_schema_example")
 @ValidateParameters()
 def json_schema(data: dict = Json(json_schema=json_schema)):
-    return jsonify({"data": data})
+  return jsonify({"data": data})
 ```
 
 ## Contributions

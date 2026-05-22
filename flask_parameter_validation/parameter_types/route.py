@@ -10,8 +10,7 @@ from .parameter import Parameter
 class Route(Parameter):
     name = "route"
 
-    def __init__(self, default=None, deprecated=False, **kwargs):
-        self.deprecated = deprecated
+    def __init__(self, default=None, **kwargs):
         super().__init__(default, **kwargs)
 
     def convert(self, value, allowed_types, current_error=None):

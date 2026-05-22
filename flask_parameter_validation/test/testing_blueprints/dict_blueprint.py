@@ -8,8 +8,22 @@ from flask_parameter_validation import ValidateParameters, Route
 from flask_parameter_validation.parameter_types.parameter import Parameter
 from flask_parameter_validation.test.testing_blueprints.dummy_decorators import dummy_decorator, dummy_async_decorator
 
+_fpv_test_dict_blueprint_json_schema = {
+    "type": "object",
+    "required": ["user_id", "first_name", "last_name", "tags"],
+    "properties": {
+        "user_id": {"type": "integer"},
+        "first_name": {"type": "string"},
+        "last_name": {"type": "string"},
+        "tags": {
+            "type": "array",
+            "items": {"type": "string"}
+        }
+    }
+}
 
 def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) -> Blueprint:
+    global _fpv_test_dict_blueprint_json_schema
     dict_bp = Blueprint(bp_name, __name__, url_prefix="/dict")
     decorator = getattr(dict_bp, http_verb)
 
@@ -75,23 +89,9 @@ def get_dict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str)
     def func(v: dict = ParamType(func=are_keys_lowercase)):
         return jsonify({"v": v})
 
-    json_schema = {
-        "type": "object",
-        "required": ["user_id", "first_name", "last_name", "tags"],
-        "properties": {
-            "user_id": {"type": "integer"},
-            "first_name": {"type": "string"},
-            "last_name": {"type": "string"},
-            "tags": {
-                "type": "array",
-                "items": {"type": "string"}
-            }
-        }
-    }
-
     @decorator("/json_schema")
     @ValidateParameters()
-    def json_schema(v: dict = ParamType(json_schema=json_schema)):
+    def json_schema(v: dict = ParamType(json_schema=_fpv_test_dict_blueprint_json_schema)):
         return jsonify({"v": v})
 
     @decorator("/args/str/str")

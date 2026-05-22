@@ -1,6 +1,6 @@
 import datetime
 import sys
-from typing import Optional
+from typing import Optional, Annotated
 
 if sys.version_info >= (3, 11):
     from typing import NotRequired, Required, is_typeddict, TypedDict
@@ -22,13 +22,14 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
     #     return base + (route_additions if ParamType is Route else "")
 
     class Simple(TypedDict):
+        """A simple TypedDict"""
         id: int
         name: str
         timestamp: datetime.datetime
 
     @decorator("/")
     @ValidateParameters()
-    def normal(v: Simple = ParamType(list_disable_query_csv=True)):
+    def normal(v: Simple = ParamType(list_disable_query_csv=True, comment="Overrides the class docstring")):
         assert type(v) is dict
         assert "id" in v and "name" in v and "timestamp" in v
         assert type(v["id"]) is int
@@ -138,8 +139,12 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
         return jsonify({"v": v})
 
     class SimpleNotRequired(TypedDict):
-        id: NotRequired[int]
-        name: str
+        """
+        Docstring of SimpleNotRequired
+        """
+
+        id: Annotated[NotRequired[int], "Annotated comment on the id property"]
+        name: str  ## comment on the name property
         timestamp: datetime.datetime
 
     @decorator("/not_required")
@@ -161,7 +166,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
 
     @decorator("/required")
     @ValidateParameters()
-    def required(v: SimpleRequired = ParamType(list_disable_query_csv=True)):
+    def required(v: SimpleRequired = ParamType(list_disable_query_csv=True, comment="Comment in the decorator")):
         assert type(v) is dict
         assert "name" in v and "timestamp" in v
         assert type(v["name"]) is str
@@ -172,6 +177,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
         return jsonify({"v": v})
 
     class Coord(TypedDict):
+        """Docstring of Coord"""
         x: float
         y: float
         z: float
@@ -180,7 +186,7 @@ def get_typeddict_blueprint(ParamType: type[Parameter], bp_name: str, http_verb:
     class Complex(TypedDict):
         children: list[Simple]
         left: Coord
-        right: Coord
+        right: Coord  # Overrides the docstring of Coord
         name: str
 
     @decorator("/complex")

@@ -1,11 +1,14 @@
 import datetime
+import inspect
 import json
 import uuid
 import warnings
 from copy import deepcopy
-from typing import Optional, Union
+from typing import TypedDict, is_typeddict
 import sys
 from enum import Enum, EnumMeta
+from typing_extensions import deprecated
+
 import flask
 from flask import Blueprint, current_app, jsonify
 from flask_parameter_validation import ValidateParameters
@@ -50,7 +53,6 @@ def get_function_docs(func, include_raw_type=False):
                 "docstring": format_docstring(fdocs.get("docstring")),
                 "decorators": fdocs.get("decorators"),
                 "args": extract_argument_details(fdocs, include_raw_type=include_raw_type),
-                "deprecated": fdocs.get("deprecated"),
                 "responses": fdocs.get("openapi_responses"),
             }
     return None
@@ -86,7 +88,10 @@ def extract_argument_details(fdocs, include_raw_type=False):
         args_data.setdefault(arg_data["loc"], []).append(arg_data)
     return args_data
 
-def recursively_resolve_type_hint(type_to_resolve):
+def recursively_resolve_type_hint(type_to_resolve) -> str:
+    """
+    Generate the string representation of a type hint, including any generic arguments
+    """
     if sys.version_info >= (3, 10) and isinstance(type_to_resolve, UnionType):
             # support 3.10 style unions (e.g. str | int)
             type_base_name = "Union"
@@ -156,6 +161,7 @@ def http_badge_bg(http_method):
 
 
 @docs_blueprint.route("/")
+@deprecated("Use /openapi instead")
 def docs_html():
     """
     Render the documentation as an HTML page.
@@ -171,6 +177,7 @@ def docs_html():
 
 
 @docs_blueprint.route("/json")
+@deprecated("Use /openapi instead")
 def docs_json():
     """
     Provide the documentation as a JSON response.
@@ -197,22 +204,24 @@ def parameter_required(param):
         return False
     return True
 
-def generate_json_schema_helper(param: dict, param_type: str, raw_type):
+def generate_json_schema_helper(param: dict | None, param_type: str, raw_type):
     schema = {}
     if raw_type is str:
         schema["type"] = "string"
-        if "min_str_length" in param["loc_args"]:
-            schema["minLength"] = param["loc_args"]["min_str_length"]
-        if "max_str_length" in param["loc_args"]:
-            schema["maxLength"] = param["loc_args"]["max_str_length"]
-        if "pattern" in param["loc_args"]:
-            schema["pattern"] = param["loc_args"]["pattern"]
+        if param is not None:
+            if "min_str_length" in param["loc_args"]:
+                schema["minLength"] = param["loc_args"]["min_str_length"]
+            if "max_str_length" in param["loc_args"]:
+                schema["maxLength"] = param["loc_args"]["max_str_length"]
+            if "pattern" in param["loc_args"]:
+                schema["pattern"] = param["loc_args"]["pattern"]
     elif raw_type is int:
         schema["type"] = "integer"
-        if "min_int" in param["loc_args"]:
-            schema["minimum"] = param["loc_args"]["min_int"]
-        if "max_int" in param["loc_args"]:
-            schema["maximum"] = param["loc_args"]["max_int"]
+        if param is not None:
+            if "min_int" in param["loc_args"]:
+                schema["minimum"] = param["loc_args"]["min_int"]
+            if "max_int" in param["loc_args"]:
+                schema["maximum"] = param["loc_args"]["max_int"]
     elif raw_type is bool:
         schema["type"] = "boolean"
     elif raw_type is float:
@@ -220,19 +229,45 @@ def generate_json_schema_helper(param: dict, param_type: str, raw_type):
     elif raw_type is datetime.datetime:
         schema["type"] = "string"
         schema["format"] = "date-time"
-        if "datetime_format" in param["loc_args"]:
-            warnings.warn("datetime_format cannot be translated to JSON Schema, please use ISO8601 date-time",
-                          Warning, stacklevel=2)
+        if param is not None:
+            if "datetime_format" in param["loc_args"]:
+                warnings.warn("datetime_format cannot be translated to JSON Schema, please use ISO8601 date-time",
+                              Warning, stacklevel=2)
     elif raw_type is datetime.date:
         schema["type"] = "string"
         schema["format"] = "date"
     elif raw_type is datetime.time:
         schema["type"] = "string"
         schema["format"] = "time"
-    elif raw_type is dict:
-        schema["type"] = "object"
     elif raw_type is type(None):
         schema["type"] = "null"
+    elif is_typeddict(raw_type):
+        schema["type"] = "object"
+        schema["properties"] = {}
+        required_properties = []
+        source = ""
+        try:
+            source = inspect.getsource(raw_type)
+        except OSError:
+            pass
+        for key, value in raw_type.__annotations__.items():
+            value_param_type = recursively_resolve_type_hint(value)
+            schema["properties"][key] = generate_json_schema_helper(None, value_param_type, value)
+            key_match = re.findall(rf"^\s*{key}\s*:\s*{value_param_type}\s*#\s*(.*)$", source, flags=re.MULTILINE)
+            if key_match:
+                schema["properties"][key]["description"] = key_match[0]
+            if raw_type.__total__ and not "NotRequired[" in value_param_type:
+                required_properties.append(key)
+            elif not raw_type.__total__ and "Required[" in value_param_type and not "NotRequired[" in value_param_type:
+                required_properties.append(key)
+        if len(required_properties) > 0:
+            schema["required"] = required_properties
+        schema["title"] = param_type
+        type_description = inspect.getdoc(raw_type)
+        if type_description and type_description != inspect.getdoc(dict):
+            schema["description"] = type_description
+    elif raw_type is dict:
+        schema["type"] = "object"
     elif type(raw_type) in [type, EnumMeta] and issubclass(raw_type, Enum):
         if issubclass(raw_type, str):
             schema["type"] = "string"
@@ -240,9 +275,19 @@ def generate_json_schema_helper(param: dict, param_type: str, raw_type):
             schema["type"] = "integer"
         else:
             warnings.warn(f"Unsupported enum type: {param_type}", Warning, stacklevel=2)
-        # Use oneOf:[{const}] instead of enum by recommendation https://github.com/OAI/OpenAPI-Specification/issues/348#issuecomment-336194030
-        options = [{"title": opt.name, "const": opt.value} for opt in raw_type]
+        source = inspect.getsource(raw_type)
+        options = []
+        for opt in raw_type:
+            option_schema = {"title": opt.name, "const": opt.value}
+            opt_match = re.findall(rf"^\s*{opt.name}\s*=\s*['\"]?{opt.value}['\"]?\s*#\s*(.*)$", source, flags=re.MULTILINE)
+            if opt_match:
+                option_schema["description"] = opt_match[0]
+            options.append(option_schema)
         schema["oneOf"] = options
+        type_description = inspect.getdoc(raw_type)
+        if type_description and type_description not in [inspect.getdoc(str), inspect.getdoc(int)]:
+            schema["description"] = type_description
+        schema["title"] = param_type
     elif raw_type is uuid.UUID:
         schema["type"] = "string"
         schema["format"] = "uuid"
@@ -263,19 +308,37 @@ def generate_json_schema_helper(param: dict, param_type: str, raw_type):
                 schema["items"] = available_types[0]
             else:
                 schema["items"] = {"oneOf": available_types}
-            if "min_list_length" in param["loc_args"]:
-                schema["minItems"] = param["loc_args"]["min_list_length"]
-            if "max_list_length" in param["loc_args"]:
-                schema["maxItems"] = param["loc_args"]["max_list_length"]
+            if param is not None:
+                if "min_list_length" in param["loc_args"]:
+                    schema["minItems"] = param["loc_args"]["min_list_length"]
+                if "max_list_length" in param["loc_args"]:
+                    schema["maxItems"] = param["loc_args"]["max_list_length"]
         elif type_group in ["Optional", "Union"]:
             available_types = []
             for subtype in raw_type.__args__:
                 subtype_schema = generate_json_schema_helper(param, recursively_resolve_type_hint(subtype), subtype)
+                if "default" in subtype_schema:
+                    del subtype_schema["default"]
                 available_types.append(subtype_schema)
             schema["oneOf"] = available_types
+        elif type_group in ["Required", "NotRequired"]:
+            schema = generate_json_schema_helper(param, recursively_resolve_type_hint(raw_type.__args__[0]), raw_type.__args__[0])
+        elif type_group == "dict":
+            schema["type"] = "object"
+            schema["additionalProperties"] = generate_json_schema_helper(None, recursively_resolve_type_hint(raw_type.__args__[1]), raw_type.__args__[1])
+        elif type_group == "Annotated":
+            schema = generate_json_schema_helper(param, recursively_resolve_type_hint(raw_type.__origin__), raw_type.__origin__)
+            for annotation in raw_type.__metadata__:
+                if type(annotation) is str:
+                    schema["description"] = annotation
+                    break
         else:
-            warnings.warn(f"Unsupported generic type {param_type}",
-                          Warning, stacklevel=2)
+            warnings.warn(f"Unsupported generic type {param_type}", Warning, stacklevel=2)
+    if param:
+        if "comment" in param["loc_args"]:
+            schema["description"] = param["loc_args"]["comment"]
+        if "default" in param["loc_args"]:
+            schema["default"] = param["loc_args"]["default"]
     return schema
 
 
@@ -297,6 +360,8 @@ def generate_json_schema_for_parameters(params):
             schema["properties"][schema_parameter_name] = generate_json_schema_for_parameter(p)
         if parameter_required(p):
             schema["required"].append(schema_parameter_name)
+    if len(schema["required"]) == 0:
+        del schema["required"]
     return schema
 
 def generate_openapi_paths_object():
@@ -348,8 +413,6 @@ def generate_openapi_paths_object():
                             "schema": arg["loc_args"]["json_schema"] if "json_schema" in arg[
                                 "loc_args"] else generate_json_schema_for_parameter(arg),
                         }
-                        if "deprecated" in arg["loc_args"] and arg["loc_args"]["deprecated"]:
-                            parameter["deprecated"] = arg["loc_args"]["deprecated"]
                         oapi_parameters.append(parameter)
         if len(oapi_parameters) > 0:
             oapi_operation["parameters"] = oapi_parameters
@@ -359,8 +422,6 @@ def generate_openapi_paths_object():
             for partial_decorator in ["@warnings.deprecated", "@deprecated"]:  # Support for PEP 702 in Python 3.13
                 if partial_decorator in decorator:
                     oapi_operation["deprecated"] = True
-        if route["deprecated"]:  # Fallback on kwarg passed to @ValidateParameters()
-            oapi_operation["deprecated"] = route["deprecated"]
         if route["responses"]:
             oapi_operation["responses"] = route["responses"]
         for method in route["methods"]:
@@ -373,23 +434,30 @@ def generate_openapi_paths_object():
     return oapi_paths
 
 
+def generate_openapi_docs():
+    """
+    Generate the documentation in OpenAPI format
+    """
+    config = flask.current_app.config
+    if not config.get("FPV_OPENAPI_ENABLE", False):
+        raise ConfigurationError("FPV_OPENAPI_ENABLE is not set, and defaults to False")
+
+    supported_versions = ["3.1.0", "3.1.1", "3.1.2", "3.2.0"]
+    openapi_base = config.get("FPV_OPENAPI_BASE", {"openapi": None})
+    if openapi_base["openapi"] not in supported_versions:
+        return fpv_error(
+            f"Flask-Parameter-Validation only supports OpenAPI {', '.join(supported_versions)}, provided: {openapi_base['openapi']}")
+    if "paths" in openapi_base:
+        return fpv_error(f"Flask-Parameter-Validation will overwrite the paths value of FPV_OPENAPI_BASE")
+    openapi_paths = generate_openapi_paths_object()
+    openapi_document = json.loads(json.dumps(openapi_base))
+    openapi_document["paths"] = openapi_paths
+    return openapi_document
+
 
 @docs_blueprint.route("/openapi")
 def docs_openapi():
     """
     Provide the documentation in OpenAPI format
     """
-    config = flask.current_app.config
-    if not config.get("FPV_OPENAPI_ENABLE", False):
-        return fpv_error("FPV_OPENAPI_ENABLE is not set, and defaults to False")
-
-    supported_versions = ["3.1.0"]
-    openapi_base = config.get("FPV_OPENAPI_BASE", {"openapi": None})
-    if openapi_base["openapi"] not in supported_versions:
-        return fpv_error(f"Flask-Parameter-Validation only supports OpenAPI {', '.join(supported_versions)}, {openapi_base['openapi']} provided")
-    if "paths" in openapi_base:
-        return fpv_error(f"Flask-Parameter-Validation will overwrite the paths value of FPV_OPENAPI_BASE")
-    openapi_paths = generate_openapi_paths_object()
-    openapi_document = json.loads(json.dumps(openapi_base))
-    openapi_document["paths"] = openapi_paths
-    return jsonify(openapi_document)
+    return jsonify(generate_openapi_docs())
