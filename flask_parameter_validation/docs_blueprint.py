@@ -209,7 +209,7 @@ def parameter_required(param):
         return False
     return True
 
-def generate_json_schema_helper(param: dict | None, param_type: str, raw_type):
+def generate_json_schema_helper(param, param_type, raw_type):
     schema = {}
     if raw_type is str:
         schema["type"] = "string"
