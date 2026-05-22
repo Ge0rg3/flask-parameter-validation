@@ -7,8 +7,6 @@ from copy import deepcopy
 from typing import TypedDict, is_typeddict
 import sys
 from enum import Enum, EnumMeta
-from typing_extensions import deprecated
-
 import flask
 from flask import Blueprint, current_app, jsonify
 from flask_parameter_validation import ValidateParameters
@@ -17,6 +15,11 @@ import re
 
 if sys.version_info >= (3, 10):
     from types import UnionType
+if sys.version_info >= (3, 13):
+    from warnings import deprecated
+else:
+    from typing_extensions import deprecated
+
 
 docs_blueprint = Blueprint(
     "docs", __name__, url_prefix="/docs", template_folder="./templates"
