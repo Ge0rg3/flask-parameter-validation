@@ -4,7 +4,6 @@ import json
 import uuid
 import warnings
 from copy import deepcopy
-from typing import TypedDict, is_typeddict
 import sys
 from enum import Enum, EnumMeta
 import flask
@@ -12,7 +11,10 @@ from flask import Blueprint, current_app, jsonify
 from flask_parameter_validation import ValidateParameters
 from flask_parameter_validation.exceptions.exceptions import ConfigurationError
 import re
-
+if sys.version_info >= (3, 11):
+    from typing import is_typeddict
+elif sys.version_info >= (3, 9):
+    from typing_extensions import is_typeddict
 if sys.version_info >= (3, 10):
     from types import UnionType
 if sys.version_info >= (3, 13):
