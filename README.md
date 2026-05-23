@@ -10,26 +10,36 @@
 ## Usage Example
 ```py
 from flask import Flask
-from typing import Optional, TypedDict, NotRequired
+from typing import Optional, TypedDict, NotRequired, Annotated
 from flask_parameter_validation import ValidateParameters, Route, Json, Query
+from flask_parameter_validation.docs_blueprint import docs_blueprint
 from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
 class AccountStatus(int, Enum):  # In Python 3.11 or later, subclass IntEnum from enum package instead of int, Enum
-  ACTIVE = 1
-  DISABLED = 0
+  """The status of a user's account"""
+  
+  ACTIVE = 1  # User can log in
+  DISABLED = 0  # All actions blocked
 
 class UserType(str, Enum):  # In Python 3.11 or later, subclass StrEnum from enum package instead of str, Enum
-  USER = "user"
-  SERVICE = "service"
+  USER = "user"  # Human
+  SERVICE = "service"  # Bot user
 
 class SocialLink(TypedDict):
-    friendly_name: str
-    url: str
-    icon: NotRequired[str]
+    """A link to a user's social profiles"""
+  
+    friendly_name: str  # Display name
+    url: Annotated[str, "Link to social profile"]
+    icon: NotRequired[str]  # The icon for this link
 
 app = Flask(__name__)
+app.config["FPV_OPENAPI_ENABLE"] = True
+app.config["FPV_OPENAPI_BASE"] = {
+    "openapi": "3.1.0"
+}
+app.register_blueprint(docs_blueprint)
 
 @app.route("/update/<int:id>", methods=["POST"])
 @ValidateParameters()
@@ -283,6 +293,170 @@ def edit_config(
 Documentation Generated:
 
 ![](docs/api_documentation_example.png)
+
+For another example, below is the documentation generated from the [Usage Example](#usage-example).
+
+Documentation Generated (non-standard format):
+
+![](docs/usage_example_non_standard_documentation.png)
+
+Documentation Generated (OpenAPI):
+
+```json
+{
+  "openapi": "3.1.0",
+  "paths": {
+    "/update/{id}": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_admin",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "permissions",
+            "required": true,
+            "schema": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "age": {
+                    "maximum": 99,
+                    "minimum": 18,
+                    "type": "integer"
+                  },
+                  "date_of_birth": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "nicknames": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "password_expiry": {
+                    "default": 5,
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "socials": {
+                    "items": {
+                      "description": "A link to a user's social profiles",
+                      "properties": {
+                        "friendly_name": {
+                          "description": "Display name",
+                          "type": "string"
+                        },
+                        "icon": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "description": "Link to social profile",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "friendly_name",
+                        "url"
+                      ],
+                      "title": "SocialLink",
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "status": {
+                    "description": "The status of a user's account",
+                    "oneOf": [
+                      {
+                        "const": 1,
+                        "description": "User can log in",
+                        "title": "ACTIVE"
+                      },
+                      {
+                        "const": 0,
+                        "description": "All actions blocked",
+                        "title": "DISABLED"
+                      }
+                    ],
+                    "title": "AccountStatus",
+                    "type": "integer"
+                  },
+                  "type": {
+                    "description": "Whether this user is a bot or person",
+                    "oneOf": [
+                      {
+                        "const": "user",
+                        "description": "Human",
+                        "title": "USER"
+                      },
+                      {
+                        "const": "service",
+                        "description": "Bot user",
+                        "title": "SERVICE"
+                      }
+                    ],
+                    "title": "UserType",
+                    "type": "string"
+                  },
+                  "unique": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "username": {
+                    "minLength": 5,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "username",
+                  "age",
+                  "nicknames",
+                  "date_of_birth",
+                  "type",
+                  "status",
+                  "unique",
+                  "socials"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
 
 ##### Custom Blueprint
 If you would like to use your own blueprint, you can get the raw data from the following functions:
