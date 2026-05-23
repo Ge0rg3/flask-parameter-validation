@@ -339,10 +339,6 @@ def generate_json_schema_helper(param, param_type, raw_type):
                     schema["description"] = annotation
                     break
         else:
-            print(param)
-            print(param_type)
-            print(raw_type)
-            print(type(raw_type))
             warnings.warn(f"Unsupported generic type {param_type}", Warning, stacklevel=2)
     if param:
         if "comment" in param["loc_args"]:
