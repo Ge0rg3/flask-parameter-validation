@@ -11,6 +11,7 @@ from flask import Blueprint, current_app, jsonify
 from flask_parameter_validation import ValidateParameters
 from flask_parameter_validation.exceptions.exceptions import ConfigurationError
 import re
+from typing import Annotated
 if sys.version_info >= (3, 11):
     from typing import is_typeddict
 elif sys.version_info >= (3, 9):
@@ -331,13 +332,17 @@ def generate_json_schema_helper(param, param_type, raw_type):
         elif type_group == "dict":
             schema["type"] = "object"
             schema["additionalProperties"] = generate_json_schema_helper(None, recursively_resolve_type_hint(raw_type.__args__[1]), raw_type.__args__[1])
-        elif type_group == "Annotated":
+        elif type_group == "Annotated" or type(raw_type) is type(Annotated[int, ""]):
             schema = generate_json_schema_helper(param, recursively_resolve_type_hint(raw_type.__origin__), raw_type.__origin__)
             for annotation in raw_type.__metadata__:
                 if type(annotation) is str:
                     schema["description"] = annotation
                     break
         else:
+            print(param)
+            print(param_type)
+            print(raw_type)
+            print(type(raw_type))
             warnings.warn(f"Unsupported generic type {param_type}", Warning, stacklevel=2)
     if param:
         if "comment" in param["loc_args"]:

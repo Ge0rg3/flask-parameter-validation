@@ -485,6 +485,32 @@ def test_openapi_docs_dict_json_schema(openapi_docs):
     }
     check_schema_for_all_locations(openapi_docs, schema, "dict/json_schema", skip_route=True)
 
+if sys.version_info >= (3, 10):
+    def test_openapi_docs_dict_args_3_10_union(openapi_docs):
+        schema = {
+            "properties": {
+                "v": {
+                    "additionalProperties": {
+                        "oneOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "integer"
+                                }
+                            },
+                            {
+                                "type": "boolean"
+                            }
+                        ]
+                    },
+                    "type": "object"
+                }
+            },
+            "required": ["v"],
+            "type": "object"
+        }
+        check_schema_for_all_locations(openapi_docs, schema, "dict/args/str/list/3_10_union", skip_route=True)
+
 def test_openapi_docs_dict_args(openapi_docs):
     schema = {
         "properties": {
@@ -508,7 +534,8 @@ def test_openapi_docs_dict_args(openapi_docs):
         "required": ["v"],
         "type": "object"
     }
-    check_schema_for_all_locations(openapi_docs, schema, "dict/args/str/list/3_10_union", skip_route=True)
+    check_schema_for_all_locations(openapi_docs, schema, "dict/args/str/list", skip_route=True)
+
 
 def test_openapi_docs_default(openapi_docs):
     schema = {
