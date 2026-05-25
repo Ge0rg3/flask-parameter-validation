@@ -83,6 +83,9 @@ def get_int_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
     @decorator(path("/func", "/<v>"))
     @ValidateParameters()
     def func(v: int = ParamType(func=is_even)):
+        """
+        Test Docstring on Route
+        """
         return jsonify({"v": v})
 
     return int_bp

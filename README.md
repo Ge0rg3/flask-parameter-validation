@@ -508,7 +508,9 @@ Using the `warnings.deprecated` (Python 3.13+) or `typing_extensions.deprecated`
 
 ##### Comments in generated OpenAPI documentation
 
-Generated OpenAPI Documentation will pull comments from various locations in the following order (highest priority to lowest priority):
+Generated OpenAPI documentation uses the docstring from your routes as the `description` of the OpenAPI Operation object.
+
+Generated OpenAPI documentation will pull parameter comments from various locations in the following order (highest priority to lowest priority) for use in the `description` of OpenAPI Schema objects:
 1. `comment` argument passed to a subclass of `Parameter`
 2. `Annotated[T, "annotated comment"]` on a member of a TypedDict, or `# inline comment` on the same line as a member of a TypedDict or Enum
 3. Docstring on a class (for Enums and TypedDicts)

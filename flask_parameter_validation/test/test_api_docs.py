@@ -608,3 +608,14 @@ def test_openapi_docs_responses(openapi_docs):
     ]
     for operation in openapi_operations:
         assert "responses" in operation and operation["responses"] == _fpv_test_openapi_responses_object
+
+def test_openapi_docs_route_docstring(openapi_docs):
+    type_and_test = "int/func"
+    openapi_operations = [
+        openapi_docs["paths"][f"/query/{type_and_test}"]["get"],
+        openapi_docs["paths"][f"/route/{type_and_test}/{{v}}"]["get"],
+        openapi_docs["paths"][f"/form/{type_and_test}"]["post"],
+        openapi_docs["paths"][f"/json/{type_and_test}"]["post"]
+    ]
+    for operation in openapi_operations:
+        assert "description" in operation and operation["description"] == "Test Docstring on Route"

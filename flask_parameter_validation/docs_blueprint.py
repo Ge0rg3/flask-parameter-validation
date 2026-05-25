@@ -457,6 +457,8 @@ def generate_openapi_paths_object():
                     oapi_operation["deprecated"] = True
         if route["responses"]:  # Only include the responses object if we've been given one
             oapi_operation["responses"] = route["responses"]
+        if route["docstring"]:
+            oapi_operation["description"] = route["docstring"]
         for method in route["methods"]:  # Use the generated operation object for all methods applicable to this route
             if method not in ["OPTIONS", "HEAD"]:
                 oapi_path_item[method.lower()] = oapi_operation
