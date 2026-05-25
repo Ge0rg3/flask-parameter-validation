@@ -3,6 +3,7 @@ from typing import Callable, Any
 import pytest
 from flask_parameter_validation.docs_blueprint import get_route_docs, generate_openapi_docs
 from flask_parameter_validation.test.testing_blueprints.dict_blueprint import _fpv_test_dict_blueprint_json_schema
+from flask_parameter_validation.test.testing_blueprints.int_blueprint import _fpv_test_openapi_responses_object
 
 
 def test_http_ok(client):
@@ -596,3 +597,14 @@ def test_openapi_docs_file(openapi_docs):
 
 def test_openapi_docs_content_type(openapi_docs):
     assert "application/json" in openapi_docs["paths"]["/file/content_types"]["post"]["requestBody"]["content"]
+
+def test_openapi_docs_responses(openapi_docs):
+    type_and_test = "int/required"
+    openapi_operations = [
+        openapi_docs["paths"][f"/query/{type_and_test}"]["get"],
+        openapi_docs["paths"][f"/route/{type_and_test}/{{v}}"]["get"],
+        openapi_docs["paths"][f"/form/{type_and_test}"]["post"],
+        openapi_docs["paths"][f"/json/{type_and_test}"]["post"]
+    ]
+    for operation in openapi_operations:
+        assert "responses" in operation and operation["responses"] == _fpv_test_openapi_responses_object

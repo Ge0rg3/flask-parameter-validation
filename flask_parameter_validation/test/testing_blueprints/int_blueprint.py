@@ -6,8 +6,24 @@ from flask_parameter_validation import ValidateParameters, Route
 from flask_parameter_validation.parameter_types.parameter import Parameter
 from flask_parameter_validation.test.testing_blueprints.dummy_decorators import dummy_decorator, dummy_async_decorator
 
+_fpv_test_openapi_responses_object = {
+        "200": {
+            "description": "Successful Response",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "v": {"type": "integer"},
+                        }
+                    }
+                }
+            }
+        }
+    }
 
 def get_int_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) -> Blueprint:
+    global _fpv_test_openapi_responses_object
     int_bp = Blueprint(bp_name, __name__, url_prefix="/int")
     decorator = getattr(int_bp, http_verb)
 
@@ -15,7 +31,7 @@ def get_int_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
         return base + (route_additions if ParamType is Route else "")
 
     @decorator(path("/required", "/<int:v>"))
-    @ValidateParameters()
+    @ValidateParameters(openapi_responses=_fpv_test_openapi_responses_object)
     def required(v: int = ParamType()):
         assert type(v) is int
         return jsonify({"v": v})
