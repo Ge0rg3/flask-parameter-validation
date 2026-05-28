@@ -35,8 +35,9 @@ class ValidateParameters:
     def get_fn_list(cls):
         return fn_list
 
-    def __init__(self, error_handler=None):
+    def __init__(self, error_handler=None, openapi_responses=None):
         self.custom_error_handler = error_handler
+        self.openapi_responses = openapi_responses
 
     def __call__(self, f):
         """
@@ -59,6 +60,7 @@ class ValidateParameters:
             "argspec": argspec,
             "docstring": f.__doc__.strip() if f.__doc__ else None,
             "decorators": decorators.copy(),
+            "openapi_responses": self.openapi_responses,
         }
         fn_list[fsig] = fdocs
 

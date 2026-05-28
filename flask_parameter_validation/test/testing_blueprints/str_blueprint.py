@@ -1,3 +1,8 @@
+import sys
+if sys.version_info >= (3, 13):
+    from warnings import deprecated
+else:
+    from typing_extensions import deprecated
 from typing import Optional
 
 from flask import Blueprint, jsonify, current_app
@@ -274,6 +279,15 @@ def get_str_blueprint(ParamType: type[Parameter], bp_name: str, http_verb: str) 
     @dummy_async_decorator
     @ValidateParameters()
     async def async_decorator_alias(
+            value: str = ParamType(alias="v")
+    ):
+        return jsonify({"value": value})
+
+    @decorator(path("/async_decorator/deprecated", "/<v>"))
+    @dummy_async_decorator
+    @deprecated("Test deprecated route")
+    @ValidateParameters()
+    async def async_deprecated(
             value: str = ParamType(alias="v")
     ):
         return jsonify({"value": value})

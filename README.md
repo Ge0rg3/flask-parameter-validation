@@ -10,25 +10,36 @@
 ## Usage Example
 ```py
 from flask import Flask
-from typing import Optional, TypedDict, NotRequired
+from typing import Optional, TypedDict, NotRequired, Annotated
 from flask_parameter_validation import ValidateParameters, Route, Json, Query
+from flask_parameter_validation.docs_blueprint import docs_blueprint
 from datetime import datetime
 from enum import Enum
+from uuid import UUID
 
 class AccountStatus(int, Enum):  # In Python 3.11 or later, subclass IntEnum from enum package instead of int, Enum
-  ACTIVE = 1
-  DISABLED = 0
+  """The status of a user's account"""
+  
+  ACTIVE = 1  # User can log in
+  DISABLED = 0  # All actions blocked
 
 class UserType(str, Enum):  # In Python 3.11 or later, subclass StrEnum from enum package instead of str, Enum
-  USER = "user"
-  SERVICE = "service"
+  USER = "user"  # Human
+  SERVICE = "service"  # Bot user
 
 class SocialLink(TypedDict):
-    friendly_name: str
-    url: str
-    icon: NotRequired[str]
+    """A link to a user's social profiles"""
+  
+    friendly_name: str  # Display name
+    url: Annotated[str, "Link to social profile"]
+    icon: NotRequired[str]  # The icon for this link
 
 app = Flask(__name__)
+app.config["FPV_OPENAPI_ENABLE"] = True
+app.config["FPV_OPENAPI_BASE"] = {
+    "openapi": "3.1.0"
+}
+app.register_blueprint(docs_blueprint)
 
 @app.route("/update/<int:id>", methods=["POST"])
 @ValidateParameters()
@@ -42,6 +53,7 @@ def hello(
         is_admin: bool = Query(False),
         user_type: UserType = Json(alias="type"),
         status: AccountStatus = Json(),
+        unique: UUID = Json(),
         permissions: dict[str, str] = Query(list_disable_query_csv=True),
         socials: list[SocialLink] = Json()
      ):
@@ -61,9 +73,10 @@ To validate parameters with flask-parameter-validation, two conditions must be m
 ### Enable and customize Validation for a Route with the @ValidateParameters decorator
 The `@ValidateParameters()` decorator takes parameters that alter route validation behavior or provide documentation information:
 
-| Parameter         | Type                 | Default | Description                                                                                                                  |
-|-------------------|----------------------|---------|------------------------------------------------------------------------------------------------------------------------------|
-| error_handler     | `Optional[Response]` | `None`  | Overwrite the output format of generated errors, see [Overwriting Default Errors](#overwriting-default-errors) for more      |
+| Parameter         | Type                 | Default | Description                                                                                                                                          |
+|-------------------|----------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------|
+| error_handler     | `Optional[Response]` | `None`  | Overwrite the output format of generated errors, see [Overwriting Default Errors](#overwriting-default-errors) for more                              |
+| openapi_responses | `Optional[dict]`     | `None`  | The OpenAPI Responses Object for this route, as a `dict` to be used in any generated [API Documentation](#api-documentation)                         |
 
 #### Overwriting Default Errors
 By default, the error messages are returned as a JSON response, with the detailed error in the "error" field, eg:
@@ -151,28 +164,28 @@ These can be used in tandem to describe a parameter to validate: `parameter_name
 ### Validation with arguments to Parameter
 Validation beyond type-checking can be done by passing arguments into the constructor of the `Parameter` subclass. The arguments available for use on each type hint are:
 
-| Parameter Name           | Type of Argument                                 | Effective On Types     | Description                                                                                                                                                                                            |
-|--------------------------|--------------------------------------------------|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `default`                | any, except `NoneType`                           | All, except in `Route` | Specifies the default value for the field, makes non-Optional fields not required                                                                                                                      |
-| `min_str_length`         | `int`                                            | `str`                  | Specifies the minimum character length for a string input                                                                                                                                              |
-| `max_str_length`         | `int`                                            | `str`                  | Specifies the maximum character length for a string input                                                                                                                                              |
-| `min_list_length`        | `int`                                            | `list`                 | Specifies the minimum number of elements in a list                                                                                                                                                     |
-| `max_list_length`        | `int`                                            | `list`                 | Specifies the maximum number of elements in a list                                                                                                                                                     |
-| `min_int`                | `int`                                            | `int`                  | Specifies the minimum number for an integer input                                                                                                                                                      |
-| `max_int`                | `int`                                            | `int`                  | Specifies the maximum number for an integer input                                                                                                                                                      |
-| `whitelist`              | `str`                                            | `str`                  | A string containing allowed characters for the value                                                                                                                                                   |
-| `blacklist`              | `str`                                            | `str`                  | A string containing forbidden characters for the value                                                                                                                                                 |
-| `pattern`                | `str`                                            | `str`                  | A regex pattern to test for string matches                                                                                                                                                             |
-| `func`                   | `Callable[Any] -> Union[bool, tuple[bool, str]]` | All                    | A function containing a fully customized logic to validate the value. See the [custom validation function](#custom-validation-function) below for usage                                                |
-| `datetime_format`        | `str`                                            | `datetime.datetime`    | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))                                     |
-| `comment`                | `str`                                            | All                    | A string to display as the argument description in any generated documentation                                                                                                                         |
-| `alias`                  | `str`                                            | All but `FileStorage`  | An expected parameter name to receive instead of the function name.                                                                                                                                    |
-| `json_schema`            | `dict`                                           | `dict`                 | An expected [JSON Schema](https://json-schema.org) which the dict input must conform to                                                                                                                |
-| `content_types`          | `list[str]`                                      | `FileStorage`          | Allowed `Content-Type`s                                                                                                                                                                                |
-| `min_length`             | `int`                                            | `FileStorage`          | Minimum `Content-Length` for a file                                                                                                                                                                    |
-| `max_length`             | `int`                                            | `FileStorage`          | Maximum `Content-Length` for a file                                                                                                                                                                    |
-| `blank_none`             | `bool`                                           | `Optional[str]`        | If `True`, an empty string will be converted to `None`, defaults to configured `FPV_BLANK_NONE`, see [Validation Behavior Configuration](#validation-behavior-configuration) for more                  |
-| `list_disable_query_csv` | `bool`                                           | `list` in `Query`      | If `False`, list-type Query parameters will be split by `,`, defaults to configured `FPV_LIST_DISABLE_QUERY_CSV`, see [Validation Behavior Configuration](#validation-behavior-configuration) for more |
+| Parameter Name           | Type of Argument                                 | Effective On Types     | OpenAPI Docs             | Description                                                                                                                                                                                            |
+|--------------------------|--------------------------------------------------|------------------------|--------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `default`                | any, except `NoneType`                           | All, except in `Route` | ✅                        | Specifies the default value for the field, makes non-Optional fields not required                                                                                                                      |
+| `min_str_length`         | `int`                                            | `str`                  | ✅                        | Specifies the minimum character length for a string input                                                                                                                                              |
+| `max_str_length`         | `int`                                            | `str`                  | ✅                        | Specifies the maximum character length for a string input                                                                                                                                              |
+| `min_list_length`        | `int`                                            | `list`                 | ✅                        | Specifies the minimum number of elements in a list                                                                                                                                                     |
+| `max_list_length`        | `int`                                            | `list`                 | ✅                        | Specifies the maximum number of elements in a list                                                                                                                                                     |
+| `min_int`                | `int`                                            | `int`                  | ✅                        | Specifies the minimum number for an integer input                                                                                                                                                      |
+| `max_int`                | `int`                                            | `int`                  | ✅                        | Specifies the maximum number for an integer input                                                                                                                                                      |
+| `whitelist`              | `str`                                            | `str`                  | Use `pattern` instead    | A string containing allowed characters for the value                                                                                                                                                   |
+| `blacklist`              | `str`                                            | `str`                  | Use `pattern` instead    | A string containing forbidden characters for the value                                                                                                                                                 |
+| `pattern`                | `str`                                            | `str`                  | ✅                        | A regex pattern to test for string matches                                                                                                                                                             |
+| `func`                   | `Callable[Any] -> Union[bool, tuple[bool, str]]` | All                    | ❌ No Attribute           | A function containing a fully customized logic to validate the value. See the [custom validation function](#custom-validation-function) below for usage                                                |
+| `datetime_format`        | `str`                                            | `datetime.datetime`    | ❌ JSON Schema limitation | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))                                     |
+| `comment`                | `str`                                            | All                    | ✅                        | A string to display as the argument description in any generated documentation                                                                                                                         |
+| `alias`                  | `str`                                            | All but `FileStorage`  | ✅                        | An expected parameter name to receive instead of the function name.                                                                                                                                    |
+| `json_schema`            | `dict`                                           | All but `FileStorage`  | ✅                        | An expected [JSON Schema](https://json-schema.org) which the dict input must conform to, overrides the generated JSON Schema in API Docs when provided.                                                |
+| `content_types`          | `list[str]`                                      | `FileStorage`          | ✅                        | Allowed `Content-Type`s                                                                                                                                                                                |
+| `min_length`             | `int`                                            | `FileStorage`          | ❌ JSON Schema limitation | Minimum `Content-Length` for a file                                                                                                                                                                    |
+| `max_length`             | `int`                                            | `FileStorage`          | ❌ JSON Schema limitation | Maximum `Content-Length` for a file                                                                                                                                                                    |
+| `blank_none`             | `bool`                                           | `Optional[str]`        | ❌ No Attribute           | If `True`, an empty string will be converted to `None`, defaults to configured `FPV_BLANK_NONE`, see [Validation Behavior Configuration](#validation-behavior-configuration) for more                  |
+| `list_disable_query_csv` | `bool`                                           | `list` in `Query`      | ❌ No Attribute           | If `False`, list-type Query parameters will be split by `,`, defaults to configured `FPV_LIST_DISABLE_QUERY_CSV`, see [Validation Behavior Configuration](#validation-behavior-configuration) for more |
 
 These validators are passed into the `Parameter` subclass in the route function, such as:
 * `username: str = Json(default="defaultusername", min_length=5)`
@@ -196,7 +209,10 @@ def is_odd(val: int):
 
 ### Configuration Options
 
-#### API Documentation Configuration
+#### API Documentation (OpenAPI 3.1.0 - 3.2.0)
+* `FPV_OPENAPI_BASE: dict`: The base [OpenAPI Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#openapi-object) that will be populated with a generated [Paths Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#paths-object). Must be set to enable the blueprints. Alternatively, the standalone Paths Object can be retrieved anytime through the `generate_openapi_paths_object()` method.
+
+#### API Documentation (Deprecated, non-standard format)
 * `FPV_DOCS_SITE_NAME: str`: Your site's name, to be displayed in the page title, default: `Site`
 * `FPV_DOCS_CUSTOM_BLOCKS: array`: An array of dicts to display as cards at the top of your documentation, with the (optional) keys:
   * `title: Optional[str]`: The title of the card
@@ -225,6 +241,7 @@ app.register_blueprint(docs_blueprint)
 The default blueprint adds two `GET` routes:
 * `/`: HTML Page with Bootstrap CSS and toggleable light/dark mode
 * `/json`: Non-standard Format JSON Representation of the generated documentation
+* `/openapi`: OpenAPI 3.1.0 - 3.2.0 (JSON) Representation of the generated documentation
 
 The `/json` route yields a response with the following format:
 ```json
@@ -277,12 +294,179 @@ Documentation Generated:
 
 ![](docs/api_documentation_example.png)
 
+For another example, below is the documentation generated from the [Usage Example](#usage-example).
+
+Documentation Generated (non-standard format):
+
+![](docs/usage_example_non_standard_documentation.png)
+
+Documentation Generated (OpenAPI):
+
+```json
+{
+  "openapi": "3.1.0",
+  "paths": {
+    "/update/{id}": {
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "is_admin",
+            "required": false,
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "permissions",
+            "required": true,
+            "schema": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "age": {
+                    "maximum": 99,
+                    "minimum": 18,
+                    "type": "integer"
+                  },
+                  "date_of_birth": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "nicknames": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "password_expiry": {
+                    "default": 5,
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "socials": {
+                    "items": {
+                      "description": "A link to a user's social profiles",
+                      "properties": {
+                        "friendly_name": {
+                          "description": "Display name",
+                          "type": "string"
+                        },
+                        "icon": {
+                          "type": "string"
+                        },
+                        "url": {
+                          "description": "Link to social profile",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "friendly_name",
+                        "url"
+                      ],
+                      "title": "SocialLink",
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "status": {
+                    "description": "The status of a user's account",
+                    "oneOf": [
+                      {
+                        "const": 1,
+                        "description": "User can log in",
+                        "title": "ACTIVE"
+                      },
+                      {
+                        "const": 0,
+                        "description": "All actions blocked",
+                        "title": "DISABLED"
+                      }
+                    ],
+                    "title": "AccountStatus",
+                    "type": "integer"
+                  },
+                  "type": {
+                    "description": "Whether this user is a bot or person",
+                    "oneOf": [
+                      {
+                        "const": "user",
+                        "description": "Human",
+                        "title": "USER"
+                      },
+                      {
+                        "const": "service",
+                        "description": "Bot user",
+                        "title": "SERVICE"
+                      }
+                    ],
+                    "title": "UserType",
+                    "type": "string"
+                  },
+                  "unique": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "username": {
+                    "minLength": 5,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "username",
+                  "age",
+                  "nicknames",
+                  "date_of_birth",
+                  "type",
+                  "status",
+                  "unique",
+                  "socials"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
 ##### Custom Blueprint
-If you would like to use your own blueprint, you can get the raw data from the following function:
+If you would like to use your own blueprint, you can get the raw data from the following functions:
 ```py
 from flask_parameter_validation.docs_blueprint import get_route_docs
+from flask_parameter_validation.docs_blueprint import generate_openapi_paths_object, generate_openapi_docs
 ...
-get_route_docs()
+get_route_docs()  # The non-standard format (deprecated)
+generate_openapi_paths_object()  # Just the OpenAPI Paths object
+generate_openapi_docs()  # The entire OpenAPI Object
 ```
 
 ###### get_route_docs() return value format
@@ -295,6 +479,10 @@ This method returns an object with the following structure:
     "methods": ["HTTPVerb"],
     "docstring": "String, unsanitized of HTML Tags",
     "decorators": ["@decorator1", "@decorator2(param)"],
+    "responses": {
+      "openapi": "3.1.0",
+      "description": "See [OpenAPI Spec 3.1.0 Responses Object](https://swagger.io/specification/#response-object)"
+    },
     "args": {
       "<Subclass of Parameter this route uses>": [
         {
@@ -314,28 +502,43 @@ This method returns an object with the following structure:
 ]
 ```
 
+##### Marking routes as deprecated in generated documentation
+
+Using the `warnings.deprecated` (Python 3.13+) or `typing_extensions.deprecated` decorators, you can mark a route as deprecated.
+
+##### Comments in generated OpenAPI documentation
+
+Generated OpenAPI documentation uses the docstring from your routes as the `description` of the OpenAPI Operation object.
+
+Generated OpenAPI documentation will pull parameter comments from various locations in the following order (highest priority to lowest priority) for use in the `description` of OpenAPI Schema objects:
+1. `comment` argument passed to a subclass of `Parameter`
+2. `Annotated[T, "annotated comment"]` on a member of a TypedDict, or `# inline comment` on the same line as a member of a TypedDict or Enum
+3. Docstring on a class (for Enums and TypedDicts)
+
 
 ### JSON Schema Validation
 An example of the [JSON Schema](https://json-schema.org) validation is provided below:
+
 ```python
 json_schema = {
-    "type": "object",
-    "required": ["user_id", "first_name", "last_name", "tags"],
-    "properties": {
-        "user_id": {"type": "integer"},
-        "first_name": {"type": "string"},
-        "last_name": {"type": "string"},
-        "tags": {
-            "type": "array",
-            "items": {"type": "string"}
-        }
+  "type": "object",
+  "required": ["user_id", "first_name", "last_name", "tags"],
+  "properties": {
+    "user_id": {"type": "integer"},
+    "first_name": {"type": "string"},
+    "last_name": {"type": "string"},
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"}
     }
+  }
 }
+
 
 @api.get("/json_schema_example")
 @ValidateParameters()
 def json_schema(data: dict = Json(json_schema=json_schema)):
-    return jsonify({"data": data})
+  return jsonify({"data": data})
 ```
 
 ## Contributions
