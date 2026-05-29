@@ -29,7 +29,6 @@ flask_parameter_validation/        # The package
 │                                  #   ValidationError, ConfigurationError
 ├── templates/fpv_default_docs.html# HTML docs page rendered by the blueprint
 └── test/                          # Test suite (see below)
-docs/                              # Screenshots referenced by the README
 setup.py                           # Package metadata and dependencies
 tox.ini                            # flake8 / black line-length config
 .github/workflows/                 # CI (python-test.yml) and PyPI publish (python-publish.yml)
