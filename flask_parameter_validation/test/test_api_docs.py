@@ -26,7 +26,8 @@ def test_doc_types_of_default(app):
         "query": "Query",
         "route": "Route"
     }
-    optional_as_str = "Optional" if sys.version_info >= (3,10) else "Union"
+    # Optional only has its own name in 3.10 - 3.13, from 3.14 onwards it is the same type as Union
+    optional_as_str = "Optional" if (3, 10) <= sys.version_info < (3, 14) else "Union"
     types = {
         "bool": {"opt": f"{optional_as_str}[bool, NoneType]", "n_opt": "bool"},
         "date": {"opt": f"{optional_as_str}[date, NoneType]", "n_opt": "date"},
