@@ -31,7 +31,7 @@ setup(
         "python-dateutil",
         "jsonschema",
     ],
-    python_requires=">=3.9,<3.14",
+    python_requires=">=3.9,<3.16",
     classifiers=[
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
@@ -43,6 +43,9 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
+        "Programming Language :: Python :: 3.15",
         "Development Status :: 5 - Production/Stable",
         "Framework :: Flask",
         "Topic :: Software Development :: Documentation",
