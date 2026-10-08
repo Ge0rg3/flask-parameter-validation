@@ -1,554 +1,331 @@
 # Flask Parameter Validation
-### Get and validate all Flask input parameters with ease.
 
-## Install
-* Pip: Install with `pip install flask_parameter_validation`.
-* Manually:
-  - `git clone https://github.com/Ge0rg3/flask-parameter-validation.git`
-  - `python setup.py install`
+**Get and validate all Flask input parameters with ease.**
 
-## Usage Example
+Flask Parameter Validation lets you declare a route's expected inputs directly in the
+function signature using type hints and `Parameter` defaults. Inputs are then automatically
+extracted, type-checked, validated against the constraints you specify, and passed to your
+view. As a bonus, the same declarations are used to generate OpenAPI 3.1 documentation.
+
 ```py
-from flask import Flask
-from typing import Optional, TypedDict, NotRequired, Annotated
-from flask_parameter_validation import ValidateParameters, Route, Json, Query
-from flask_parameter_validation.docs_blueprint import docs_blueprint
-from datetime import datetime
-from enum import Enum
-from uuid import UUID
-
-class AccountStatus(int, Enum):  # In Python 3.11 or later, subclass IntEnum from enum package instead of int, Enum
-  """The status of a user's account"""
-  
-  ACTIVE = 1  # User can log in
-  DISABLED = 0  # All actions blocked
-
-class UserType(str, Enum):  # In Python 3.11 or later, subclass StrEnum from enum package instead of str, Enum
-  USER = "user"  # Human
-  SERVICE = "service"  # Bot user
-
-class SocialLink(TypedDict):
-    """A link to a user's social profiles"""
-  
-    friendly_name: str  # Display name
-    url: Annotated[str, "Link to social profile"]
-    icon: NotRequired[str]  # The icon for this link
-
-app = Flask(__name__)
-app.config["FPV_OPENAPI_ENABLE"] = True
-app.config["FPV_OPENAPI_BASE"] = {
-    "openapi": "3.1.0"
-}
-app.register_blueprint(docs_blueprint)
-
-@app.route("/update/<int:id>", methods=["POST"])
+@app.route("/users/<int:id>", methods=["POST"])
 @ValidateParameters()
-def hello(
+def update_user(
         id: int = Route(),
         username: str = Json(min_str_length=5, blacklist="<>"),
         age: int = Json(min_int=18, max_int=99),
-        nicknames: list[str] = Json(),
-        date_of_birth: datetime = Json(),
-        password_expiry: Optional[int] = Json(5),
         is_admin: bool = Query(False),
-        user_type: UserType = Json(alias="type"),
-        status: AccountStatus = Json(),
-        unique: UUID = Json(),
-        permissions: dict[str, str] = Query(list_disable_query_csv=True),
-        socials: list[SocialLink] = Json()
-     ):
-    return "Hello World!"
+):
+    ...
+```
 
+## Features
+
+- Declarative validation via type hints and `Parameter` defaults — no boilerplate parsing.
+- Input sources: `Route`, `Query`, `Json`, `Form`, `File`, and `MultiSource`.
+- Rich type support: primitives, `datetime`/`date`/`time`, `UUID`, `Enum`, `list`, `dict`,
+  `TypedDict`, `Union`/`Optional`, and more.
+- Constraints: length/range bounds, regex patterns, character white/blacklists, JSON Schema,
+  and fully custom validation functions.
+- Customisable error responses.
+- Automatic API documentation: OpenAPI 3.1 (with 3.2 compatibility) plus a built-in HTML docs page.
+- Supports both sync and async views; tested on Python 3.9–3.13.
+
+## Install
+
+```sh
+pip install flask_parameter_validation
+```
+
+Or from source:
+
+```sh
+git clone https://github.com/Ge0rg3/flask-parameter-validation.git
+cd flask-parameter-validation
+pip install .
+```
+
+## Quick start
+
+```py
+from flask import Flask
+from flask_parameter_validation import ValidateParameters, Route, Json, Query
+
+app = Flask(__name__)
+
+@app.route("/users/<int:id>", methods=["POST"])
+@ValidateParameters()
+def update_user(
+        id: int = Route(),
+        username: str = Json(min_str_length=5),
+        age: int = Json(min_int=18, max_int=99),
+        is_admin: bool = Query(False),
+):
+    return {"id": id, "username": username, "age": age, "is_admin": is_admin}
 
 if __name__ == "__main__":
     app.run()
 ```
 
-## Usage
-To validate parameters with flask-parameter-validation, two conditions must be met.
-1. The `@ValidateParameters()` decorator must be applied to the function
-2. Type hints ([supported types](#type-hints-and-accepted-input-types)) and a default of a subclass of `Parameter` must be supplied per parameter
+A request to this route, supplying `id` via the path, `is_admin` via the query string, and
+`username`/`age` via the JSON body:
 
-
-### Enable and customize Validation for a Route with the @ValidateParameters decorator
-The `@ValidateParameters()` decorator takes parameters that alter route validation behavior or provide documentation information:
-
-| Parameter         | Type                 | Default | Description                                                                                                                                          |
-|-------------------|----------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| error_handler     | `Optional[Response]` | `None`  | Overwrite the output format of generated errors, see [Overwriting Default Errors](#overwriting-default-errors) for more                              |
-| openapi_responses | `Optional[dict]`     | `None`  | The OpenAPI Responses Object for this route, as a `dict` to be used in any generated [API Documentation](#api-documentation)                         |
-
-#### Overwriting Default Errors
-By default, the error messages are returned as a JSON response, with the detailed error in the "error" field, eg:
-```json
-{
-    "error": "Parameter 'age' must be type 'int'"
-}
+```sh
+curl -X POST "http://localhost:5000/users/42?is_admin=true" \
+     -H "Content-Type: application/json" \
+     -d '{"username": "alice123", "age": 30}'
 ```
 
-However, this can be edited by passing a custom error function into the `ValidateParameters()` decorator. For example:
+```json
+{"id": 42, "username": "alice123", "age": 30, "is_admin": true}
+```
+
+Two conditions must be met for a route to be validated:
+
+1. The `@ValidateParameters()` decorator is applied to the view function.
+2. Each validated argument has a [type hint](#supported-types) and a default that is an
+   instance of a [`Parameter` subclass](#parameter-sources).
+
+## Parameter sources
+
+Each input source is a subclass of `Parameter`:
+
+| Subclass      | Input source                                                                | Available for                   |
+|---------------|-----------------------------------------------------------------------------|---------------------------------|
+| `Route`       | A value in the URL path, e.g. `/users/<int:id>`                             | All HTTP methods                |
+| `Query`       | A value in the URL query string, e.g. `/articles?id=55`                    | All HTTP methods                |
+| `Json`        | A value in the JSON request body (`Content-Type: application/json`)         | Body methods (POST/PUT/PATCH/…) |
+| `Form`        | A value in an HTML form / `FormData` body (`x-www-form-urlencoded`)         | Body methods (POST/PUT/PATCH/…) |
+| `File`        | An uploaded file in the request body                                        | Body methods (POST/PUT/PATCH/…) |
+| `MultiSource` | A value from any combination of the sources above                           | Depends on chosen sources       |
+
+> "Body methods" are the HTTP methods that carry a request body — POST, PUT, PATCH and DELETE.
+> Sending a body via DELETE is non-standard, but Flask and this library support it.
+
+### MultiSource parameters
+
+`MultiSource` accepts a value from any combination of the other sources, tried in order:
+
+```py
+from flask_parameter_validation import ValidateParameters, MultiSource, Route, Query, Json
+
+@app.route("/")
+@app.route("/<value>")  # Register paths with and without the Route parameter
+@ValidateParameters()
+def multi_source_example(
+        value: int = MultiSource(Route, Query, Json, min_int=0)
+):
+    return {"value": value}
+```
+
+## Supported types
+
+Type hints declare the expected Python type of each parameter. Some types are only available
+to certain sources.
+
+| Type hint                                       | Notes                                                                                          | `Route` | `Form` | `Json` | `Query` | `File` |
+|-------------------------------------------------|------------------------------------------------------------------------------------------------|:-------:|:------:|:------:|:-------:|:------:|
+| `str`                                           |                                                                                                |    Y    |   Y    |   Y    |    Y    |   N    |
+| `int`                                           |                                                                                                |    Y    |   Y    |   Y    |    Y    |   N    |
+| `bool`                                          |                                                                                                |    Y    |   Y    |   Y    |    Y    |   N    |
+| `float`                                         |                                                                                                |    Y    |   Y    |   Y    |    Y    |   N    |
+| `list` / `typing.List`                          | See [list parsing](#list-parsing) for how values are received per source.                      |    N    |   Y    |   Y    |    Y    |   N    |
+| `dict`                                          | For `Query`/`Form`, pass stringified JSON (usually with `list_disable_query_csv=True`).        |    N    |   Y    |   Y    |    Y    |   N    |
+| `TypedDict`                                     | As `dict`, with per-key type validation.                                                       |    N    |   Y    |   Y    |    Y    |   N    |
+| `typing.Union`                                  |                                                                                                |    Y    |   Y    |   Y    |    Y    |   N    |
+| `typing.Optional`                               | Not supported for `Route`.                                                                      |    Y    |   Y    |   Y    |    Y    |   Y    |
+| `datetime.datetime`                             | Received as an ISO-8601 date-time string.                                                       |    Y    |   Y    |   Y    |    Y    |   N    |
+| `datetime.date`                                 | Received as an ISO-8601 full-date string.                                                        |    Y    |   Y    |   Y    |    Y    |   N    |
+| `datetime.time`                                 | Received as an ISO-8601 partial-time string.                                                     |    Y    |   Y    |   Y    |    Y    |   N    |
+| `enum.Enum` (with `str`/`int` mixin or sub)     | `StrEnum`/`IntEnum`, or `str, Enum` / `int, Enum` prior to Python 3.11.                          |    Y    |   Y    |   Y    |    Y    |   N    |
+| `uuid.UUID`                                     | Received as a `str`, with or without hyphens, case-insensitive.                                 |    Y    |   Y    |   Y    |    Y    |   N    |
+| `werkzeug.datastructures.FileStorage`           |                                                                                                |    N    |   N    |   N    |    N    |   Y    |
+
+### List parsing
+
+- **`Json`**: received as a JSON list.
+- **`Query`**: `value=1,2,3` if `list_disable_query_csv` is `False` (the default), or
+  `value=1&value=2&value=3`.
+- **`Form`**: `value=1&value=2&value=3`.
+- A single `value=` with no value always becomes an empty list; `value=,` (`Query`) and
+  `value=&value=` become a list of empty strings.
+- Lists that accept `None` as a member type are only supported for `Json`.
+
+## Validation constraints
+
+Pass constraints as keyword arguments to a `Parameter` subclass. Each constraint applies only
+to certain types:
+
+| Argument                 | Type                                             | Applies to             | Description                                                                 |
+|--------------------------|--------------------------------------------------|------------------------|-----------------------------------------------------------------------------|
+| `default`                | any (except `None`)                              | All except `Route`     | Default value; makes a non-`Optional` field not required.                   |
+| `min_str_length`         | `int`                                            | `str`                  | Minimum string length.                                                       |
+| `max_str_length`         | `int`                                            | `str`                  | Maximum string length.                                                       |
+| `min_list_length`        | `int`                                            | `list`                 | Minimum number of list elements.                                             |
+| `max_list_length`        | `int`                                            | `list`                 | Maximum number of list elements.                                             |
+| `min_int`                | `int`                                            | `int`                  | Minimum value.                                                               |
+| `max_int`                | `int`                                            | `int`                  | Maximum value.                                                               |
+| `whitelist`              | `str`                                            | `str`                  | String of allowed characters.                                                |
+| `blacklist`              | `str`                                            | `str`                  | String of forbidden characters.                                              |
+| `pattern`                | `str`                                            | `str`                  | Regex pattern the value must match.                                          |
+| `func`                   | `Callable[[Any], bool \| tuple[bool, str]]`      | All                    | [Custom validation function](#custom-validation-functions).                 |
+| `datetime_format`        | `str`                                            | `datetime.datetime`    | `strptime` format string overriding ISO-8601 parsing.                       |
+| `comment`                | `str`                                            | All                    | Description used in generated documentation.                                 |
+| `alias`                  | `str`                                            | All except `File`      | Accept this parameter name instead of the function argument name.            |
+| `json_schema`            | `dict`                                           | All except `File`      | [JSON Schema](https://json-schema.org) the value must conform to.            |
+| `content_types`          | `list[str]`                                      | `File`                 | Allowed `Content-Type`s.                                                      |
+| `min_length`             | `int`                                            | `File`                 | Minimum `Content-Length`.                                                     |
+| `max_length`             | `int`                                            | `File`                 | Maximum `Content-Length`.                                                     |
+| `blank_none`             | `bool`                                           | `Optional[str]`        | Convert an empty string to `None`. Defaults to `FPV_BLANK_NONE`.            |
+| `list_disable_query_csv` | `bool`                                           | `list` in `Query`      | If `False`, split query lists on `,`. Defaults to `FPV_LIST_DISABLE_QUERY_CSV`. |
+
+Examples:
+
+```py
+username: str = Json(default="anonymous", min_str_length=5)
+profile_picture: FileStorage = File(content_types=["image/png", "image/jpeg"])
+search: str = Query()
+```
+
+### Custom validation functions
+
+Pass a callable to `func`. It receives the value and returns either a `bool`, or a
+`(bool, error_message)` tuple:
+
+```py
+def is_even(value: int):
+    return value % 2 == 0
+
+def is_odd(value: int):
+    return value % 2 != 0, "value must be odd"
+
+count: int = Json(func=is_even)
+```
+
+### JSON Schema validation
+
+```py
+json_schema = {
+    "type": "object",
+    "required": ["user_id", "first_name", "last_name", "tags"],
+    "properties": {
+        "user_id": {"type": "integer"},
+        "first_name": {"type": "string"},
+        "last_name": {"type": "string"},
+        "tags": {"type": "array", "items": {"type": "string"}},
+    },
+}
+
+@app.post("/json_schema_example")
+@ValidateParameters()
+def json_schema_example(data: dict = Json(json_schema=json_schema)):
+    return {"data": data}
+```
+
+## Error handling
+
+By default, validation failures return a JSON response with the message in the `error` field:
+
+```json
+{ "error": "Parameter 'age' must be type 'int'" }
+```
+
+Pass a custom handler to `ValidateParameters()` to change the format:
+
 ```py
 def error_handler(err):
-    error_name = type(err)
-    error_parameters = err.args
-    error_message = str(err)
     return {
         "error_name": type(err).__name__,
         "error_parameters": err.args,
-        "error_message": str(err)
+        "error_message": str(err),
     }, 400
 
 @app.route(...)
 @ValidateParameters(error_handler)
-def api(...)
+def api(...):
+    ...
 ```
 
-### Specify Parameter types and constraints with type hints and subclasses of Parameter
-#### Parameter Class
-The `Parameter` class provides a base for validation common among all input types, all location-specific classes extend `Parameter`. These subclasses are:
+## Configuration
 
-| Subclass Name | Input Source                                                                                                           | Available For                   |
-|---------------|------------------------------------------------------------------------------------------------------------------------|---------------------------------|
-| Route         | Parameter passed in the pathname of the URL, such as `/users/<int:id>`                                                 | All HTTP Methods                |
-| Form          | Parameter in an HTML form or a `FormData` object in the request body, often with `Content-Type: x-www-form-urlencoded` | POST Methods                    |
-| Json          | Parameter in the JSON object in the request body, must have header `Content-Type: application/json`                    | POST Methods                    |
-| Query         | Parameter in the query of the URL, such as /news_article?id=55                                                         | All HTTP Methods                |
-| File          | Parameter is a file uploaded in the request body                                                                       | POST Method                     |
-| MultiSource   | Parameter is in one of the locations provided to the constructor                                                       | Dependent on selected locations |
+Set these keys in `app.config`:
 
-Note: "**POST Methods**" refers to the HTTP methods that send data in the request body, such as POST, PUT, PATCH and DELETE. Although sending data via some methods such as DELETE is not standard, it is supported by Flask and this library.
+### API documentation
 
-##### MultiSource Parameters
-Using the `MultiSource` parameter type, parameters can be accepted from any combination of `Parameter` subclasses. Example usage is as follows:
+| Key                  | Type   | Description                                                                                  |
+|----------------------|--------|----------------------------------------------------------------------------------------------|
+| `FPV_OPENAPI_ENABLE` | `bool` | Enable OpenAPI generation. Must be truthy for the `/docs/openapi` route.                      |
+| `FPV_OPENAPI_BASE`   | `dict` | Base [OpenAPI Object](https://spec.openapis.org/oas/v3.1.0#openapi-object); its `paths` is populated automatically. |
 
-```py
-@app.route("/")
-@app.route("/<v>")  # If accepting parameters by Route and another type, a path with and without that Route parameter must be specified
-@ValidateParameters()
-def multi_source_example(
-        value: int = MultiSource(Route, Query, Json, min_int=0)
-)
-```
+### Validation behaviour
 
-The above example will accept parameters passed to the route through Route, Query, and JSON Body.
+| Key                          | Type   | Default | Description                                          |
+|------------------------------|--------|---------|------------------------------------------------------|
+| `FPV_BLANK_NONE`             | `bool` | `False` | Default `blank_none` behaviour for all routes.       |
+| `FPV_LIST_DISABLE_QUERY_CSV` | `bool` | `False` | Default `list_disable_query_csv` behaviour.          |
 
+### Legacy HTML docs (deprecated, non-standard format)
 
-Note: "**POST Methods**" refers to the HTTP methods that send data in the request body, such as POST, PUT, PATCH and DELETE. Although sending data via some methods such as DELETE is not standard, it is supported by Flask and this library.
+| Key                       | Type    | Default  | Description                                       |
+|---------------------------|---------|----------|---------------------------------------------------|
+| `FPV_DOCS_SITE_NAME`      | `str`   | `Site`   | Page title for the HTML docs.                     |
+| `FPV_DOCS_CUSTOM_BLOCKS`  | `list`  | `[]`     | Cards shown at the top of the docs page.          |
+| `FPV_DOCS_DEFAULT_THEME`  | `str`   | `light`  | Default theme for the HTML docs page.             |
 
-#### Type Hints and Accepted Input Types
-Type Hints allow for inline specification of the input type of a parameter. Some types are only available to certain `Parameter` subclasses.
+## API documentation
 
-| Type Hint / Expected Python Type                                                                                | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | `Route` | `Form` | `Json` | `Query` | `File` |
-|-----------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|--------|--------|---------|--------|
-| `str`                                                                                                           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Y       | Y      | Y      | Y       | N      |
-| `int`                                                                                                           |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Y       | Y      | Y      | Y       | N      |
-| `bool`                                                                                                          |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Y       | Y      | Y      | Y       | N      |
-| `float`                                                                                                         |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Y       | Y      | Y      | Y       | N      |
-| `list`/`typing.List` (`typing.List` is [deprecated](https://docs.python.org/3/library/typing.html#typing.List)) | For `Json`, received as a JSON List <br><br> For `Query`, can be received as `value=1,2,3` if `list_disable_query_csv` is `False`. <br><br> For `Form` or `Query`, received as `value=1&value=2&value=3`. <br><br> A single `value=` with no value will always be transformed to an empty list, but `value=,` (`Query` only) and `value=&value=` will be transformed to a list of empty `str`.<br/><br/>Lists with `None` as an accepted type are only supported in `Json` parameters. | N       | Y      | Y      | Y       | N      |
-| `typing.Union`                                                                                                  |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Y       | Y      | Y      | Y       | N      |
-| `typing.Optional`                                                                                               | Not supported for `Route` inputs                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Y       | Y      | Y      | Y       | Y      |
-| `datetime.datetime`                                                                                             | Received as a `str` in ISO-8601 date-time format                                                                                                                                                                                                                                                                                                                                                                                                                                       | Y       | Y      | Y      | Y       | N      |
-| `datetime.date`                                                                                                 | Received as a `str` in ISO-8601 full-date format                                                                                                                                                                                                                                                                                                                                                                                                                                       | Y       | Y      | Y      | Y       | N      |
-| `datetime.time`                                                                                                 | Received as a `str` in ISO-8601 partial-time format                                                                                                                                                                                                                                                                                                                                                                                                                                    | Y       | Y      | Y      | Y       | N      |
-| `dict`                                                                                                          | For `Query` and `Form` inputs, users should pass the stringified JSON. For `Query`, you likely will need to use `list_disable_query_csv=True`.                                                                                                                                                                                                                                                                                                                                         | N       | Y      | Y      | Y       | N      |
-| `TypedDict`                                                                                                     | For `Query` and `Form` inputs, users should pass the stringified JSON. For `Query`, you likely will need to use `list_disable_query_csv=True`.                                                                                                                                                                                                                                                                                                                                         | N       | Y      | Y      | Y       | N      |
-| `FileStorage`                                                                                                   |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | N       | N      | N      | N       | Y      |
-| A subclass of `StrEnum` or `IntEnum`, or a subclass of `Enum` with `str` or `int` mixins prior to Python 3.11   |                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Y       | Y      | Y      | Y       | N      |
-| `uuid.UUID`                                                                                                     | Received as a `str` with or without hyphens, case-insensitive                                                                                                                                                                                                                                                                                                                                                                                                                          | Y       | Y      | Y      | Y       | N      |
+Register the bundled blueprint to expose generated documentation:
 
-These can be used in tandem to describe a parameter to validate: `parameter_name: type_hint = ParameterSubclass()`
-- `parameter_name`: The field name itself, such as username
-- `type_hint`: The expected Python data type
-- `ParameterSubclass`: An instance of a subclass of `Parameter`
-
-### Validation with arguments to Parameter
-Validation beyond type-checking can be done by passing arguments into the constructor of the `Parameter` subclass. The arguments available for use on each type hint are:
-
-| Parameter Name           | Type of Argument                                 | Effective On Types     | OpenAPI Docs             | Description                                                                                                                                                                                            |
-|--------------------------|--------------------------------------------------|------------------------|--------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `default`                | any, except `NoneType`                           | All, except in `Route` | ✅                        | Specifies the default value for the field, makes non-Optional fields not required                                                                                                                      |
-| `min_str_length`         | `int`                                            | `str`                  | ✅                        | Specifies the minimum character length for a string input                                                                                                                                              |
-| `max_str_length`         | `int`                                            | `str`                  | ✅                        | Specifies the maximum character length for a string input                                                                                                                                              |
-| `min_list_length`        | `int`                                            | `list`                 | ✅                        | Specifies the minimum number of elements in a list                                                                                                                                                     |
-| `max_list_length`        | `int`                                            | `list`                 | ✅                        | Specifies the maximum number of elements in a list                                                                                                                                                     |
-| `min_int`                | `int`                                            | `int`                  | ✅                        | Specifies the minimum number for an integer input                                                                                                                                                      |
-| `max_int`                | `int`                                            | `int`                  | ✅                        | Specifies the maximum number for an integer input                                                                                                                                                      |
-| `whitelist`              | `str`                                            | `str`                  | Use `pattern` instead    | A string containing allowed characters for the value                                                                                                                                                   |
-| `blacklist`              | `str`                                            | `str`                  | Use `pattern` instead    | A string containing forbidden characters for the value                                                                                                                                                 |
-| `pattern`                | `str`                                            | `str`                  | ✅                        | A regex pattern to test for string matches                                                                                                                                                             |
-| `func`                   | `Callable[Any] -> Union[bool, tuple[bool, str]]` | All                    | ❌ No Attribute           | A function containing a fully customized logic to validate the value. See the [custom validation function](#custom-validation-function) below for usage                                                |
-| `datetime_format`        | `str`                                            | `datetime.datetime`    | ❌ JSON Schema limitation | Python datetime format string datetime format string ([datetime format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes))                                     |
-| `comment`                | `str`                                            | All                    | ✅                        | A string to display as the argument description in any generated documentation                                                                                                                         |
-| `alias`                  | `str`                                            | All but `FileStorage`  | ✅                        | An expected parameter name to receive instead of the function name.                                                                                                                                    |
-| `json_schema`            | `dict`                                           | All but `FileStorage`  | ✅                        | An expected [JSON Schema](https://json-schema.org) which the dict input must conform to, overrides the generated JSON Schema in API Docs when provided.                                                |
-| `content_types`          | `list[str]`                                      | `FileStorage`          | ✅                        | Allowed `Content-Type`s                                                                                                                                                                                |
-| `min_length`             | `int`                                            | `FileStorage`          | ❌ JSON Schema limitation | Minimum `Content-Length` for a file                                                                                                                                                                    |
-| `max_length`             | `int`                                            | `FileStorage`          | ❌ JSON Schema limitation | Maximum `Content-Length` for a file                                                                                                                                                                    |
-| `blank_none`             | `bool`                                           | `Optional[str]`        | ❌ No Attribute           | If `True`, an empty string will be converted to `None`, defaults to configured `FPV_BLANK_NONE`, see [Validation Behavior Configuration](#validation-behavior-configuration) for more                  |
-| `list_disable_query_csv` | `bool`                                           | `list` in `Query`      | ❌ No Attribute           | If `False`, list-type Query parameters will be split by `,`, defaults to configured `FPV_LIST_DISABLE_QUERY_CSV`, see [Validation Behavior Configuration](#validation-behavior-configuration) for more |
-
-These validators are passed into the `Parameter` subclass in the route function, such as:
-* `username: str = Json(default="defaultusername", min_length=5)`
-* `profile_picture: werkzeug.datastructures.FileStorage = File(content_types=["image/png", "image/jpeg"])`
-* `filter: str = Query()`
-
-#### Custom Validation Function
-
-Custom validation functions passed into the `func` property can be used to validate an input against custom logic and return customized error responses for that validation
-
-Example custom validation functions are below:
-```py
-def is_even(val: int):
-    """Return a single bool, True if valid, False if invalid"""
-    return val % 2 == 0
-
-def is_odd(val: int):
-    """Return a tuple with a bool, as above, and the error message if the bool is False"""
-    return val % 2 != 0, "val must be odd"
-```
-
-### Configuration Options
-
-#### API Documentation (OpenAPI 3.1.0 - 3.2.0)
-* `FPV_OPENAPI_BASE: dict`: The base [OpenAPI Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#openapi-object) that will be populated with a generated [Paths Object](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#paths-object). Must be set to enable the blueprints. Alternatively, the standalone Paths Object can be retrieved anytime through the `generate_openapi_paths_object()` method.
-
-#### API Documentation (Deprecated, non-standard format)
-* `FPV_DOCS_SITE_NAME: str`: Your site's name, to be displayed in the page title, default: `Site`
-* `FPV_DOCS_CUSTOM_BLOCKS: array`: An array of dicts to display as cards at the top of your documentation, with the (optional) keys:
-  * `title: Optional[str]`: The title of the card
-  * `body: Optional[str] (HTML allowed)`: The body of the card
-  * `order: int`: The order in which to display this card (out of the other custom cards)
-* `FPV_DOCS_DEFAULT_THEME: str`: The default theme to display in the generated webpage
-
-See the [API Documentation](#api-documentation) below for other information on API Documentation generation
-
-#### Validation Behavior Configuration
-* `FPV_BLANK_NONE: bool`: Set the default `blank_none` behavior for routes in your application, defaults to `False` if unset
-* `FPV_LIST_DISABLE_QUERY_CSV: bool`: Set the default `list_disable_query_csv` behavior for routes in your application, defaults to `False` if unset
-
-### API Documentation
-Using the data provided through parameters, docstrings, and Flask route registrations, Flask Parameter Validation can generate API Documentation in various formats.
-To make this easy to use, it comes with a `Blueprint` and the output shown below and configuration options [above](#api-documentation-configuration):
-
-#### Included Blueprint
-The documentation blueprint can be added using the following code:
 ```py
 from flask_parameter_validation.docs_blueprint import docs_blueprint
-...
+
+app.config["FPV_OPENAPI_ENABLE"] = True
+app.config["FPV_OPENAPI_BASE"] = {"openapi": "3.1.0"}
 app.register_blueprint(docs_blueprint)
 ```
 
-The default blueprint adds two `GET` routes:
-* `/`: HTML Page with Bootstrap CSS and toggleable light/dark mode
-* `/json`: Non-standard Format JSON Representation of the generated documentation
-* `/openapi`: OpenAPI 3.1.0 - 3.2.0 (JSON) Representation of the generated documentation
+The blueprint is mounted at `/docs` and adds three `GET` routes:
 
-The `/json` route yields a response with the following format:
-```json
-{
-  "custom_blocks": "<array entered in the FPV_DOCS_CUSTOM_BLOCKS config option, default: []>",
-  "default_theme": "<string entered in the FPV_DOCS_DEFAULT_THEME config option, default: 'light'>",
-  "docs": "<see get_route_docs() return value format below>",
-  "site_name": "<string entered in the FPV_DOCS_SITE_NAME config option, default: 'Site'"
-}
-```
+- `/docs/` — an HTML documentation page (Bootstrap, light/dark mode).
+- `/docs/openapi` — the OpenAPI 3.1 document as JSON.
+- `/docs/json` — a non-standard JSON representation (deprecated).
 
-##### Example with included Blueprint
-Code:
+To generate documentation without the blueprint:
+
 ```py
-@config_api.get("/")
-@ValidateParameters()
-def get_all_configs():
-    """
-    Get the System Configuration
-    Returns:
-    <code>{"configs":
-        [{"id": int,
-        "module": str,
-        "name": str,
-        "description": str,
-        "value": str}, ...]
-    }</code>
-    """
-    system_configs = []
-    for system_config in SystemConfig.query.all():
-        system_configs.append(system_config.toDict())
-    return resp_success({"configs": system_configs})
-
-
-@config_api.post("/<int:config_id>")
-@ValidateParameters()
-def edit_config(
-        config_id: int = Route(comment="The ID of the Config Record to Edit"),
-        value: str = Json(max_str_length=2000, comment="The value to set in the Config Record")
-):
-    """Edit a specific System Configuration value"""
-    config = SystemConfig.get_by_id(config_id)
-    if config is None:
-        return resp_not_found("No link exists with ID " + str(config_id))
-    else:
-        config.update(value)
-        return resp_success()
-```
-Documentation Generated:
-
-![](docs/api_documentation_example.png)
-
-For another example, below is the documentation generated from the [Usage Example](#usage-example).
-
-Documentation Generated (non-standard format):
-
-![](docs/usage_example_non_standard_documentation.png)
-
-Documentation Generated (OpenAPI):
-
-```json
-{
-  "openapi": "3.1.0",
-  "paths": {
-    "/update/{id}": {
-      "post": {
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "required": true,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "is_admin",
-            "required": false,
-            "schema": {
-              "default": false,
-              "type": "boolean"
-            }
-          },
-          {
-            "in": "query",
-            "name": "permissions",
-            "required": true,
-            "schema": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "type": "object"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "properties": {
-                  "age": {
-                    "maximum": 99,
-                    "minimum": 18,
-                    "type": "integer"
-                  },
-                  "date_of_birth": {
-                    "format": "date-time",
-                    "type": "string"
-                  },
-                  "nicknames": {
-                    "items": {
-                      "type": "string"
-                    },
-                    "type": "array"
-                  },
-                  "password_expiry": {
-                    "default": 5,
-                    "oneOf": [
-                      {
-                        "type": "integer"
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "socials": {
-                    "items": {
-                      "description": "A link to a user's social profiles",
-                      "properties": {
-                        "friendly_name": {
-                          "description": "Display name",
-                          "type": "string"
-                        },
-                        "icon": {
-                          "type": "string"
-                        },
-                        "url": {
-                          "description": "Link to social profile",
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "friendly_name",
-                        "url"
-                      ],
-                      "title": "SocialLink",
-                      "type": "object"
-                    },
-                    "type": "array"
-                  },
-                  "status": {
-                    "description": "The status of a user's account",
-                    "oneOf": [
-                      {
-                        "const": 1,
-                        "description": "User can log in",
-                        "title": "ACTIVE"
-                      },
-                      {
-                        "const": 0,
-                        "description": "All actions blocked",
-                        "title": "DISABLED"
-                      }
-                    ],
-                    "title": "AccountStatus",
-                    "type": "integer"
-                  },
-                  "type": {
-                    "description": "Whether this user is a bot or person",
-                    "oneOf": [
-                      {
-                        "const": "user",
-                        "description": "Human",
-                        "title": "USER"
-                      },
-                      {
-                        "const": "service",
-                        "description": "Bot user",
-                        "title": "SERVICE"
-                      }
-                    ],
-                    "title": "UserType",
-                    "type": "string"
-                  },
-                  "unique": {
-                    "format": "uuid",
-                    "type": "string"
-                  },
-                  "username": {
-                    "minLength": 5,
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "username",
-                  "age",
-                  "nicknames",
-                  "date_of_birth",
-                  "type",
-                  "status",
-                  "unique",
-                  "socials"
-                ],
-                "type": "object"
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-}
+from flask_parameter_validation.docs_blueprint import (
+    get_route_docs,              # non-standard format (deprecated)
+    generate_openapi_paths_object,  # just the OpenAPI Paths object
+    generate_openapi_docs,       # the full OpenAPI document
+)
 ```
 
-##### Custom Blueprint
-If you would like to use your own blueprint, you can get the raw data from the following functions:
-```py
-from flask_parameter_validation.docs_blueprint import get_route_docs
-from flask_parameter_validation.docs_blueprint import generate_openapi_paths_object, generate_openapi_docs
-...
-get_route_docs()  # The non-standard format (deprecated)
-generate_openapi_paths_object()  # Just the OpenAPI Paths object
-generate_openapi_docs()  # The entire OpenAPI Object
-```
+### Documenting routes
 
-###### get_route_docs() return value format
-This method returns an object with the following structure:
+- The route's **docstring** becomes the OpenAPI Operation `description`.
+- Parameter descriptions are resolved in priority order: a `Parameter`'s `comment` argument,
+  then `Annotated[T, "..."]` / `# inline comment` on a `TypedDict` or `Enum` member, then a
+  class docstring.
+- Mark a route deprecated with `warnings.deprecated` (Python 3.13+) or
+  `typing_extensions.deprecated`.
+- Pass `openapi_responses` to `ValidateParameters()` to document a route's responses.
 
-```json
-[
-  {
-    "rule": "/path/to/route",
-    "methods": ["HTTPVerb"],
-    "docstring": "String, unsanitized of HTML Tags",
-    "decorators": ["@decorator1", "@decorator2(param)"],
-    "responses": {
-      "openapi": "3.1.0",
-      "description": "See [OpenAPI Spec 3.1.0 Responses Object](https://swagger.io/specification/#response-object)"
-    },
-    "args": {
-      "<Subclass of Parameter this route uses>": [
-        {
-          "name": "Argument Name",
-          "type": "Argument Type",
-          "loc_args": {
-            "<Name of argument passed to Parameter Subclass>": "Value passed to Argument",
-            "<Name of another argument passed to Parameter Subclass>": 0
-          }
-        }
-      ],
-      "<Another Subclass of Parameter this route uses>": []
-    }
-  },
+## Contributing
 
-  ...
-]
-```
+Contributions are welcome. See [AGENTS.md](AGENTS.md) for the project layout, how to run the
+test suite, and coding conventions.
 
-##### Marking routes as deprecated in generated documentation
+Many thanks to all those who have contributed:
 
-Using the `warnings.deprecated` (Python 3.13+) or `typing_extensions.deprecated` decorators, you can mark a route as deprecated.
+- [d3-steichman](https://github.com/d3-steichman) / [smt5541](https://github.com/smt5541): API documentation, custom error handling, datetime validation and bug fixes
+- [willowrimlinger](https://github.com/willowrimlinger): TypedDict support, dict subtyping, and async view handling bug fixes
+- [summersz](https://github.com/summersz): parameter aliases, async support, form type conversion and list bug fixes
+- [Garcel](https://github.com/Garcel): custom validator functions
+- [iml1111](https://github.com/iml1111): regex validation
+- [borisowww](https://github.com/borisowww): file handling bug fixes
+- [Charlie-Mindified](https://github.com/Charlie-Mindified): JSON handling bug fix
+- [dkassen](https://github.com/dkassen): list parsing fixes
 
-##### Comments in generated OpenAPI documentation
+## License
 
-Generated OpenAPI documentation uses the docstring from your routes as the `description` of the OpenAPI Operation object.
-
-Generated OpenAPI documentation will pull parameter comments from various locations in the following order (highest priority to lowest priority) for use in the `description` of OpenAPI Schema objects:
-1. `comment` argument passed to a subclass of `Parameter`
-2. `Annotated[T, "annotated comment"]` on a member of a TypedDict, or `# inline comment` on the same line as a member of a TypedDict or Enum
-3. Docstring on a class (for Enums and TypedDicts)
-
-
-### JSON Schema Validation
-An example of the [JSON Schema](https://json-schema.org) validation is provided below:
-
-```python
-json_schema = {
-  "type": "object",
-  "required": ["user_id", "first_name", "last_name", "tags"],
-  "properties": {
-    "user_id": {"type": "integer"},
-    "first_name": {"type": "string"},
-    "last_name": {"type": "string"},
-    "tags": {
-      "type": "array",
-      "items": {"type": "string"}
-    }
-  }
-}
-
-
-@api.get("/json_schema_example")
-@ValidateParameters()
-def json_schema(data: dict = Json(json_schema=json_schema)):
-  return jsonify({"data": data})
-```
-
-## Contributions
-Many thanks to all those who have made contributions to the project:
-* [d3-steichman](https://github.com/d3-steichman)/[smt5541](https://github.com/smt5541): API documentation, custom error handling, datetime validation and bug fixes
-* [willowrimlinger](https://github.com/willowrimlinger): TypedDict support, dict subtyping, and async view handling bug fixes
-* [summersz](https://github.com/summersz): Parameter aliases, async support, form type conversion and list bug fixes
-* [Garcel](https://github.com/Garcel): Allow passing custom validator function
-* [iml1111](https://github.com/iml1111): Implement regex validation
-* [borisowww](https://github.com/borisowww): Fix file handling bugs
-* [Charlie-Mindified](https://github.com/Charlie-Mindified): Fix JSON handling bug
-* [dkassen](https://github.com/dkassen): Helped to resolve broken list parsing logic
-
+Released under the MIT License.
