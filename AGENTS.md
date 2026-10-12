@@ -9,7 +9,7 @@ Guidance for coding agents working in this repository. For user-facing usage doc
 hints with `Parameter` defaults in the view signature, and generates OpenAPI 3.1 documentation
 from the same declarations. It is a published PyPI package (`Flask-Parameter-Validation`).
 
-- Language: Python, supporting 3.9–3.13.
+- Language: Python, supporting 3.9–3.15.
 - Runtime dependencies: `Flask`, `flask[async]`, `python-dateutil`, `jsonschema`.
 - Packaging: `setup.py` (setuptools). Version is the `version=` field there.
 - License: MIT.
@@ -98,7 +98,7 @@ pytest -q                                # quieter output
 - Changes that affect generated documentation must keep `test_api_docs.py` passing.
 - The library targets Python 3.9+. Avoid syntax/APIs newer than 3.9 (e.g. be careful with
   `typing` constructs, `is_typeddict`, and `Annotated` differences — there is version-specific
-  handling already in the codebase). CI runs the matrix 3.9 → 3.13, so verify across versions
+  handling already in the codebase). CI runs the matrix 3.9 → 3.15, so verify across versions
   when touching type introspection.
 
 ## Code style
@@ -113,8 +113,8 @@ pytest -q                                # quieter output
 
 ## Pull requests & commits
 
-- CI (`.github/workflows/python-test.yml`) runs pytest on every push and PR to `master` across
-  Python 3.9–3.13; all versions must pass.
+- CI (`.github/workflows/python-test.yml`) runs pytest on every push and PR to `main` across
+  Python 3.9–3.15; all versions must pass.
 - Keep commit messages short and imperative, matching the existing history
   (e.g. "Add test for …", "Fix incorrect regex").
 - Bump `version` in `setup.py` for releases; publishing is handled by

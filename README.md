@@ -29,7 +29,7 @@ def update_user(
   and fully custom validation functions.
 - Customisable error responses.
 - Automatic API documentation: OpenAPI 3.1 (with 3.2 compatibility) plus a built-in HTML docs page.
-- Supports both sync and async views; tested on Python 3.9–3.13.
+- Supports both sync and async views; tested on Python 3.9–3.15.
 
 ## Install
 
