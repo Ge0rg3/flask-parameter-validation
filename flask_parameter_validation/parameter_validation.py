@@ -1,6 +1,5 @@
 import json
 import sys
-import asyncio
 import functools
 import inspect
 import re
@@ -120,7 +119,7 @@ class ValidateParameters:
 
             return {"inputs": validated_inputs, "validated": True}
 
-        if asyncio.iscoroutinefunction(f):
+        if inspect.iscoroutinefunction(f):
             # If the view function is async, return and await a coroutine
             @functools.wraps(f)
             async def nested_func(**kwargs):

@@ -100,6 +100,7 @@ def recursively_resolve_type_hint(type_to_resolve) -> str:
     """
     if sys.version_info >= (3, 10) and isinstance(type_to_resolve, UnionType):
             # support 3.10 style unions (e.g. str | int)
+            # from 3.14 onwards, Optional[X] and Union[X, Y] are UnionType too
             type_base_name = "Union"
     elif hasattr(type_to_resolve, "__name__"):  # In Python 3.9, Optional and Union do not have __name__
         type_base_name = type_to_resolve.__name__
