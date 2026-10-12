@@ -15,7 +15,8 @@ permissions:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    # Python 3.9 has no prebuilt release for Ubuntu 26.04 onwards
+    runs-on: ${{ matrix.python-version == '3.9' && 'ubuntu-24.04' || 'ubuntu-latest' }}
 
     strategy:
       matrix:
