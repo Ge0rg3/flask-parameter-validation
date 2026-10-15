@@ -1,384 +1,335 @@
-import json
-import sys
 import functools
 import inspect
+import json
 import re
+import sys
 import uuid
-from inspect import signature
-from typing import Optional, Union, get_origin, get_args, Any, get_type_hints
+from typing import Any, Callable, Mapping, Optional, Union, get_args, get_origin, get_type_hints
 
-import flask
-from flask import request
-from werkzeug.datastructures import ImmutableMultiDict
+from flask import current_app, request
+from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest
-from .exceptions import (InvalidParameterTypeError, MissingInputError,
-                         ValidationError)
-from .parameter_types import File, Form, Json, Query, Route, Parameter
+
+from .exceptions import InvalidParameterTypeError, MissingInputError, ValidationError
+from .parameter_types import File, Form, Json, Parameter, Query, Route
 from .parameter_types.multi_source import MultiSource
 
-fn_list = dict()
-
-# from 3.10 onwards, Unions written X | Y have the type UnionType
-UNION_TYPES = [Union]
-if sys.version_info >= (3, 10):
-    from types import UnionType
-    UNION_TYPES = [Union, UnionType]
-
+# TypedDict helpers (all in typing from 3.11)
 if sys.version_info >= (3, 11):
     from typing import NotRequired, Required, is_typeddict
-elif sys.version_info >= (3, 9):
+else:
     from typing_extensions import NotRequired, Required, is_typeddict
 
-class ValidateParameters:
-    @classmethod
-    def get_fn_list(cls):
-        return fn_list
+if sys.version_info >= (3, 10):
+    from types import UnionType
 
-    def __init__(self, error_handler=None, openapi_responses=None):
+    # Unions written as X | Y have their own type from 3.10 onwards
+    UNION_TYPES = (Union, UnionType)
+else:
+    UNION_TYPES = (Union,)
+
+# JSON media types (e.g. application/vnd.api+json)
+JSON_CONTENT_TYPE = re.compile(r"application/[^+]*\+?json")
+
+# Decorated view details by unique key
+fn_list = {}
+
+
+class _TypeConverter:
+    """Raw input converter for type annotations"""
+
+    def __init__(self, name: str, source: Parameter) -> None:
+        """Store parameter name and source"""
+        self.name = name
+        self.source = source
+
+    def _convert_union(self, user_input: Any, expected_type: Any) -> tuple[Any, bool]:
+        """Convert to first matching union member"""
+        # Optional[X] is also a Union, of X and None
+        union_members = get_args(expected_type)
+        for member_type in union_members:
+            converted, member_matches = self.convert(user_input, member_type, union_members)
+            if member_matches:
+                return converted, True
+        return user_input, False
+
+    def _convert_list(self, user_input: Any, expected_type: Any) -> tuple[Any, bool]:
+        """Convert input to typed list"""
+        if type(user_input) is not list:
+            # Accept Query and Form strings (JSON array or single value)
+            if type(self.source) not in (Query, Form):
+                return user_input, False
+            user_input = self._decode_json_string(user_input)
+            if type(user_input) is not list:
+                user_input = [user_input]
+
+        if user_input == [""]:
+            # Treat blank value as empty list (e.g. ?value=)
+            return [], True
+
+        # Convert each item (Any for bare list)
+        type_args = get_args(expected_type)
+        item_type = type_args[0] if type_args else Any
+        converted_list = []
+        for item in user_input:
+            converted, item_matches = self.convert(item, item_type)
+            if not item_matches:
+                return user_input, False
+            converted_list.append(converted)
+        return converted_list, True
+
+    def _convert_typeddict(self, user_input: Any, expected_type: Any) -> tuple[Any, bool]:
+        """Convert input to declared TypedDict"""
+        # Decode and check required keys
+        user_input = self._decode_json_string(user_input)
+        if type(user_input) is not dict:
+            return user_input, False
+        if not all(key in user_input for key in expected_type.__required_keys__):
+            return user_input, False
+
+        # Convert each declared key
+        type_hints = get_type_hints(expected_type)
+        converted_dict = {}
+        for key, item in user_input.items():
+            if key not in type_hints:
+                # Reject undeclared keys (declare optional keys as NotRequired)
+                return user_input, False
+            item_type = type_hints[key]
+
+            # Unwrap Required and NotRequired (kept by get_type_hints before 3.11)
+            if get_origin(item_type) in (Required, NotRequired):
+                item_type = get_args(item_type)[0]
+            converted, item_matches = self.convert(item, item_type)
+            if not item_matches:
+                return user_input, False
+            converted_dict[key] = converted
+        return converted_dict, True
+
+    def _convert_dict(self, user_input: Any, expected_type: Any) -> tuple[Any, bool]:
+        """Convert input to typed dict"""
+        # Decode and check dict
+        user_input = self._decode_json_string(user_input)
+        if type(user_input) is not dict:
+            return user_input, False
+
+        # Convert keys and items (Any for bare dict)
+        key_type, item_type = get_args(expected_type) or (Any, Any)
+        converted_dict = {}
+        for key, item in user_input.items():
+            converted_key, key_matches = self.convert(key, key_type)
+            converted_item, item_matches = self.convert(item, item_type)
+            if not (key_matches and item_matches):
+                return user_input, False
+            converted_dict[converted_key] = converted_item
+        return converted_dict, True
+
+    def _convert_scalar(self, user_input: Any, expected_type: Any, union_members: tuple) -> tuple[Any, bool]:
+        """Convert non-generic input via parameter source"""
+        if expected_type is Any:
+            return user_input, True
+
+        # Convert with all union members (for blank_none on Optional[str])
+        try:
+            converted = self.source.convert(user_input, [expected_type, *union_members])
+        except ValueError as error:
+            raise ValidationError(str(error), self.name, expected_type)
+
+        # Check exact type (rejects bool for int)
+        return converted, type(converted) is expected_type
+
+    @staticmethod
+    def _decode_json_string(user_input: Any) -> Any:
+        """Decode JSON string, else return input unchanged"""
+        if type(user_input) is str and user_input:
+            try:
+                return json.loads(user_input)
+            except ValueError:
+                return user_input
+        return user_input
+
+    def convert(self, user_input: Any, expected_type: Any, union_members: tuple = ()) -> tuple[Any, bool]:
+        """Convert input, return it and whether it matches"""
+        origin = get_origin(expected_type)
+        if origin in UNION_TYPES:
+            return self._convert_union(user_input, expected_type)
+        if expected_type is list or origin is list:
+            return self._convert_list(user_input, expected_type)
+        if is_typeddict(expected_type):
+            return self._convert_typeddict(user_input, expected_type)
+        if expected_type is dict or origin is dict:
+            return self._convert_dict(user_input, expected_type)
+        return self._convert_scalar(user_input, expected_type, union_members)
+
+
+class ValidateParameters:
+    """Validation decorator for Flask view inputs"""
+
+    def __init__(
+            self,
+            error_handler: Optional[Callable[[Exception], Any]] = None,
+            openapi_responses: Optional[dict] = None,
+    ) -> None:
+        """Store error handler and OpenAPI responses"""
         self.custom_error_handler = error_handler
         self.openapi_responses = openapi_responses
 
-    def __call__(self, f):
-        """
-        Parent flow for validating each required parameter
-        """
-        fsig = f.__module__ + "." + f.__name__
-        # Add a discriminator to the function signature, store it in the properties of the function
-        # This is used in documentation generation to associate the info gathered from inspecting the
-        # function with the properties passed to the ValidateParameters decorator
-        f.__fpv_discriminated_sig__ = f"{uuid.uuid4()}_{fsig}"
-        fsig = f.__fpv_discriminated_sig__
-        argspec = inspect.getfullargspec(f)
-        source = inspect.getsource(f)
-        index = source.find("def ")
-        decorators = []
-        for line in source[:index].strip().splitlines():
-            if line.strip()[0] == "@":
-                decorators.append(line)
-        fdocs = {
-            "argspec": argspec,
-            "docstring": f.__doc__.strip() if f.__doc__ else None,
-            "decorators": decorators.copy(),
+    def _register_for_docs(self, view_func: Callable) -> None:
+        """Record view details in fn_list"""
+        # Unique key (module and name can repeat)
+        docs_key = f"{uuid.uuid4()}_{view_func.__module__}.{view_func.__name__}"
+
+        # Store key on view (functools.wraps copies it to wrapper)
+        view_func.__fpv_discriminated_sig__ = docs_key
+
+        # Get decorator lines
+        source_code = inspect.getsource(view_func)
+        preamble = source_code[:source_code.find("def ")]
+        decorators = [line for line in preamble.strip().splitlines() if line.strip().startswith("@")]
+
+        # Store view details
+        fn_list[docs_key] = {
+            "argspec": inspect.getfullargspec(view_func),
+            "docstring": view_func.__doc__.strip() if view_func.__doc__ else None,
+            "decorators": decorators,
             "openapi_responses": self.openapi_responses,
         }
-        fn_list[fsig] = fdocs
 
-        def nested_func_helper(**kwargs):
-            """
-            Validates the inputs of a Flask route or returns an error. Returns
-            are wrapped in a dictionary with a flag to let nested_func() know
-            if it should unpack the resulting dictionary of inputs as kwargs,
-            or just return the error message.
-            """
-            # Step 1 - Get expected input details as dict
-            expected_inputs = signature(f).parameters
+    def _validate_request(self, view_func: Callable, route_kwargs: dict) -> tuple[Optional[dict], Any]:
+        """Validate request, return view inputs or error response"""
+        expected_inputs = inspect.signature(view_func).parameters
 
-            # Step 2 - Validate JSON inputs
-            json_input = None
-            if request.headers.get("Content-Type") is not None:
-                if re.search(
-                        "application/[^+]*[+]?(json);?", request.headers.get("Content-Type")
-                ):
-                    try:
-                        json_input = request.json
-                    except BadRequest:
-                        return {"error": ({"error": "Could not parse JSON."}, 400), "validated": False}
+        # Parse JSON body
+        try:
+            json_input = self._get_json_body()
+        except BadRequest:
+            return None, ({"error": "Could not parse JSON."}, 400)
 
-            # Step 3 - For Query params, find which parameters should be split by commas
-            split_csv = {}
-            default_list_disable_query_csv = flask.current_app.config.get("FPV_LIST_DISABLE_QUERY_CSV", False)
-            for name, param in expected_inputs.items():
-                list_disable_query_csv = default_list_disable_query_csv
-                if param.default.list_disable_query_csv is not None:
-                    list_disable_query_csv = param.default.list_disable_query_csv
-                split_csv[param.default.alias or name] = not list_disable_query_csv
+        # Collect inputs by source
+        split_csv = self._query_csv_split_settings(expected_inputs)
+        request_inputs = {
+            Route: route_kwargs,
+            Json: json_input or {},
+            Query: self._flatten_multidict(request.args, split_csv),
+            Form: self._flatten_multidict(request.form),
+            File: self._flatten_multidict(request.files),
+        }
 
-            # Step 4 - Convert request inputs to dicts
-            request_inputs = {
-                Route: kwargs.copy(),
-                Json: json_input or {},
-                Query: self._to_dict_with_lists(request.args, split_csv),
-                Form: self._to_dict_with_lists(request.form),
-                File: self._to_dict_with_lists(request.files),
-            }
-
-            # Step 5 - Validate each expected input
-            validated_inputs = {}
-            for expected in expected_inputs.values():
-                if self.custom_error_handler is None:
-                    try:
-                        new_input = self.validate(expected, request_inputs)
-                    except (MissingInputError, ValidationError) as e:
-                        return {"error": ({"error": str(e)}, 400), "validated": False}
-                else:
-                    try:
-                        new_input = self.validate(expected, request_inputs)
-                    except Exception as e:
-                        return {"error": self.custom_error_handler(e), "validated": False}
-                validated_inputs[expected.name] = new_input
-
-            return {"inputs": validated_inputs, "validated": True}
-
-        if inspect.iscoroutinefunction(f):
-            # If the view function is async, return and await a coroutine
-            @functools.wraps(f)
-            async def nested_func(**kwargs):
-                validated_inputs = nested_func_helper(**kwargs)
-                if validated_inputs["validated"]:
-                    return await f(**validated_inputs["inputs"])
-                return validated_inputs["error"]
-        else:
-            # If the view function is not async, return a function
-            @functools.wraps(f)
-            def nested_func(**kwargs):
-                validated_inputs = nested_func_helper(**kwargs)
-                if validated_inputs["validated"]:
-                    return f(**validated_inputs["inputs"])
-                return validated_inputs["error"]
-
-        nested_func.__name__ = f.__name__
-        return nested_func
-
-    def _to_dict_with_lists(
-            self, multi_dict: ImmutableMultiDict, split_csv: Optional[dict[str, bool]] = None
-    ) -> dict:
-        dict_with_lists = {}
-        for key, values in multi_dict.lists():
-            list_values = []
-            for value in values:
-                if split_csv and key in split_csv and split_csv[key]:
-                    list_values.extend(value.split(","))
-                else:
-                    list_values.append(value)
-            dict_with_lists[key] = list_values[0] if len(list_values) == 1 else list_values
-        return dict_with_lists
-
-    def _generic_types_validation_helper(self, 
-                                         expected_name: str,
-                                         expected_input_type: type,
-                                         user_input: Any,
-                                         source: Parameter,
-                                         other_union_allowed_types: list[type] = []) -> tuple[Any, bool]:
-        """
-        Perform recursive validation of generic types (Optional, Union, and List/list)
-        and convert input. If input is invalid, a fully converted input is not garunteed.
-
-        :param expected_name: the name of the parameter we are checking against
-        :param expected_input_type: the type annotation of the parameter
-        :param user_input: the API user's input
-        :param source: the type of Parameter we are taking input from
-        :param other_union_allowed_types: the other types that are unioned at this level.
-            We check one type at a time, but the convert() method needs to know
-            what else the user_input is allowed to be to convert properly.
-
-        :return: tuple of format (converted user_input, validation_success)
-        """
-        # union
-        if get_origin(expected_input_type) in UNION_TYPES:
-            # check for unions (Optional is just a Union with None)
-            sub_expected_input_types = expected_input_type.__args__
-            # go through each type in the union and see if we get a match
-            for sub_expected_input_type in sub_expected_input_types:
-                sub_converted_input, sub_success = self._generic_types_validation_helper(expected_name, sub_expected_input_type, user_input, source, other_union_allowed_types=list(sub_expected_input_types))
-                if sub_success:
-                    return sub_converted_input, True
-            return user_input, False
-
-        # list
-        elif get_origin(expected_input_type) is list or expected_input_type is list:
-            if type(user_input) is not list:
-                # check if we should try to work with strings
-                if type(source) is not Form and type(source) is not Query:
-                    return user_input, False
-                # if using a source that supports multidict style lists,
-                # give singletons the benefit of the doubt. they could still count
-                # as single-element lists
-                if type(user_input) is str and len(user_input) > 0:
-                    try:
-                        user_input = json.loads(user_input)
-                        # check for a stringified list e.g. '[1, 2]'
-                        if type(user_input) is not list:
-                            user_input = [user_input]
-                    except ValueError:
-                        user_input = [user_input]
-                else:
-                    user_input = [user_input]
-
-            # process
-            if len(get_args(expected_input_type)) == 0:
-                # expected type is just a bare list with no sub type
-                # we set to Any instead of returning True so that the input can get converted
-                sub_expected_input_type = Any
-            else:
-                sub_expected_input_type = get_args(expected_input_type)[0]
-            if len(user_input) == 1 and user_input[0] == "":
-                # treat arrays of a single empty string as an empty array to support the Query param &value=
-                return [], True
-            converted_list = []
-            # go through and validate each item in the array
-            for inp in user_input:
-                sub_converted_input, sub_success = self._generic_types_validation_helper(expected_name, sub_expected_input_type, inp, source)
-                if not sub_success:
-                    return user_input, False
-                converted_list.append(sub_converted_input)
-            return converted_list, True
-
-        # typeddict
-        elif is_typeddict(expected_input_type):
-            # check for a stringified dict (like from Query)
-            if type(user_input) is str:
-                try:
-                    user_input = json.loads(user_input)
-                except ValueError:
-                    return user_input, False
-            if type(user_input) is not dict:
-                return user_input, False
-            # check that we have all required keys
-            for key in expected_input_type.__required_keys__:
-                if key not in user_input:
-                    return user_input, False
-
-            # process
-            converted_dict = {}
-            # go through each user input key and make sure the value is the correct type
-            for key, value in user_input.items():
-                annotations = get_type_hints(expected_input_type)
-                if key not in annotations:
-                    # we are strict in not allowing extra keys
-                    # if you want extra keys, use NotRequired
-                    return user_input, False
-                # get the Required and NotRequired decorators out of the way, if present                
-                annotation_type = annotations[key]
-                if get_origin(annotation_type) is NotRequired or get_origin(annotation_type) is Required:
-                    annotation_type = get_args(annotation_type)[0]
-                sub_converted_input, sub_success = self._generic_types_validation_helper(expected_name, annotation_type, value, source)
-                if not sub_success:
-                    return user_input, False
-                converted_dict[key] = sub_converted_input
-            return converted_dict, True
-
-        # dict
-        elif get_origin(expected_input_type) is dict or expected_input_type is dict:
-            # check for a stringified dict (like from Query or Form)
-            if type(user_input) is str and len(user_input) > 0:
-                try:
-                    user_input = json.loads(user_input)
-                except ValueError:
-                    return user_input, False
-            # check for a normal dict
-            if type(user_input) is not dict:
-                return user_input, False
-
-            # process
-            if len(get_args(expected_input_type)) == 0:
-                # expected type is just a bare dict with no sub types
-                # we set to Any instead of returning True so that the input can get converted
-                key_expected_input_type = Any
-                val_expected_input_type = Any
-            else:
-                key_expected_input_type = get_args(expected_input_type)[0]
-                val_expected_input_type = get_args(expected_input_type)[1]
-            converted_dict = {}
-            # go through and validate each key and value in the dict
-            for key, val in user_input.items():
-                key_converted_input, key_success = self._generic_types_validation_helper(expected_name, key_expected_input_type, key, source)
-                val_converted_input, val_success = self._generic_types_validation_helper(expected_name, val_expected_input_type, val, source)
-                if not key_success or not val_success:
-                    return user_input, False
-                converted_dict[key_converted_input] = val_converted_input
-            return converted_dict, True
-
-        # non-generics
-        else:
-            if expected_input_type is Any:
-                return user_input, True
-
+        # Validate each parameter
+        validated_inputs = {}
+        for expected_input in expected_inputs.values():
             try:
-                # convert
-                user_input = source.convert(
-                    # include any other allowed types for proper conversion
-                    user_input, [expected_input_type] + other_union_allowed_types
-                )
+                validated_inputs[expected_input.name] = self.validate(expected_input, request_inputs)
+            except Exception as error:
+                if self.custom_error_handler is not None:
+                    return None, self.custom_error_handler(error)
+                if isinstance(error, (MissingInputError, ValidationError)):
+                    return None, ({"error": str(error)}, 400)
+                raise
+        return validated_inputs, None
 
-                if expected_input_type is Any:
-                    # Any should always return true, no matter the input
-                    return user_input, True
+    @staticmethod
+    def _get_json_body() -> Any:
+        """Return parsed body if content type is JSON"""
+        content_type = request.headers.get("Content-Type")
+        if content_type is not None and JSON_CONTENT_TYPE.search(content_type):
+            return request.json
+        return None
 
-                # the actual "primative" type check
-                return user_input, type(user_input) is expected_input_type
-            except ValueError as e:
-                raise ValidationError(str(e), expected_name, expected_input_type)
+    @staticmethod
+    def _query_csv_split_settings(expected_inputs: Mapping[str, inspect.Parameter]) -> dict[str, bool]:
+        """Map input names to Query CSV split flags"""
+        is_csv_disabled_by_default = current_app.config.get("FPV_LIST_DISABLE_QUERY_CSV", False)
+        split_csv = {}
+        for name, expected_input in expected_inputs.items():
+            parameter = expected_input.default
+            is_csv_disabled = parameter.list_disable_query_csv
+            if is_csv_disabled is None:
+                is_csv_disabled = is_csv_disabled_by_default
+            split_csv[parameter.alias or name] = not is_csv_disabled
+        return split_csv
 
-    def validate(self, expected_input, all_request_inputs):
-        """
-        Validate that a given expected input exists in the requested input collection
-        """
-        # Extract useful information from expected input
-        expected_input_type = expected_input.annotation  # i.e. str, int etc.
-        # i.e. Form, Query, Json etc.
-        expected_delivery_type = expected_input.default
-        # Check if an alias is given, otherwise use the input name
-        if expected_delivery_type.alias:
-            expected_name = expected_delivery_type.alias
+    @staticmethod
+    def _flatten_multidict(request_fields: MultiDict, split_csv: Optional[dict[str, bool]] = None) -> dict:
+        """Flatten MultiDict to dict, lists for repeated keys"""
+        split_csv = split_csv or {}
+        flattened = {}
+        for key, values in request_fields.lists():
+            # Split on commas where enabled
+            if split_csv.get(key):
+                values = [part for value in values for part in value.split(",")]
+            flattened[key] = values[0] if len(values) == 1 else values
+        return flattened
+
+    @staticmethod
+    def _is_optional(annotation: Any) -> bool:
+        """Check if annotation allows None"""
+        return type(None) in getattr(annotation, "__args__", ())
+
+    def __call__(self, view_func: Callable) -> Callable:
+        """Register view and wrap with validation"""
+        self._register_for_docs(view_func)
+
+        # Pick async or sync wrapper
+        if inspect.iscoroutinefunction(view_func):
+            @functools.wraps(view_func)
+            async def wrapper(**route_kwargs: Any) -> Any:
+                """Validate request then await view"""
+                inputs, error_response = self._validate_request(view_func, route_kwargs)
+                if inputs is None:
+                    return error_response
+                return await view_func(**inputs)
         else:
-            expected_name = expected_input.name
+            @functools.wraps(view_func)
+            def wrapper(**route_kwargs: Any) -> Any:
+                """Validate request then call view"""
+                inputs, error_response = self._validate_request(view_func, route_kwargs)
+                if inputs is None:
+                    return error_response
+                return view_func(**inputs)
 
-        # original_expected_input_type will mutate throughout program,
-        # so we need to keep the original for error messages
-        original_expected_input_type = expected_input.annotation
+        return wrapper
 
-        # Expected delivery types can be a list if using MultiSource
-        expected_delivery_types = [expected_delivery_type]
-        if type(expected_delivery_type) is MultiSource:
-            expected_delivery_types = expected_delivery_type.sources
+    def validate(self, expected_input: inspect.Parameter, all_request_inputs: dict) -> Any:
+        """Find, convert and validate one view argument"""
+        expected_type = expected_input.annotation
+        parameter = expected_input.default  # e.g. Query(), Json() or MultiSource(...)
+        name = parameter.alias or expected_input.name
+        sources = parameter.sources if type(parameter) is MultiSource else [parameter]
 
-        for source_index, source in enumerate(expected_delivery_types):
-            # Validate that the expected delivery type is valid
-            if source.__class__ not in all_request_inputs.keys():
+        # Use first source with input or default
+        for index, source in enumerate(sources):
+            # Reject unknown source types
+            if type(source) not in all_request_inputs:
                 raise InvalidParameterTypeError(source)
 
-            # Validate that user supplied input in expected delivery type (unless specified as Optional)
-            user_input = all_request_inputs[source.__class__].get(
-                expected_name
-            )
+            # Get input or default
+            user_input = all_request_inputs[type(source)].get(name)
             if user_input is None:
-                # If default is given, set and continue
-                if source.default is not None:
-                    user_input = source.default
-                else:
-                    # Optionals are Unions with a NoneType, so we should check if None is part of Union __args__ (if exist)
-                    if (
-                            hasattr(expected_input_type, "__args__") and type(None) in expected_input_type.__args__
-                            and source_index == len(expected_delivery_types) - 1  # If MultiSource, only return None for last source
-                    ):
-                        return user_input
-                    else:
-                        if len(expected_delivery_types) == 1:
-                            raise MissingInputError(
-                                expected_name, source.__class__
-                            )
-                        elif source_index != len(expected_delivery_types) - 1:
-                            continue
-                        else:
-                            raise MissingInputError(
-                                expected_name, source.__class__
-                            )
+                user_input = source.default
 
-            converted_user_input, validation_success = self._generic_types_validation_helper(expected_name, expected_input_type, user_input, source)
+            # Handle missing input
+            if user_input is None:
+                if index < len(sources) - 1:
+                    continue
+                if self._is_optional(expected_type):
+                    return None
+                raise MissingInputError(name, type(source))
 
-            # Validate parameter-specific requirements are met
+            # Convert to expected type
+            converted_input, type_matches = _TypeConverter(name, source).convert(user_input, expected_type)
+
+            # Check constraints before type (their errors take precedence)
             try:
-                source.validate(converted_user_input)
-            except ValueError as e:
-                raise ValidationError(str(e), expected_name, expected_input_type)
+                source.validate(converted_input)
+            except ValueError as error:
+                raise ValidationError(str(error), name, expected_type)
 
-            # Error if types don't match
-            if not validation_success:
-                type_name = str(original_expected_input_type)
-                raise ValidationError(
-                    f"must be type '{type_name}'",
-                    expected_name,
-                    original_expected_input_type,
-                )
+            # Reject type mismatch
+            if not type_matches:
+                raise ValidationError(f"must be type '{expected_type}'", name, expected_type)
+            return converted_input
 
-            return converted_user_input
+    @classmethod
+    def get_fn_list(cls) -> dict:
+        """Return details of decorated views"""
+        return fn_list
