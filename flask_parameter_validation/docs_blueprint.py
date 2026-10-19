@@ -1,499 +1,652 @@
+"""Docs blueprint and OpenAPI generation for validated routes"""
 import datetime
 import inspect
 import json
+import re
+import sys
 import uuid
 import warnings
 from copy import deepcopy
-import sys
+from dataclasses import dataclass, replace
 from enum import Enum, EnumMeta
-import flask
-from flask import Blueprint, current_app, jsonify
-from flask_parameter_validation import ValidateParameters
-from flask_parameter_validation.exceptions.exceptions import ConfigurationError
-import re
-from typing import Annotated
+from typing import Annotated, Any, Callable, Optional, Union
+
+from flask import Blueprint, Response, current_app, jsonify, render_template
+
+from .exceptions.exceptions import ConfigurationError
+from .parameter_validation import ValidateParameters
+
+# TypedDict check (typing_extensions has its own TypedDict before 3.11)
 if sys.version_info >= (3, 11):
     from typing import is_typeddict
-elif sys.version_info >= (3, 9):
+else:
     from typing_extensions import is_typeddict
+
+# Unions written as X | Y (3.10 onwards)
 if sys.version_info >= (3, 10):
     from types import UnionType
+
+# PEP 702 deprecated decorator (in warnings from 3.13)
 if sys.version_info >= (3, 13):
     from warnings import deprecated
 else:
     from typing_extensions import deprecated
 
+# Legacy docs routes deprecation message
+LEGACY_ROUTE_DEPRECATION = "Use /openapi instead"
 
-docs_blueprint = Blueprint(
-    "docs", __name__, url_prefix="/docs", template_folder="./templates"
-)
+# Bootstrap badge class per HTTP method
+HTTP_METHOD_BADGES = {"GET": "bg-primary", "POST": "bg-success", "DELETE": "bg-danger"}
+
+# Supported OpenAPI versions
+SUPPORTED_OPENAPI_VERSIONS = ("3.1.0", "3.1.1", "3.1.2", "3.2.0")
+
+# Union type names containing None (e.g. Union[int, NoneType])
+OPTIONAL_UNION_NAME = re.compile(r"Union\[.*None.*")
+
+# Generic type names (e.g. List[int], group 1 is List)
+GENERIC_TYPE_NAME = re.compile(r"(\w+)\[([\w\[\] ,.]+)]")
+
+# Annotated hint class (no __name__ on 3.9)
+ANNOTATED_ALIAS = type(Annotated[int, ""])
+
+# Warning stack levels (point at generate_json_schema_helper caller)
+SCHEMA_STACKLEVEL = 2
+TYPE_SCHEMA_STACKLEVEL = 3
+
+# JSON Schema keywords per Parameter constraint
+STRING_CONSTRAINTS = {"min_str_length": "minLength", "max_str_length": "maxLength", "pattern": "pattern"}
+INTEGER_CONSTRAINTS = {"min_int": "minimum", "max_int": "maximum"}
+LIST_CONSTRAINTS = {"min_list_length": "minItems", "max_list_length": "maxItems"}
+
+# Flask rule variables (e.g. <int:id> and <id>)
+TYPED_RULE_VARIABLE = re.compile(r"<(\w+):(\w+)>")
+RULE_VARIABLE = re.compile(r"<(\w+)>")
+
+# Request body media types per source
+BODY_MEDIA_TYPES = {"Form": "application/x-www-form-urlencoded", "Json": "application/json"}
+
+# File media type without content_types
+DEFAULT_FILE_MEDIA_TYPE = "application/octet-stream"
+
+# Decorators marking route deprecated (PEP 702)
+DEPRECATED_DECORATORS = ("@warnings.deprecated", "@deprecated")
+
+# Methods left out of OpenAPI (Flask adds them automatically)
+IGNORED_METHODS = ("OPTIONS", "HEAD")
+
+# Docs routes under /docs
+docs_blueprint = Blueprint("docs", __name__, url_prefix="/docs", template_folder="./templates")
 
 
-def get_route_docs(include_raw_type=False):
-    """
-    Generate documentation for all Flask routes that use the ValidateParameters decorator.
-    Returns a list of dictionaries, each containing documentation for a particular route.
-    """
-    docs = []
-    for rule in current_app.url_map.iter_rules():  # Iterate through all Flask Routes
-        rule_func = current_app.view_functions[
-            rule.endpoint
-        ]  # Get the associated function
-        fn_docs = get_function_docs(rule_func, include_raw_type=include_raw_type)
-        if fn_docs:
-            fn_docs["rule"] = str(rule)
-            fn_docs["methods"] = [str(method) for method in rule.methods]
-            docs.append(fn_docs)
-    return docs
+@dataclass
+class ArgumentDetails:
+    """Docs for one view argument"""
+
+    name: str
+    type_name: str  # Type hint as string (e.g. List[int])
+    location: str  # Parameter class name (e.g. Query)
+    location_args: dict  # Formatted non-None Parameter arguments
+    raw_type: Any  # Annotation from view signature
+
+    @property
+    def request_name(self) -> str:
+        """Get alias, else argument name"""
+        return self.location_args.get("alias", self.name)
+
+    def to_dict(self, include_raw_type: bool = False) -> dict:
+        """Convert to legacy docs format"""
+        # Use legacy keys
+        legacy_docs = {"name": self.name, "type": self.type_name, "loc": self.location, "loc_args": self.location_args}
+
+        # Add raw type if requested (not JSON serialisable)
+        if include_raw_type:
+            legacy_docs["raw_type"] = self.raw_type
+        return legacy_docs
 
 
-def get_function_docs(func, include_raw_type=False):
-    """
-    Get documentation for a specific function that uses the ValidateParameters decorator.
-    Returns a dictionary containing documentation details, or None if the decorator is not used.
-    """
-    fn_list = ValidateParameters().get_fn_list()
-    for fsig, fdocs in fn_list.items():
-        if hasattr(func, "__fpv_discriminated_sig__") and func.__fpv_discriminated_sig__ == fsig:
-            return {
-                "docstring": format_docstring(fdocs.get("docstring")),
-                "decorators": fdocs.get("decorators"),
-                "args": extract_argument_details(fdocs, include_raw_type=include_raw_type),
-                "responses": fdocs.get("openapi_responses"),
-            }
-    return None
+def _type_base_name(type_hint: Any) -> str:
+    """Get type hint name without arguments"""
+    # Name X | Y unions (all unions from 3.14)
+    if sys.version_info >= (3, 10) and isinstance(type_hint, UnionType):
+        return "Union"
+
+    # Use __name__ on classes, and typing generics from 3.10
+    if hasattr(type_hint, "__name__"):
+        return type_hint.__name__
+
+    # Use _name on typing generics on 3.9 (e.g. List[int])
+    if hasattr(type_hint, "_name") and type_hint._name is not None:
+        return type_hint._name
+
+    # Use origin name for Optional and Union on 3.9
+    return type_hint.__origin__._name
 
 
-def format_docstring(docstring):
-    """
-    Format a function's docstring for HTML display.
-    """
+def _format_parameter_argument(name: str, value: Any) -> Any:
+    """Format Parameter argument for docs"""
+    # Name functions and classes by module path
+    if callable(value):
+        return f"{value.__module__}.{value.__name__}"
+
+    # Format str and int Enum members
+    if issubclass(type(value), Enum):
+        member_name = f"{type(value).__name__}.{value.name}"
+        if issubclass(type(value), int):
+            return f"{member_name}: {value.value}"
+        if issubclass(type(value), str):
+            return f"{member_name}: '{value.value}'"
+        return "FPV: Unsupported Enum type"
+
+    # Convert times to ISO 8601
+    if type(value).__name__ == "time":
+        return value.isoformat()
+
+    # Name MultiSource sources by class
+    if name == "sources":
+        return [type(source).__name__ for source in value]
+
+    # Keep other values
+    return value
+
+
+def _get_parameter_schema(param: ArgumentDetails) -> dict:
+    """Get json_schema argument, else generated schema"""
+    if "json_schema" in param.location_args:
+        return param.location_args["json_schema"]
+    return generate_json_schema_for_parameter(param)
+
+
+def _add_schema_constraints(schema: dict, param: Optional[ArgumentDetails], constraint_keywords: dict) -> None:
+    """Copy Parameter constraints to schema keywords"""
+    # Skip if no Parameter
+    if param is None:
+        return
+
+    # Copy given constraints
+    for constraint, keyword in constraint_keywords.items():
+        if constraint in param.location_args:
+            schema[keyword] = param.location_args[constraint]
+
+
+def _typeddict_schema(type_name: str, raw_type: type) -> dict:
+    """Generate JSON Schema for TypedDict"""
+    # Read source for field comments (none for functional TypedDict)
+    try:
+        source_code = inspect.getsource(raw_type)
+    except OSError:
+        source_code = ""
+
+    # Collect field schemas and required keys
+    properties = {}
+    required_keys = []
+    for key, field_type in raw_type.__annotations__.items():
+        # Generate field schema
+        field_type_name = recursively_resolve_type_hint(field_type)
+        properties[key] = generate_json_schema_helper(None, field_type)
+
+        # Use trailing field comment as description (e.g. x: int  # X coordinate)
+        field_comments = re.findall(rf"^\s*{key}\s*:\s*{field_type_name}\s*#\s*(.*)$", source_code, flags=re.MULTILINE)
+        if field_comments:
+            properties[key]["description"] = field_comments[0]
+
+        # Require key unless NotRequired (total=False keys need Required)
+        is_required_key = "NotRequired[" not in field_type_name and (
+            raw_type.__total__ or "Required[" in field_type_name)
+        if is_required_key:
+            required_keys.append(key)
+
+    # Build object schema
+    schema = {"type": "object", "properties": properties}
+    if required_keys:
+        schema["required"] = required_keys
+    schema["title"] = type_name
+
+    # Use docstring as description (skip one inherited from dict)
+    type_description = inspect.getdoc(raw_type)
+    if type_description and type_description != inspect.getdoc(dict):
+        schema["description"] = type_description
+    return schema
+
+
+def _enum_schema(type_name: str, raw_type: EnumMeta) -> dict:
+    """Generate JSON Schema for Enum"""
+    # Set type from str or int mixin
+    schema = {}
+    if issubclass(raw_type, str):
+        schema["type"] = "string"
+    elif issubclass(raw_type, int):
+        schema["type"] = "integer"
+    else:
+        warnings.warn(f"Unsupported enum type: {type_name}", Warning, stacklevel=TYPE_SCHEMA_STACKLEVEL)
+
+    # Read source for member comments (raises for functional Enums)
+    source_code = inspect.getsource(raw_type)
+
+    # Add member options
+    options = []
+    for member in raw_type:
+        option_schema = {"title": member.name, "const": member.value}
+
+        # Use trailing member comment as description (e.g. RED = "red"  # Red)
+        member_comments = re.findall(rf"^\s*{member.name}\s*=\s*['\"]?{member.value}['\"]?\s*#\s*(.*)$", source_code,
+                                     flags=re.MULTILINE)
+        if member_comments:
+            option_schema["description"] = member_comments[0]
+        options.append(option_schema)
+    schema["oneOf"] = options
+
+    # Use docstring as description (skip one inherited from str or int)
+    type_description = inspect.getdoc(raw_type)
+    if type_description and type_description not in [inspect.getdoc(str), inspect.getdoc(int)]:
+        schema["description"] = type_description
+
+    # Set title to type name
+    schema["title"] = type_name
+    return schema
+
+
+def _generic_schema(param: Optional[ArgumentDetails], type_name: str, raw_type: Any, generic_name: str) -> dict:
+    """Generate JSON Schema for generic type"""
+    # Build array schema (str and int constraints apply per item)
+    if generic_name in ("List", "list"):
+        item_type_schemas = [generate_json_schema_helper(param, item_type) for item_type in raw_type.__args__]
+
+        # Use oneOf for several item types
+        items_schema = item_type_schemas[0] if len(item_type_schemas) == 1 else {"oneOf": item_type_schemas}
+        schema = {"type": "array", "items": items_schema}
+
+        # Add list length constraints
+        _add_schema_constraints(schema, param, LIST_CONSTRAINTS)
+        return schema
+
+    # Build oneOf from union members
+    if generic_name in ("Optional", "Union"):
+        return {"oneOf": [generate_json_schema_helper(None, member_type) for member_type in raw_type.__args__]}
+
+    # Unwrap Required and NotRequired
+    if generic_name in ("Required", "NotRequired"):
+        return generate_json_schema_helper(param, raw_type.__args__[0])
+
+    # Use dict value type for additionalProperties
+    if generic_name == "dict":
+        value_schema = generate_json_schema_helper(None, raw_type.__args__[1])
+        return {"type": "object", "additionalProperties": value_schema}
+
+    # Unwrap Annotated
+    if generic_name == "Annotated" or type(raw_type) is ANNOTATED_ALIAS:
+        schema = generate_json_schema_helper(param, raw_type.__origin__)
+
+        # Use first str metadata as description
+        for annotation in raw_type.__metadata__:
+            if type(annotation) is str:
+                schema["description"] = annotation
+                break
+        return schema
+
+    # Warn on other generics (e.g. tuple[int, str])
+    warnings.warn(f"Unsupported generic type {type_name}", Warning, stacklevel=TYPE_SCHEMA_STACKLEVEL)
+    return {}
+
+
+def _flatten_multisource_args(route_args: dict[str, list[ArgumentDetails]]) -> None:
+    """Move MultiSource args to their sources"""
+    # Skip routes without MultiSource args
+    if "MultiSource" not in route_args:
+        return
+
+    for arg in route_args["MultiSource"]:
+        # Remove sources from location_args
+        sources = arg.location_args.pop("sources")
+
+        # Copy arg to each source
+        for source in sources:
+            route_args.setdefault(source, []).append(replace(deepcopy(arg), location=source))
+
+    # Remove MultiSource args
+    del route_args["MultiSource"]
+
+
+def _collect_openapi_inputs(route_args: dict[str, list[ArgumentDetails]], path: str) -> tuple[str, list, dict]:
+    """Return aliased path, parameters and body"""
+    parameters = []
+    body_content = {}
+    for location, args_at_location in route_args.items():
+        if location in BODY_MEDIA_TYPES:
+            # Add Form and Json schemas
+            body_content[BODY_MEDIA_TYPES[location]] = {
+                "schema": generate_json_schema_for_parameters(args_at_location)}
+        elif location == "File":
+            # Add File media types (OpenAPI 3.1 file upload guidance)
+            for arg in args_at_location:
+                for media_type in arg.location_args.get("content_types", [DEFAULT_FILE_MEDIA_TYPE]):
+                    body_content[media_type] = {}
+        elif location in ("Route", "Query"):
+            for arg in args_at_location:
+                # Rename path parameter to alias
+                request_name = arg.request_name
+                if "alias" in arg.location_args:
+                    path = path.replace(f"{{{arg.name}}}", f"{{{request_name}}}")
+
+                # Skip Route args not in path (views can serve several routes)
+                is_path_parameter = location == "Route"
+                if is_path_parameter and f"{{{request_name}}}" not in path:
+                    continue
+
+                # Add path or query parameter
+                parameters.append({
+                    "name": request_name,
+                    "in": "path" if is_path_parameter else "query",
+                    "required": True if is_path_parameter else parameter_required(arg),
+                    "schema": _get_parameter_schema(arg),
+                })
+    return path, parameters, body_content
+
+
+def _build_openapi_operation(route: dict, parameters: list, body_content: dict) -> dict:
+    """Build OpenAPI operation for route"""
+    # Add parameters and request body if any
+    operation = {}
+    if parameters:
+        operation["parameters"] = parameters
+    if body_content:
+        operation["requestBody"] = {"content": body_content}
+
+    # Mark deprecated views
+    for decorator in route["decorators"]:
+        if any(marker in decorator for marker in DEPRECATED_DECORATORS):
+            operation["deprecated"] = True
+
+    # Add responses and docstring if given
+    if route["responses"]:
+        operation["responses"] = route["responses"]
+    if route["docstring"]:
+        operation["description"] = route["docstring"]
+    return operation
+
+
+def _collect_route_docs() -> list[dict]:
+    """Get docs for every validated route"""
+    route_docs = []
+    for rule in current_app.url_map.iter_rules():
+        # Skip views without ValidateParameters
+        view_docs = get_function_docs(current_app.view_functions[rule.endpoint])
+        if not view_docs:
+            continue
+
+        # Add rule and methods
+        view_docs["rule"] = str(rule)
+        view_docs["methods"] = [str(method) for method in rule.methods]
+        route_docs.append(view_docs)
+    return route_docs
+
+
+def _get_legacy_docs() -> dict:
+    """Get legacy docs and page settings"""
+    # Read docs page config (README lists defaults)
+    config = current_app.config
+    return {
+        "site_name": config.get("FPV_DOCS_SITE_NAME", "Site"),
+        "docs": get_route_docs(),
+        "custom_blocks": config.get("FPV_DOCS_CUSTOM_BLOCKS", []),
+        "default_theme": config.get("FPV_DOCS_DEFAULT_THEME", "light"),
+    }
+
+
+def get_function_docs(func: Callable) -> Optional[dict]:
+    """Get view docs, None without ValidateParameters"""
+    # Find details recorded by ValidateParameters
+    docs_key = getattr(func, "__fpv_discriminated_sig__", None)
+    fdocs = ValidateParameters.get_fn_list().get(docs_key)
+    if fdocs is None:
+        return None
+
+    # Build view docs
+    return {
+        "docstring": format_docstring(fdocs["docstring"]),
+        "decorators": fdocs["decorators"],
+        "args": extract_argument_details(fdocs),
+        "responses": fdocs["openapi_responses"],
+    }
+
+
+def format_docstring(docstring: Optional[str]) -> Optional[str]:
+    """Format docstring as HTML"""
+    # Skip empty docstring
     if not docstring:
         return None
 
-    docstring = docstring.strip().replace("\n", "<br/>")
-    return docstring.replace("    ", "&nbsp;" * 4)
+    # Convert newlines and four-space indents to HTML
+    html_docstring = docstring.strip().replace("\n", "<br/>")
+    return html_docstring.replace("    ", "&nbsp;" * 4)
 
 
-def extract_argument_details(fdocs, include_raw_type=False):
-    """
-    Extract details about a function's arguments, including type hints and ValidateParameters details.
-    Optionally, raw type information can be included - the default behavior is to omit this, to allow for JSON serialization.
-    """
-    args_data = {}
-    for idx, arg_name in enumerate(fdocs["argspec"].args):
-        type_str, raw_type = get_arg_type_hint(fdocs, arg_name)
-        arg_data = {
-            "name": arg_name,
-            "type": type_str,
-            "loc": get_arg_location(fdocs, idx),
-            "loc_args": get_arg_location_details(fdocs, idx),
-        }
-        if include_raw_type:
-            arg_data["raw_type"] = raw_type
-        args_data.setdefault(arg_data["loc"], []).append(arg_data)
-    return args_data
-
-def recursively_resolve_type_hint(type_to_resolve) -> str:
-    """
-    Generate the string representation of a type hint, including any generic arguments
-    """
-    if sys.version_info >= (3, 10) and isinstance(type_to_resolve, UnionType):
-            # support 3.10 style unions (e.g. str | int)
-            # from 3.14 onwards, Optional[X] and Union[X, Y] are UnionType too
-            type_base_name = "Union"
-    elif hasattr(type_to_resolve, "__name__"):  # In Python 3.9, Optional and Union do not have __name__
-        type_base_name = type_to_resolve.__name__
-    elif hasattr(type_to_resolve, "_name") and type_to_resolve._name is not None:
-        # In Python 3.9, _name exists on list[whatever] and has a non-None value
-        type_base_name = type_to_resolve._name
-    else:
-        # But, in Python 3.9, Optional[whatever] has _name of None - but its __origin__ is Union
-        type_base_name = type_to_resolve.__origin__._name
-    if hasattr(type_to_resolve, "__args__"):
-        return (
-            f"{type_base_name}[{', '.join([recursively_resolve_type_hint(a) for a in type_to_resolve.__args__])}]"
+def extract_argument_details(fdocs: dict) -> dict[str, list[ArgumentDetails]]:
+    """Group argument details by location"""
+    args_by_location = {}
+    for index, arg_name in enumerate(fdocs["argspec"].args):
+        # Build argument details
+        type_name, raw_type = get_arg_type_hint(fdocs, arg_name)
+        arg_details = ArgumentDetails(
+            name=arg_name,
+            type_name=type_name,
+            location=get_arg_location(fdocs, index),
+            location_args=get_arg_location_details(fdocs, index),
+            raw_type=raw_type,
         )
-    return type_base_name
 
-def get_arg_type_hint(fdocs, arg_name):
-    """
-    Extract the type hint for a specific argument.
-    """
+        # Group by location
+        args_by_location.setdefault(arg_details.location, []).append(arg_details)
+    return args_by_location
+
+
+def recursively_resolve_type_hint(type_to_resolve: Any) -> str:
+    """Convert type hint to string"""
+    # Return name if no arguments
+    type_name = _type_base_name(type_to_resolve)
+    if not hasattr(type_to_resolve, "__args__"):
+        return type_name
+
+    # Add generic arguments
+    resolved_args = ", ".join([recursively_resolve_type_hint(arg) for arg in type_to_resolve.__args__])
+    return f"{type_name}[{resolved_args}]"
+
+
+def get_arg_type_hint(fdocs: dict, arg_name: str) -> tuple[str, Any]:
+    """Get type name and raw type"""
     arg_type = fdocs["argspec"].annotations[arg_name]
     return recursively_resolve_type_hint(arg_type), arg_type
 
 
-def get_arg_location(fdocs, idx):
-    """
-    Determine where in the request the argument comes from (e.g., Route, Json, Query).
-    """
+def get_arg_location(fdocs: dict, idx: int) -> str:
+    """Get Parameter class name (e.g. Query)"""
     return type(fdocs["argspec"].defaults[idx]).__name__
 
 
-def get_arg_location_details(fdocs, idx):
-    """
-    Extract additional details about the location of an argument in the request.
-    """
-    loc_details = {}
-    location = fdocs["argspec"].defaults[idx]
-    for param, value in location.__dict__.items():
-        if value is not None:
-            if callable(value):
-                loc_details[param] = f"{value.__module__}.{value.__name__}"
-            elif issubclass(type(value), Enum):
-                loc_details[param] = f"{type(value).__name__}.{value.name}: "
-                if issubclass(type(value), int):
-                    loc_details[param] += f"{value.value}"
-                elif issubclass(type(value), str):
-                    loc_details[param] += f"'{value.value}'"
-                else:
-                    loc_details[param] = f"FPV: Unsupported Enum type"
-            elif type(value).__name__ == 'time':
-                loc_details[param] = value.isoformat()
-            elif param == 'sources':
-                loc_details[param] = [type(source).__name__ for source in value]
-            else:
-                loc_details[param] = value
-    return loc_details
+def get_arg_location_details(fdocs: dict, idx: int) -> dict:
+    """Format non-None Parameter arguments"""
+    parameter = fdocs["argspec"].defaults[idx]
+    return {
+        name: _format_parameter_argument(name, value)
+        for name, value in parameter.__dict__.items()
+        if value is not None
+    }
 
 
-@docs_blueprint.app_template_filter()
-def http_badge_bg(http_method):
-    """
-    Provide a color badge for various HTTP methods.
-    """
-    color_map = {"GET": "bg-primary", "POST": "bg-success", "DELETE": "bg-danger"}
-    return color_map.get(http_method, "bg-warning")
-
-
-@docs_blueprint.route("/")
-@deprecated("Use /openapi instead")
-def docs_html():
-    """
-    Render the documentation as an HTML page.
-    """
-    config = flask.current_app.config
-    return flask.render_template(
-        "fpv_default_docs.html",
-        site_name=config.get("FPV_DOCS_SITE_NAME", "Site"),
-        docs=get_route_docs(),
-        custom_blocks=config.get("FPV_DOCS_CUSTOM_BLOCKS", []),
-        default_theme=config.get("FPV_DOCS_DEFAULT_THEME", "light"),
-    )
-
-
-@docs_blueprint.route("/json")
-@deprecated("Use /openapi instead")
-def docs_json():
-    """
-    Provide the documentation as a JSON response.
-    """
-    config = flask.current_app.config
-    return jsonify(
-        {
-            "site_name": config.get("FPV_DOCS_SITE_NAME", "Site"),
-            "docs": get_route_docs(),
-            "custom_blocks": config.get("FPV_DOCS_CUSTOM_BLOCKS", []),
-            "default_theme": config.get("FPV_DOCS_DEFAULT_THEME", "light"),
-        }
-    )
-
-
-def fpv_error(message):
+def fpv_error(message: str) -> Response:
+    """Return JSON error response"""
     return jsonify({"error": message})
 
 
-def parameter_required(param):
-    if param["type"].startswith("Optional[") or re.match("Union\\[.*None.*", param["type"]):
+def parameter_required(param: ArgumentDetails) -> bool:
+    """Check if parameter is required"""
+    # Allow missing Optional types
+    if param.type_name.startswith("Optional[") or OPTIONAL_UNION_NAME.match(param.type_name):
         return False
-    elif "default" in param["loc_args"]:
-        return False
-    return True
 
-def generate_json_schema_helper(param, param_type, raw_type):
-    """
-    Generate a JSON Schema for the provided parameter information
-    :param param: Information gathered about the parameter from the Parameter constructor, or None if generating info below the root level of a FPV parameter (i.e. TypedDict members)
-    :param param_type: Stringified type of the parameter
-    :param raw_type: Raw type of the parameter
+    # Require if no default
+    return "default" not in param.location_args
 
-    :return: Generated JSON Schema as a Python dict
-    """
-    schema = {}
-    if raw_type is str:  # Non-enum str, and str-only validation criteria
-        schema["type"] = "string"
-        if param is not None:
-            if "min_str_length" in param["loc_args"]:
-                schema["minLength"] = param["loc_args"]["min_str_length"]
-            if "max_str_length" in param["loc_args"]:
-                schema["maxLength"] = param["loc_args"]["max_str_length"]
-            if "pattern" in param["loc_args"]:
-                schema["pattern"] = param["loc_args"]["pattern"]
 
-    elif raw_type is int:  # Non-enum int, and int-only validation criteria
-        schema["type"] = "integer"
-        if param is not None:
-            if "min_int" in param["loc_args"]:
-                schema["minimum"] = param["loc_args"]["min_int"]
-            if "max_int" in param["loc_args"]:
-                schema["maximum"] = param["loc_args"]["max_int"]
+# No Parameter for union members, dict values and TypedDict fields
+def generate_json_schema_helper(param: Optional[ArgumentDetails], raw_type: Any) -> dict:
+    """Generate JSON Schema for type hint"""
+    # Name type hint (e.g. List[int])
+    type_name = recursively_resolve_type_hint(raw_type)
 
-    elif raw_type is bool:  # bool
-        schema["type"] = "boolean"
-
-    elif raw_type is float:  # float
-        schema["type"] = "number"
-
-    elif raw_type is datetime.datetime:  # datetime and  datetime-only validation criteria
-        schema["type"] = "string"
-        schema["format"] = "date-time"
-        if param is not None:
-            if "datetime_format" in param["loc_args"]:
-                warnings.warn("datetime_format cannot be translated to JSON Schema, please use ISO8601 date-time",
-                              Warning, stacklevel=2)
-
-    elif raw_type is datetime.date:  # date
-        schema["type"] = "string"
-        schema["format"] = "date"
-
-    elif raw_type is datetime.time:  # time
-        schema["type"] = "string"
-        schema["format"] = "time"
-
-    elif raw_type is type(None):  # None
-        schema["type"] = "null"
-
-    elif is_typeddict(raw_type):  # TypedDict
-        schema["type"] = "object"
-        schema["properties"] = {}
-        required_properties = []
-        source = ""
-        try:  # Get source to read comments from for description key on members
-            source = inspect.getsource(raw_type)
-        except OSError:  # Sometimes we can't get the source?
-            pass
-        for key, value in raw_type.__annotations__.items():  # Iterate through the keys of the TypedDict and generate subschemas for them
-            value_param_type = recursively_resolve_type_hint(value)
-            schema["properties"][key] = generate_json_schema_helper(None, value_param_type, value)
-            key_match = re.findall(rf"^\s*{key}\s*:\s*{value_param_type}\s*#\s*(.*)$", source, flags=re.MULTILINE)
-            if key_match:
-                schema["properties"][key]["description"] = key_match[0]
-            if raw_type.__total__ and not "NotRequired[" in value_param_type:
-                required_properties.append(key)
-            elif not raw_type.__total__ and "Required[" in value_param_type and not "NotRequired[" in value_param_type:
-                required_properties.append(key)
-        if len(required_properties) > 0:
-            schema["required"] = required_properties
-        schema["title"] = param_type
-        type_description = inspect.getdoc(raw_type)
-        if type_description and type_description != inspect.getdoc(dict):
-            schema["description"] = type_description
-
-    elif raw_type is dict:  # Plain non-generic dict
-        schema["type"] = "object"
-
-    elif type(raw_type) in [type, EnumMeta] and issubclass(raw_type, Enum):  # Enums
-        if issubclass(raw_type, str):
-            schema["type"] = "string"
-        elif issubclass(raw_type, int):
-            schema["type"] = "integer"
-        else:
-            warnings.warn(f"Unsupported enum type: {param_type}", Warning, stacklevel=2)
-        source = inspect.getsource(raw_type)  # Get source to read comments from for description key on members
-        options = []
-        for opt in raw_type:  # Iterate over enum members and generate subschemas for them
-            option_schema = {"title": opt.name, "const": opt.value}
-            opt_match = re.findall(rf"^\s*{opt.name}\s*=\s*['\"]?{opt.value}['\"]?\s*#\s*(.*)$", source, flags=re.MULTILINE)
-            if opt_match:
-                option_schema["description"] = opt_match[0]
-            options.append(option_schema)
-        schema["oneOf"] = options
-        type_description = inspect.getdoc(raw_type)
-        if type_description and type_description not in [inspect.getdoc(str), inspect.getdoc(int)]:
-            schema["description"] = type_description
-        schema["title"] = param_type
-
-    elif raw_type is uuid.UUID:  # UUID
-        schema["type"] = "string"
-        schema["format"] = "uuid"
-
-    else:  # Generic types
-        match = re.match(r'(\w+)\[([\w\[\] ,.]+)]', param_type)
-        if not match:
-            warnings.warn(f"Unsupported type {param_type}",
-                          Warning, stacklevel=2)
+    # Build schema by type
+    if raw_type is str:
+        schema = {"type": "string"}
+        _add_schema_constraints(schema, param, STRING_CONSTRAINTS)
+    elif raw_type is int:
+        schema = {"type": "integer"}
+        _add_schema_constraints(schema, param, INTEGER_CONSTRAINTS)
+    elif raw_type is bool:
+        schema = {"type": "boolean"}
+    elif raw_type is float:
+        schema = {"type": "number"}
+    elif raw_type is datetime.datetime:
+        # Warn on datetime_format (JSON Schema has ISO 8601 only)
+        schema = {"type": "string", "format": "date-time"}
+        if param is not None and "datetime_format" in param.location_args:
+            warnings.warn("datetime_format cannot be translated to JSON Schema, please use ISO8601 date-time",
+                          Warning, stacklevel=SCHEMA_STACKLEVEL)
+    elif raw_type is datetime.date:
+        schema = {"type": "string", "format": "date"}
+    elif raw_type is datetime.time:
+        schema = {"type": "string", "format": "time"}
+    elif raw_type is type(None):
+        schema = {"type": "null"}
+    elif is_typeddict(raw_type):
+        schema = _typeddict_schema(type_name, raw_type)
+    elif raw_type is dict:
+        schema = {"type": "object"}
+    elif type(raw_type) is EnumMeta:
+        schema = _enum_schema(type_name, raw_type)
+    elif raw_type is uuid.UUID:
+        schema = {"type": "string", "format": "uuid"}
+    else:
+        # Warn on other non-generic types
+        generic_match = GENERIC_TYPE_NAME.match(type_name)
+        if not generic_match:
+            warnings.warn(f"Unsupported type {type_name}", Warning, stacklevel=SCHEMA_STACKLEVEL)
             return {}
-        type_group = match.group(1)
-        if type_group in ["List", "list"]:  # Lists, and list-only validation criteria
-            schema["type"] = "array"
-            available_types = []
-            for subtype in raw_type.__args__:  # Generate subschema for list items
-                subtype_schema = generate_json_schema_helper(param, recursively_resolve_type_hint(subtype), subtype)
-                available_types.append(subtype_schema)
-            if len(available_types) == 1:
-                schema["items"] = available_types[0]
-            else:
-                schema["items"] = {"oneOf": available_types}
-            if param is not None:
-                if "min_list_length" in param["loc_args"]:
-                    schema["minItems"] = param["loc_args"]["min_list_length"]
-                if "max_list_length" in param["loc_args"]:
-                    schema["maxItems"] = param["loc_args"]["max_list_length"]
 
-        elif type_group in ["Optional", "Union"]:  # Unions
-            available_types = []
-            for subtype in raw_type.__args__:
-                subtype_schema = generate_json_schema_helper(None, recursively_resolve_type_hint(subtype), subtype)
-                available_types.append(subtype_schema)
-            schema["oneOf"] = available_types
+        # Build schema for generic types (e.g. list[int])
+        schema = _generic_schema(param, type_name, raw_type, generic_match.group(1))
 
-        elif type_group in ["Required", "NotRequired"]:  # Ignore these, as they're handled above in TypedDict logic
-            schema = generate_json_schema_helper(param, recursively_resolve_type_hint(raw_type.__args__[0]), raw_type.__args__[0])
-
-        elif type_group == "dict":  # Generic dict
-            schema["type"] = "object"
-            schema["additionalProperties"] = generate_json_schema_helper(None, recursively_resolve_type_hint(raw_type.__args__[1]), raw_type.__args__[1])
-
-        elif type_group == "Annotated" or type(raw_type) is type(Annotated[int, ""]):  # Use the first str Annotated[] metadata we find as a description for the item
-            schema = generate_json_schema_helper(param, recursively_resolve_type_hint(raw_type.__origin__), raw_type.__origin__)
-            for annotation in raw_type.__metadata__:
-                if type(annotation) is str:
-                    schema["description"] = annotation
-                    break
-
-        else:
-            warnings.warn(f"Unsupported generic type {param_type}", Warning, stacklevel=2)
-
-    if param:  # Globally applicable Parameter arguments
-        if "comment" in param["loc_args"]:
-            schema["description"] = param["loc_args"]["comment"]
-
-        if "default" in param["loc_args"]:
-            schema["default"] = param["loc_args"]["default"]
-
+    # Add comment and default from Parameter
+    if param:
+        if "comment" in param.location_args:
+            schema["description"] = param.location_args["comment"]
+        if "default" in param.location_args:
+            schema["default"] = param.location_args["default"]
     return schema
 
 
-def generate_json_schema_for_parameter(param):
-    return generate_json_schema_helper(param, param["type"], param["raw_type"])
+def generate_json_schema_for_parameter(param: ArgumentDetails) -> dict:
+    """Generate JSON Schema for one parameter"""
+    return generate_json_schema_helper(param, param.raw_type)
 
 
-def generate_json_schema_for_parameters(params):
-    schema = {
-        "type": "object",
-        "properties": {},
-        "required": []
-    }
-    for p in params:
-        schema_parameter_name = p["name"] if "alias" not in p["loc_args"] else p["loc_args"]["alias"]
-        if "json_schema" in p["loc_args"]:
-            schema["properties"][schema_parameter_name] = p["loc_args"]["json_schema"]
-        else:
-            schema["properties"][schema_parameter_name] = generate_json_schema_for_parameter(p)
-        if parameter_required(p):
-            schema["required"].append(schema_parameter_name)
-    if len(schema["required"]) == 0:
-        del schema["required"]
+def generate_json_schema_for_parameters(params: list[ArgumentDetails]) -> dict:
+    """Generate object JSON Schema for parameters"""
+    # Collect properties and required names
+    properties = {}
+    required_names = []
+    for param in params:
+        request_name = param.request_name
+        properties[request_name] = _get_parameter_schema(param)
+        if parameter_required(param):
+            required_names.append(request_name)
+
+    # Build object schema
+    schema = {"type": "object", "properties": properties}
+    if required_names:
+        schema["required"] = required_names
     return schema
 
-def generate_openapi_paths_object():
-    oapi_paths = {}
-    for route in get_route_docs(include_raw_type=True):
-        oapi_path_route = re.sub(r'<(\w+):(\w+)>', r'{\2}', route['rule'])  # Replace <type:name> path segments with {name}
-        oapi_path_route = re.sub(r'<(\w+)>', r'{\1}', oapi_path_route)  # Replace <name> path segments with {name}
-        oapi_path_item = {}
-        oapi_operation = {}  # tags, summary, description, externalDocs, operationId, parameters, requestBody, responses, callbacks, deprecated, security, servers
-        oapi_parameters = []
-        oapi_request_body = {"content": {}}
 
-        if "MultiSource" in route["args"]:  # Flatten MultiSource to make it easier to process in the following steps
-            for arg in route["args"]["MultiSource"]:
-                if "sources" in arg["loc_args"]:
-                    sources = arg["loc_args"]["sources"].copy()
-                    del arg["loc_args"]["sources"]
-                    for source in sources:
-                        arg["loc"] = source
-                        arg["multisource_sources"] = sources
-                        if source not in route["args"]:
-                            route["args"][source] = []
-                        route["args"][source].append(deepcopy(arg))
-            del route["args"]["MultiSource"]
-        for arg_loc in route["args"]:  # Iterate over argument locations for this route
-            if arg_loc == "Form":  # If we have Form arguments
-                oapi_request_body["content"]["application/x-www-form-urlencoded"] = {
-                    "schema": generate_json_schema_for_parameters(route["args"][arg_loc])}  # Generate schemas for them
-            elif arg_loc == "Json":  # If we have Json arguments
-                oapi_request_body["content"]["application/json"] = {
-                    "schema": generate_json_schema_for_parameters(route["args"][arg_loc])}  # Generate schemas for them
-            elif arg_loc == "File":  # See https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.1.0.md#considerations-for-file-uploads - if we have File arguments for this route
-                for arg in route["args"][arg_loc]:  # Generate "schemas" for them - this just amounts to Content-Type(s)
-                    if "content_types" in arg["loc_args"]:
-                        for content_type in arg["loc_args"]["content_types"]:
-                            oapi_request_body["content"][content_type] = {}
-                    else:
-                        oapi_request_body["content"]["application/octet-stream"] = {}
-            elif arg_loc in ["Route", "Query"]:  # If we have Query or Route arguments
-                for arg in route["args"][arg_loc]:  # Iterate over and generate schemas
-                    if "alias" in arg["loc_args"]:  # Handle alias in path
-                        oapi_path_route = oapi_path_route.replace(f'{{{arg["name"]}}}',
-                                                                  f'{{{arg["loc_args"]["alias"]}}}')
-                    schema_arg_name = arg["name"] if "alias" not in arg["loc_args"] else arg["loc_args"]["alias"]  # Handle alias in argument name
-                    if arg_loc == "Query" or (arg_loc == "Route" and f"{{{schema_arg_name}}}" in oapi_path_route):  # Generate and include only if we're on the route where a route parameter is used (since multiple routes can point to one function)
-                        parameter = {
-                            "name": schema_arg_name,
-                            "in": "path" if arg_loc == "Route" else "query",
-                            "required": True if arg_loc == "Route" else parameter_required(arg),
-                            "schema": arg["loc_args"]["json_schema"] if "json_schema" in arg[
-                                "loc_args"] else generate_json_schema_for_parameter(arg),
-                        }
-                        oapi_parameters.append(parameter)
-        if len(oapi_parameters) > 0:  # Only include the parameters object if we have them
-            oapi_operation["parameters"] = oapi_parameters
-        if len(oapi_request_body["content"].keys()) > 0:  # Only include the requestBoyd object if we have one
-            oapi_operation["requestBody"] = oapi_request_body
-        for decorator in route["decorators"]:  # Handle deprecated
-            for partial_decorator in ["@warnings.deprecated", "@deprecated"]:  # Support for PEP 702 in Python 3.13
-                if partial_decorator in decorator:
-                    oapi_operation["deprecated"] = True
-        if route["responses"]:  # Only include the responses object if we've been given one
-            oapi_operation["responses"] = route["responses"]
-        if route["docstring"]:
-            oapi_operation["description"] = route["docstring"]
-        for method in route["methods"]:  # Use the generated operation object for all methods applicable to this route
-            if method not in ["OPTIONS", "HEAD"]:
-                oapi_path_item[method.lower()] = oapi_operation
-        if oapi_path_route in oapi_paths:  # Merge generated with existing
-            oapi_paths[oapi_path_route] = oapi_paths[oapi_path_route] | oapi_path_item
-        else:  # Create new path item for this route
-            oapi_paths[oapi_path_route] = oapi_path_item
-    return oapi_paths
+def get_route_docs(include_raw_type: bool = False) -> list[dict]:
+    """Get docs for every validated route"""
+    route_docs = _collect_route_docs()
+
+    # Convert args to legacy format
+    for view_docs in route_docs:
+        view_docs["args"] = {
+            location: [arg.to_dict(include_raw_type) for arg in args_at_location]
+            for location, args_at_location in view_docs["args"].items()
+        }
+    return route_docs
 
 
-def generate_openapi_docs():
-    """
-    Generate the documentation in OpenAPI format
-    """
-    config = flask.current_app.config
+def generate_openapi_paths_object() -> dict:
+    """Generate OpenAPI paths for validated routes"""
+    openapi_paths = {}
+    for route in _collect_route_docs():
+        # Convert rule variables to path parameters (e.g. <int:id> to {id})
+        path = TYPED_RULE_VARIABLE.sub(r"{\2}", route["rule"])
+        path = RULE_VARIABLE.sub(r"{\1}", path)
+
+        # Split MultiSource args by source
+        _flatten_multisource_args(route["args"])
+
+        # Collect parameters and request body
+        path, parameters, body_content = _collect_openapi_inputs(route["args"], path)
+
+        # Share operation across route methods
+        operation = _build_openapi_operation(route, parameters, body_content)
+        path_item = {method.lower(): operation for method in route["methods"] if method not in IGNORED_METHODS}
+
+        # Merge with other rules on same path
+        openapi_paths[path] = openapi_paths.get(path, {}) | path_item
+    return openapi_paths
+
+
+def generate_openapi_docs() -> Union[dict, Response]:
+    """Generate OpenAPI document, raises if disabled"""
+    # Require FPV_OPENAPI_ENABLE
+    config = current_app.config
     if not config.get("FPV_OPENAPI_ENABLE", False):
         raise ConfigurationError("FPV_OPENAPI_ENABLE is not set, and defaults to False")
 
-    supported_versions = ["3.1.0", "3.1.1", "3.1.2", "3.2.0"]
+    # Check FPV_OPENAPI_BASE (unset fails version check)
     openapi_base = config.get("FPV_OPENAPI_BASE", {"openapi": None})
-    if openapi_base["openapi"] not in supported_versions:
-        return fpv_error(
-            f"Flask-Parameter-Validation only supports OpenAPI {', '.join(supported_versions)}, provided: {openapi_base['openapi']}")
+    if openapi_base["openapi"] not in SUPPORTED_OPENAPI_VERSIONS:
+        return fpv_error(f"Flask-Parameter-Validation only supports OpenAPI {', '.join(SUPPORTED_OPENAPI_VERSIONS)}, "
+                         f"provided: {openapi_base['openapi']}")
     if "paths" in openapi_base:
-        return fpv_error(f"Flask-Parameter-Validation will overwrite the paths value of FPV_OPENAPI_BASE")
+        return fpv_error("Flask-Parameter-Validation will overwrite the paths value of FPV_OPENAPI_BASE")
+
+    # Add paths to deep copy of FPV_OPENAPI_BASE
     openapi_paths = generate_openapi_paths_object()
     openapi_document = json.loads(json.dumps(openapi_base))
     openapi_document["paths"] = openapi_paths
     return openapi_document
 
 
+@docs_blueprint.app_template_filter()
+def http_badge_bg(http_method: str) -> str:
+    """Get badge class for HTTP method"""
+    # Use warning badge for other methods
+    return HTTP_METHOD_BADGES.get(http_method, "bg-warning")
+
+
+@docs_blueprint.route("/")
+@deprecated(LEGACY_ROUTE_DEPRECATION)
+def docs_html() -> str:
+    """Render docs as HTML page"""
+    return render_template("fpv_default_docs.html", **_get_legacy_docs())
+
+
+@docs_blueprint.route("/json")
+@deprecated(LEGACY_ROUTE_DEPRECATION)
+def docs_json() -> Response:
+    """Return docs as JSON"""
+    return jsonify(_get_legacy_docs())
+
+
 @docs_blueprint.route("/openapi")
-def docs_openapi():
-    """
-    Provide the documentation in OpenAPI format
-    """
+def docs_openapi() -> Response:
+    """Return OpenAPI document as JSON"""
     return jsonify(generate_openapi_docs())
